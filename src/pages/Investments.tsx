@@ -1,0 +1,338 @@
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+
+interface Investment {
+  id: string;
+  name: string;
+  type: string;
+  current_value: number;
+  monthly_contribution: number;
+  annual_return_pct: number;
+  years_remaining: number;
+}
+
+const Investments = () => {
+  const [investments, setInvestments] = useState<Investment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    type: "index_fund",
+    current_value: "",
+    monthly_contribution: "",
+    annual_return_pct: "7",
+    years_remaining: "10",
+  });
+
+  useEffect(() => {
+    fetchInvestments();
+  }, []);
+
+  const fetchInvestments = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("investments")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      setInvestments(data || []);
+    } catch (error) {
+      toast.error("Failed to load investments");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.from("investments").insert({
+        user_id: user.id,
+        name: formData.name,
+        type: formData.type as any,
+        current_value: parseFloat(formData.current_value),
+        monthly_contribution: parseFloat(formData.monthly_contribution),
+        annual_return_pct: parseFloat(formData.annual_return_pct),
+        years_remaining: parseFloat(formData.years_remaining),
+      } as any);
+
+      if (error) throw error;
+
+      toast.success("Investment added successfully");
+      setDialogOpen(false);
+      setFormData({
+        name: "",
+        type: "index_fund",
+        current_value: "",
+        monthly_contribution: "",
+        annual_return_pct: "7",
+        years_remaining: "10",
+      });
+      fetchInvestments();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add investment");
+    }
+  };
+
+  const calculateFutureValue = (investment: Investment) => {
+    const PV = Number(investment.current_value);
+    const pmt = Number(investment.monthly_contribution);
+    const annualReturnPct = Number(investment.annual_return_pct);
+    const years = Number(investment.years_remaining);
+
+    const r = (annualReturnPct / 100) / 12;
+    const n = Math.round(years * 12);
+
+    if (r === 0) {
+      return PV + pmt * n;
+    }
+
+    const factor = Math.pow(1 + r, n);
+    return PV * factor + pmt * ((factor - 1) / r);
+  };
+
+  const investmentTypeColors: Record<string, string> = {
+    roth_ira: "bg-primary",
+    taxable_etf: "bg-secondary",
+    index_fund: "bg-accent",
+    savings: "bg-success",
+    other: "bg-warning",
+  };
+
+  const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
+  const totalFutureValue = investments.reduce((sum, inv) => sum + calculateFutureValue(inv), 0);
+
+  return (
+    <Layout>
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Investments</h1>
+            <p className="text-muted-foreground">Track your investment portfolio and projections</p>
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Investment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Investment</DialogTitle>
+                <DialogDescription>Track a new investment account</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Investment Name</Label>
+                  <Input
+                    placeholder="e.g., Roth IRA"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="roth_ira">Roth IRA</SelectItem>
+                      <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
+                      <SelectItem value="index_fund">Index Fund</SelectItem>
+                      <SelectItem value="savings">High-Yield Savings</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Current Value</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="10000"
+                      value={formData.current_value}
+                      onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Monthly Contribution</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="500"
+                      value={formData.monthly_contribution}
+                      onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Annual Return (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="7"
+                      value={formData.annual_return_pct}
+                      onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Years to Project</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      placeholder="10"
+                      value={formData.years_remaining}
+                      onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full">Add Investment</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gradient-card shadow-lg border-none">
+            <CardHeader>
+              <CardTitle className="text-xl">Current Portfolio Value</CardTitle>
+              <CardDescription>Total value of all investments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">
+                ${totalCurrentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-success shadow-lg border-none">
+            <CardHeader>
+              <CardTitle className="text-xl text-white">Projected Future Value</CardTitle>
+              <CardDescription className="text-white/80">Based on contributions and returns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">
+                ${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {loading ? (
+            [1, 2].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 bg-muted rounded w-full"></div>
+                </CardContent>
+              </Card>
+            ))
+          ) : investments.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="text-center py-12 text-muted-foreground">
+                No investments yet. Add your first investment to start tracking!
+              </CardContent>
+            </Card>
+          ) : (
+            investments.map((investment) => {
+              const futureValue = calculateFutureValue(investment);
+              const totalGain = futureValue - Number(investment.current_value);
+              const gainPercentage = (totalGain / Number(investment.current_value)) * 100;
+
+              return (
+                <Card key={investment.id} className="shadow-md hover:shadow-glow transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2">{investment.name}</CardTitle>
+                        <Badge className={investmentTypeColors[investment.type] || "bg-primary"}>
+                          {investment.type.replace(/_/g, " ")}
+                        </Badge>
+                      </div>
+                      <div className={`p-3 rounded-xl ${investmentTypeColors[investment.type] || "bg-primary"}`}>
+                        <TrendingUp className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Current Value</p>
+                        <p className="text-2xl font-bold">
+                          ${Number(investment.current_value).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Monthly +</p>
+                        <p className="text-2xl font-bold text-success">
+                          ${Number(investment.monthly_contribution).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Projected in {investment.years_remaining} years @ {investment.annual_return_pct}% annual return
+                      </p>
+                      <p className="text-3xl font-bold bg-gradient-success bg-clip-text text-transparent">
+                        ${futureValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                      <p className="text-sm text-success mt-2">
+                        +${totalGain.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ({gainPercentage.toFixed(1)}% gain)
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        <Card className="bg-muted/30">
+          <CardHeader>
+            <CardTitle className="text-sm">Disclaimer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              This information is educational and illustrative only and should not be considered financial or investment advice. 
+              Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default Investments;
