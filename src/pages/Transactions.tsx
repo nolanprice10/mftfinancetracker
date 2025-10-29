@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { EditTransactionDialog } from "@/components/EditTransactionDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Transaction {
   id: string;
@@ -32,6 +34,10 @@ const Transactions = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteTransaction, setDeleteTransaction] = useState<Transaction | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
     type: "expense",
@@ -110,6 +116,43 @@ const Transactions = () => {
       fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to add transaction");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTransaction) return;
+
+    try {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("id", deleteTransaction.account_id)
+        .single();
+
+      if (account) {
+        const newBalance = deleteTransaction.type === "income"
+          ? Number(account.balance) - Number(deleteTransaction.amount)
+          : Number(account.balance) + Number(deleteTransaction.amount);
+
+        await supabase
+          .from("accounts")
+          .update({ balance: newBalance })
+          .eq("id", deleteTransaction.account_id);
+      }
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", deleteTransaction.id);
+
+      if (error) throw error;
+
+      toast.success("Transaction deleted successfully");
+      setDeleteDialogOpen(false);
+      setDeleteTransaction(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete transaction");
     }
   };
 
@@ -215,8 +258,32 @@ const Transactions = () => {
                         <p className="text-sm text-muted-foreground mt-1">{transaction.notes}</p>
                       )}
                     </div>
-                    <div className={`text-xl font-bold ${transaction.type === "income" ? "text-success" : "text-foreground"}`}>
-                      {transaction.type === "income" ? "+" : "-"}${Number(transaction.amount).toFixed(2)}
+                    <div className="flex items-center gap-4">
+                      <div className={`text-xl font-bold ${transaction.type === "income" ? "text-success" : "text-foreground"}`}>
+                        {transaction.type === "income" ? "+" : "-"}${Number(transaction.amount).toFixed(2)}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditTransaction(transaction);
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDeleteTransaction(transaction);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -224,6 +291,31 @@ const Transactions = () => {
             )}
           </CardContent>
         </Card>
+
+        <EditTransactionDialog
+          transaction={editTransaction}
+          accounts={accounts}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSuccess={fetchData}
+        />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this transaction? This will also reverse the balance change on the account.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

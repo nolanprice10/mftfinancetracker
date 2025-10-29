@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Target } from "lucide-react";
+import { Plus, Target, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Goal {
   id: string;
@@ -18,12 +20,22 @@ interface Goal {
   start_date: string;
   end_date: string;
   notes: string | null;
+  account_id?: string;
+}
+
+interface Account {
+  id: string;
+  name: string;
 }
 
 const Goals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     target_amount: "",
@@ -31,25 +43,25 @@ const Goals = () => {
     start_date: new Date().toISOString().split("T")[0],
     end_date: "",
     notes: "",
+    account_id: "",
   });
 
   useEffect(() => {
-    fetchGoals();
+    fetchData();
   }, []);
 
-  const fetchGoals = async () => {
+  const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("end_date", { ascending: true });
+      const [goalsRes, accountsRes] = await Promise.all([
+        supabase.from("goals").select("*").eq("user_id", user.id).order("end_date", { ascending: true }),
+        supabase.from("accounts").select("id, name").eq("user_id", user.id),
+      ]);
 
-      if (error) throw error;
-      setGoals(data || []);
+      setGoals(goalsRes.data || []);
+      setAccounts(accountsRes.data || []);
     } catch (error) {
       toast.error("Failed to load goals");
     } finally {
@@ -72,6 +84,7 @@ const Goals = () => {
         start_date: formData.start_date,
         end_date: formData.end_date,
         notes: formData.notes || null,
+        account_id: formData.account_id || null,
       } as any);
 
       if (error) throw error;
@@ -85,10 +98,60 @@ const Goals = () => {
         start_date: new Date().toISOString().split("T")[0],
         end_date: "",
         notes: "",
+        account_id: "",
       });
-      fetchGoals();
+      fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to create goal");
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGoal) return;
+
+    try {
+      const { error } = await supabase
+        .from("goals")
+        .update({
+          name: formData.name,
+          target_amount: parseFloat(formData.target_amount),
+          current_amount: parseFloat(formData.current_amount),
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          notes: formData.notes || null,
+          account_id: formData.account_id || null,
+        } as any)
+        .eq("id", selectedGoal.id);
+
+      if (error) throw error;
+
+      toast.success("Goal updated successfully");
+      setEditDialogOpen(false);
+      setSelectedGoal(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update goal");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedGoal) return;
+
+    try {
+      const { error } = await supabase
+        .from("goals")
+        .delete()
+        .eq("id", selectedGoal.id);
+
+      if (error) throw error;
+
+      toast.success("Goal deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedGoal(null);
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete goal");
     }
   };
 
@@ -108,6 +171,102 @@ const Goals = () => {
     const monthsRemaining = calculateMonthsRemaining(goal.end_date);
     return monthsRemaining > 0 ? remaining / monthsRemaining : remaining;
   };
+
+  const openEditDialog = (goal: Goal) => {
+    setSelectedGoal(goal);
+    setFormData({
+      name: goal.name,
+      target_amount: goal.target_amount.toString(),
+      current_amount: goal.current_amount.toString(),
+      start_date: goal.start_date,
+      end_date: goal.end_date,
+      notes: goal.notes || "",
+      account_id: goal.account_id || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const GoalForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Goal Name</Label>
+        <Input
+          placeholder="e.g., Emergency Fund"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Link to Account (optional)</Label>
+        <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No account</SelectItem>
+            {accounts.map((account) => (
+              <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">Transactions from this account will automatically update the goal</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Target Amount</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="10000"
+            value={formData.target_amount}
+            onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Current Amount</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0"
+            value={formData.current_amount}
+            onChange={(e) => setFormData({ ...formData, current_amount: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Start Date</Label>
+          <Input
+            type="date"
+            value={formData.start_date}
+            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Target Date</Label>
+          <Input
+            type="date"
+            value={formData.end_date}
+            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Notes (optional)</Label>
+        <Input
+          placeholder="Add details..."
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+        />
+      </div>
+      <Button type="submit" className="w-full">{buttonText}</Button>
+    </form>
+  );
 
   return (
     <Layout>
@@ -129,70 +288,7 @@ const Goals = () => {
                 <DialogTitle>Create Goal</DialogTitle>
                 <DialogDescription>Set a new financial goal</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Goal Name</Label>
-                  <Input
-                    placeholder="e.g., Emergency Fund"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Target Amount</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="10000"
-                      value={formData.target_amount}
-                      onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Current Amount</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0"
-                      value={formData.current_amount}
-                      onChange={(e) => setFormData({ ...formData, current_amount: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Target Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (optional)</Label>
-                  <Input
-                    placeholder="Add details..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-                <Button type="submit" className="w-full">Create Goal</Button>
-              </form>
+              <GoalForm onSubmit={handleSubmit} buttonText="Create Goal" />
             </DialogContent>
           </Dialog>
         </div>
@@ -222,6 +318,7 @@ const Goals = () => {
               const progress = calculateProgress(goal);
               const monthsRemaining = calculateMonthsRemaining(goal.end_date);
               const monthlyTarget = calculateMonthlyTarget(goal);
+              const linkedAccount = accounts.find(a => a.id === goal.account_id);
 
               return (
                 <Card key={goal.id} className="shadow-md hover:shadow-glow transition-shadow">
@@ -232,9 +329,26 @@ const Goals = () => {
                         <CardDescription>
                           Target: ${Number(goal.target_amount).toLocaleString()} by {new Date(goal.end_date).toLocaleDateString()}
                         </CardDescription>
+                        {linkedAccount && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Linked to: {linkedAccount.name}
+                          </p>
+                        )}
                       </div>
-                      <div className="p-3 bg-gradient-primary rounded-xl">
-                        <Target className="h-6 w-6 text-white" />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEditDialog(goal)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedGoal(goal);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -277,6 +391,33 @@ const Goals = () => {
             })
           )}
         </div>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Goal</DialogTitle>
+              <DialogDescription>Update goal details</DialogDescription>
+            </DialogHeader>
+            <GoalForm onSubmit={handleEdit} buttonText="Update Goal" />
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Goal</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this goal? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

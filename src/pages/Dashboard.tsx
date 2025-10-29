@@ -7,6 +7,7 @@ import { Plus, TrendingUp, TrendingDown, DollarSign, Target as TargetIcon } from
 import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface Account {
   id: string;
@@ -103,7 +104,7 @@ const Dashboard = () => {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
@@ -115,22 +116,57 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monthly Net Flow</CardTitle>
-              {monthlyNet >= 0 ? (
-                <TrendingUp className="h-5 w-5 text-success" />
-              ) : (
-                <TrendingDown className="h-5 w-5 text-destructive" />
-              )}
+          <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow col-span-1 md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Monthly Cash Flow</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${monthlyNet >= 0 ? 'text-success' : 'text-destructive'}`}>
-                ${Math.abs(monthlyNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="flex items-center gap-6">
+                <div className="flex-1">
+                  <div className={`text-3xl font-bold ${monthlyNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    ${Math.abs(monthlyNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Net {monthlyNet >= 0 ? 'Surplus' : 'Deficit'}
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-success"></div>
+                      <span className="text-sm">Income: ${monthlyIncome.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-destructive"></div>
+                      <span className="text-sm">Expenses: ${monthlyExpenses.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                {(monthlyIncome > 0 || monthlyExpenses > 0) && (
+                  <ResponsiveContainer width={180} height={180}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Income', value: monthlyIncome, color: 'hsl(var(--success))' },
+                          { name: 'Expenses', value: monthlyExpenses, color: 'hsl(var(--destructive))' }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {[
+                          { name: 'Income', value: monthlyIncome, color: 'hsl(var(--success))' },
+                          { name: 'Expenses', value: monthlyExpenses, color: 'hsl(var(--destructive))' }
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                ${monthlyIncome.toFixed(2)} income - ${monthlyExpenses.toFixed(2)} expenses
-              </p>
             </CardContent>
           </Card>
 

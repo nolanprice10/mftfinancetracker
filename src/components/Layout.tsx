@@ -73,7 +73,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="p-2 bg-gradient-primary rounded-lg">
               <Wallet className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-lg">FinanceTracker</span>
+            <span className="font-bold text-lg">MyFinanceTracker</span>
           </div>
           <Button
             variant="ghost"
@@ -125,7 +125,7 @@ const Layout = ({ children }: LayoutProps) => {
               <Wallet className="h-6 w-6 text-white" />
             </div>
             <span className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
-              FinanceTracker
+              MyFinanceTracker
             </span>
           </div>
         </div>

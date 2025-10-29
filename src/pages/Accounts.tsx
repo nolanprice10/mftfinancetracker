@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet } from "lucide-react";
+import { Plus, Wallet, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Account {
   id: string;
@@ -23,6 +24,9 @@ const Accounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     balance: "",
@@ -79,6 +83,63 @@ const Accounts = () => {
     }
   };
 
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAccount) return;
+
+    try {
+      const { error } = await supabase
+        .from("accounts")
+        .update({
+          name: formData.name,
+          balance: parseFloat(formData.balance),
+          type: formData.type as any,
+          notes: formData.notes || null,
+        } as any)
+        .eq("id", selectedAccount.id);
+
+      if (error) throw error;
+
+      toast.success("Account updated successfully");
+      setEditDialogOpen(false);
+      setSelectedAccount(null);
+      fetchAccounts();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update account");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedAccount) return;
+
+    try {
+      const { error } = await supabase
+        .from("accounts")
+        .delete()
+        .eq("id", selectedAccount.id);
+
+      if (error) throw error;
+
+      toast.success("Account deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedAccount(null);
+      fetchAccounts();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete account");
+    }
+  };
+
+  const openEditDialog = (account: Account) => {
+    setSelectedAccount(account);
+    setFormData({
+      name: account.name,
+      balance: account.balance.toString(),
+      type: account.type,
+      notes: account.notes || "",
+    });
+    setEditDialogOpen(true);
+  };
+
   const accountTypeColors: Record<string, string> = {
     checking: "bg-primary",
     savings: "bg-success",
@@ -88,6 +149,55 @@ const Accounts = () => {
   };
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+
+  const AccountForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Account Name</Label>
+        <Input
+          placeholder="e.g., Main Checking"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Type</Label>
+        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="checking">Checking</SelectItem>
+            <SelectItem value="savings">Savings</SelectItem>
+            <SelectItem value="brokerage">Brokerage</SelectItem>
+            <SelectItem value="retirement">Retirement</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Balance</Label>
+        <Input
+          type="number"
+          step="0.01"
+          placeholder="0.00"
+          value={formData.balance}
+          onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Notes (optional)</Label>
+        <Input
+          placeholder="Add details..."
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+        />
+      </div>
+      <Button type="submit" className="w-full">{buttonText}</Button>
+    </form>
+  );
 
   return (
     <Layout>
@@ -109,52 +219,7 @@ const Accounts = () => {
                 <DialogTitle>Add Account</DialogTitle>
                 <DialogDescription>Create a new financial account</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Account Name</Label>
-                  <Input
-                    placeholder="e.g., Main Checking"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="checking">Checking</SelectItem>
-                      <SelectItem value="savings">Savings</SelectItem>
-                      <SelectItem value="brokerage">Brokerage</SelectItem>
-                      <SelectItem value="retirement">Retirement</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Initial Balance</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.balance}
-                    onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (optional)</Label>
-                  <Input
-                    placeholder="Add details..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-                <Button type="submit" className="w-full">Create Account</Button>
-              </form>
+              <AccountForm onSubmit={handleSubmit} buttonText="Create Account" />
             </DialogContent>
           </Dialog>
         </div>
@@ -201,8 +266,20 @@ const Accounts = () => {
                         {account.type}
                       </Badge>
                     </div>
-                    <div className={`p-3 rounded-xl ${accountTypeColors[account.type] || "bg-primary"}`}>
-                      <Wallet className="h-6 w-6 text-white" />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(account)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -218,6 +295,33 @@ const Accounts = () => {
             ))
           )}
         </div>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Account</DialogTitle>
+              <DialogDescription>Update account details</DialogDescription>
+            </DialogHeader>
+            <AccountForm onSubmit={handleEdit} buttonText="Update Account" />
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Account</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this account? This action cannot be undone and will also delete all transactions associated with this account.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

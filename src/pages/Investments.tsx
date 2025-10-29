@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Investment {
   id: string;
@@ -25,6 +26,9 @@ const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     type: "index_fund",
@@ -92,6 +96,67 @@ const Investments = () => {
     }
   };
 
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInvestment) return;
+
+    try {
+      const { error } = await supabase
+        .from("investments")
+        .update({
+          name: formData.name,
+          type: formData.type as any,
+          current_value: parseFloat(formData.current_value),
+          monthly_contribution: parseFloat(formData.monthly_contribution),
+          annual_return_pct: parseFloat(formData.annual_return_pct),
+          years_remaining: parseFloat(formData.years_remaining),
+        } as any)
+        .eq("id", selectedInvestment.id);
+
+      if (error) throw error;
+
+      toast.success("Investment updated successfully");
+      setEditDialogOpen(false);
+      setSelectedInvestment(null);
+      fetchInvestments();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update investment");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedInvestment) return;
+
+    try {
+      const { error } = await supabase
+        .from("investments")
+        .delete()
+        .eq("id", selectedInvestment.id);
+
+      if (error) throw error;
+
+      toast.success("Investment deleted successfully");
+      setDeleteDialogOpen(false);
+      setSelectedInvestment(null);
+      fetchInvestments();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete investment");
+    }
+  };
+
+  const openEditDialog = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setFormData({
+      name: investment.name,
+      type: investment.type,
+      current_value: investment.current_value.toString(),
+      monthly_contribution: investment.monthly_contribution.toString(),
+      annual_return_pct: investment.annual_return_pct.toString(),
+      years_remaining: investment.years_remaining.toString(),
+    });
+    setEditDialogOpen(true);
+  };
+
   const calculateFutureValue = (investment: Investment) => {
     const PV = Number(investment.current_value);
     const pmt = Number(investment.monthly_contribution);
@@ -113,12 +178,97 @@ const Investments = () => {
     roth_ira: "bg-primary",
     taxable_etf: "bg-secondary",
     index_fund: "bg-accent",
+    individual_stock: "bg-warning",
     savings: "bg-success",
-    other: "bg-warning",
+    other: "bg-muted",
   };
 
   const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
   const totalFutureValue = investments.reduce((sum, inv) => sum + calculateFutureValue(inv), 0);
+
+  const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Investment Name</Label>
+        <Input
+          placeholder="e.g., Roth IRA, AAPL Stock"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Type</Label>
+        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="roth_ira">Roth IRA</SelectItem>
+            <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
+            <SelectItem value="index_fund">Index Fund</SelectItem>
+            <SelectItem value="individual_stock">Individual Stock</SelectItem>
+            <SelectItem value="savings">High-Yield Savings</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+        {formData.type === "individual_stock" && (
+          <p className="text-xs text-muted-foreground">
+            Track individual stock holdings. Enter current market value and expected annual return.
+          </p>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Current Value</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="10000"
+            value={formData.current_value}
+            onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Monthly Contribution</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="500"
+            value={formData.monthly_contribution}
+            onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Expected Annual Return (%)</Label>
+          <Input
+            type="number"
+            step="0.1"
+            placeholder="7"
+            value={formData.annual_return_pct}
+            onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Years to Project</Label>
+          <Input
+            type="number"
+            step="0.5"
+            placeholder="10"
+            value={formData.years_remaining}
+            onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
+            required
+          />
+        </div>
+      </div>
+      <Button type="submit" className="w-full">{buttonText}</Button>
+    </form>
+  );
 
   return (
     <Layout>
@@ -140,81 +290,7 @@ const Investments = () => {
                 <DialogTitle>Add Investment</DialogTitle>
                 <DialogDescription>Track a new investment account</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Investment Name</Label>
-                  <Input
-                    placeholder="e.g., Roth IRA"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="roth_ira">Roth IRA</SelectItem>
-                      <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
-                      <SelectItem value="index_fund">Index Fund</SelectItem>
-                      <SelectItem value="savings">High-Yield Savings</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Current Value</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="10000"
-                      value={formData.current_value}
-                      onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Monthly Contribution</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="500"
-                      value={formData.monthly_contribution}
-                      onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Annual Return (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      placeholder="7"
-                      value={formData.annual_return_pct}
-                      onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Years to Project</Label>
-                    <Input
-                      type="number"
-                      step="0.5"
-                      placeholder="10"
-                      value={formData.years_remaining}
-                      onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full">Add Investment</Button>
-              </form>
+              <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
             </DialogContent>
           </Dialog>
         </div>
@@ -280,8 +356,20 @@ const Investments = () => {
                           {investment.type.replace(/_/g, " ")}
                         </Badge>
                       </div>
-                      <div className={`p-3 rounded-xl ${investmentTypeColors[investment.type] || "bg-primary"}`}>
-                        <TrendingUp className="h-6 w-6 text-white" />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => openEditDialog(investment)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedInvestment(investment);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -326,10 +414,38 @@ const Investments = () => {
           <CardContent>
             <p className="text-xs text-muted-foreground">
               This information is educational and illustrative only and should not be considered financial or investment advice. 
-              Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions.
+              Past performance does not guarantee future results. Individual stock values shown are user-entered estimates and may not reflect real-time market prices.
+              Consult a licensed financial advisor before making investment decisions.
             </p>
           </CardContent>
         </Card>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Investment</DialogTitle>
+              <DialogDescription>Update investment details</DialogDescription>
+            </DialogHeader>
+            <InvestmentForm onSubmit={handleEdit} buttonText="Update Investment" />
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Investment</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this investment? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
