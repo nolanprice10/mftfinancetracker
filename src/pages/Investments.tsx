@@ -20,6 +20,9 @@ interface Investment {
   monthly_contribution: number;
   annual_return_pct: number;
   years_remaining: number;
+  ticker_symbol?: string;
+  shares_owned?: number;
+  purchase_price_per_share?: number;
 }
 
 const Investments = () => {
@@ -36,6 +39,9 @@ const Investments = () => {
     monthly_contribution: "",
     annual_return_pct: "7",
     years_remaining: "10",
+    ticker_symbol: "",
+    shares_owned: "",
+    purchase_price_per_share: "",
   });
 
   useEffect(() => {
@@ -68,28 +74,29 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase.from("investments").insert({
+      const investmentData: any = {
         user_id: user.id,
         name: formData.name,
         type: formData.type as any,
         current_value: parseFloat(formData.current_value),
-        monthly_contribution: parseFloat(formData.monthly_contribution),
+        monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
         annual_return_pct: parseFloat(formData.annual_return_pct),
         years_remaining: parseFloat(formData.years_remaining),
-      } as any);
+      };
+
+      if (formData.type === "individual_stock") {
+        investmentData.ticker_symbol = formData.ticker_symbol || null;
+        investmentData.shares_owned = formData.shares_owned ? parseFloat(formData.shares_owned) : null;
+        investmentData.purchase_price_per_share = formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null;
+      }
+
+      const { error } = await supabase.from("investments").insert(investmentData);
 
       if (error) throw error;
 
       toast.success("Investment added successfully");
       setDialogOpen(false);
-      setFormData({
-        name: "",
-        type: "index_fund",
-        current_value: "",
-        monthly_contribution: "",
-        annual_return_pct: "7",
-        years_remaining: "10",
-      });
+      resetForm();
       fetchInvestments();
     } catch (error: any) {
       toast.error(error.message || "Failed to add investment");
@@ -101,16 +108,28 @@ const Investments = () => {
     if (!selectedInvestment) return;
 
     try {
+      const investmentData: any = {
+        name: formData.name,
+        type: formData.type as any,
+        current_value: parseFloat(formData.current_value),
+        monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
+        annual_return_pct: parseFloat(formData.annual_return_pct),
+        years_remaining: parseFloat(formData.years_remaining),
+      };
+
+      if (formData.type === "individual_stock") {
+        investmentData.ticker_symbol = formData.ticker_symbol || null;
+        investmentData.shares_owned = formData.shares_owned ? parseFloat(formData.shares_owned) : null;
+        investmentData.purchase_price_per_share = formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null;
+      } else {
+        investmentData.ticker_symbol = null;
+        investmentData.shares_owned = null;
+        investmentData.purchase_price_per_share = null;
+      }
+
       const { error } = await supabase
         .from("investments")
-        .update({
-          name: formData.name,
-          type: formData.type as any,
-          current_value: parseFloat(formData.current_value),
-          monthly_contribution: parseFloat(formData.monthly_contribution),
-          annual_return_pct: parseFloat(formData.annual_return_pct),
-          years_remaining: parseFloat(formData.years_remaining),
-        } as any)
+        .update(investmentData)
         .eq("id", selectedInvestment.id);
 
       if (error) throw error;
@@ -144,6 +163,20 @@ const Investments = () => {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      type: "index_fund",
+      current_value: "",
+      monthly_contribution: "",
+      annual_return_pct: "7",
+      years_remaining: "10",
+      ticker_symbol: "",
+      shares_owned: "",
+      purchase_price_per_share: "",
+    });
+  };
+
   const openEditDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
     setFormData({
@@ -153,6 +186,9 @@ const Investments = () => {
       monthly_contribution: investment.monthly_contribution.toString(),
       annual_return_pct: investment.annual_return_pct.toString(),
       years_remaining: investment.years_remaining.toString(),
+      ticker_symbol: investment.ticker_symbol || "",
+      shares_owned: investment.shares_owned?.toString() || "",
+      purchase_price_per_share: investment.purchase_price_per_share?.toString() || "",
     });
     setEditDialogOpen(true);
   };
@@ -175,12 +211,12 @@ const Investments = () => {
   };
 
   const investmentTypeColors: Record<string, string> = {
-    roth_ira: "bg-primary",
-    taxable_etf: "bg-secondary",
-    index_fund: "bg-accent",
-    individual_stock: "bg-warning",
-    savings: "bg-success",
-    other: "bg-muted",
+    roth_ira: "bg-primary text-primary-foreground",
+    taxable_etf: "bg-secondary text-secondary-foreground",
+    index_fund: "bg-success text-success-foreground",
+    individual_stock: "bg-accent text-accent-foreground",
+    savings: "bg-muted text-muted-foreground",
+    other: "bg-warning text-warning-foreground",
   };
 
   const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
@@ -212,60 +248,141 @@ const Investments = () => {
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
-        {formData.type === "individual_stock" && (
+      </div>
+
+      {formData.type === "individual_stock" ? (
+        <>
+          <div className="space-y-2">
+            <Label>Ticker Symbol</Label>
+            <Input
+              placeholder="e.g., AAPL, MSFT, GOOGL"
+              value={formData.ticker_symbol}
+              onChange={(e) => setFormData({ ...formData, ticker_symbol: e.target.value.toUpperCase() })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Shares Owned</Label>
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="10"
+                value={formData.shares_owned}
+                onChange={(e) => setFormData({ ...formData, shares_owned: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Current Price/Share</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="150.00"
+                value={formData.current_value ? (parseFloat(formData.current_value) / (parseFloat(formData.shares_owned) || 1)).toFixed(2) : formData.purchase_price_per_share}
+                onChange={(e) => {
+                  const pricePerShare = parseFloat(e.target.value);
+                  const shares = parseFloat(formData.shares_owned) || 0;
+                  setFormData({ 
+                    ...formData, 
+                    purchase_price_per_share: e.target.value,
+                    current_value: (pricePerShare * shares).toString()
+                  });
+                }}
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Total Value</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Calculated automatically"
+              value={formData.current_value}
+              onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Expected Annual Return (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="10"
+                value={formData.annual_return_pct}
+                onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Years to Project</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="10"
+                value={formData.years_remaining}
+                onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
+                required
+              />
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Track individual stock holdings. Enter current market value and expected annual return.
+            Individual stock values are user-entered estimates and may not reflect real-time market prices.
           </p>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Current Value</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="10000"
-            value={formData.current_value}
-            onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Monthly Contribution</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="500"
-            value={formData.monthly_contribution}
-            onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
-            required
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Expected Annual Return (%)</Label>
-          <Input
-            type="number"
-            step="0.1"
-            placeholder="7"
-            value={formData.annual_return_pct}
-            onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Years to Project</Label>
-          <Input
-            type="number"
-            step="0.5"
-            placeholder="10"
-            value={formData.years_remaining}
-            onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
-            required
-          />
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Current Value</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="10000"
+                value={formData.current_value}
+                onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Monthly Contribution</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="500"
+                value={formData.monthly_contribution}
+                onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Expected Annual Return (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="7"
+                value={formData.annual_return_pct}
+                onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Years to Project</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="10"
+                value={formData.years_remaining}
+                onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+        </>
+      )}
       <Button type="submit" className="w-full">{buttonText}</Button>
     </form>
   );
@@ -285,7 +402,7 @@ const Investments = () => {
                 Add Investment
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add Investment</DialogTitle>
                 <DialogDescription>Track a new investment account</DialogDescription>
@@ -296,7 +413,7 @@ const Investments = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gradient-card shadow-lg border-none">
+          <Card className="bg-gradient-card shadow-elegant border-border">
             <CardHeader>
               <CardTitle className="text-xl">Current Portfolio Value</CardTitle>
               <CardDescription>Total value of all investments</CardDescription>
@@ -308,13 +425,13 @@ const Investments = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-success shadow-lg border-none">
+          <Card className="bg-gradient-success shadow-elegant border-none">
             <CardHeader>
-              <CardTitle className="text-xl text-white">Projected Future Value</CardTitle>
-              <CardDescription className="text-white/80">Based on contributions and returns</CardDescription>
+              <CardTitle className="text-xl text-success-foreground">Projected Future Value</CardTitle>
+              <CardDescription className="text-success-foreground/80">Based on contributions and returns</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-white">
+              <div className="text-4xl font-bold text-success-foreground">
                 ${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
@@ -347,11 +464,16 @@ const Investments = () => {
               const gainPercentage = (totalGain / Number(investment.current_value)) * 100;
 
               return (
-                <Card key={investment.id} className="shadow-md hover:shadow-glow transition-shadow">
+                <Card key={investment.id} className="shadow-md hover:shadow-glow transition-shadow border-border">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{investment.name}</CardTitle>
+                        <CardTitle className="text-xl mb-2">
+                          {investment.name}
+                          {investment.ticker_symbol && (
+                            <span className="ml-2 text-sm text-muted-foreground">({investment.ticker_symbol})</span>
+                          )}
+                        </CardTitle>
                         <Badge className={investmentTypeColors[investment.type] || "bg-primary"}>
                           {investment.type.replace(/_/g, " ")}
                         </Badge>
@@ -374,19 +496,41 @@ const Investments = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Current Value</p>
-                        <p className="text-2xl font-bold">
-                          ${Number(investment.current_value).toLocaleString()}
-                        </p>
+                    {investment.type === "individual_stock" && investment.shares_owned ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Shares Owned</p>
+                          <p className="text-xl font-bold">{Number(investment.shares_owned).toFixed(3)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Price per Share</p>
+                          <p className="text-xl font-bold">
+                            ${(Number(investment.current_value) / Number(investment.shares_owned)).toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Monthly +</p>
-                        <p className="text-2xl font-bold text-success">
-                          ${Number(investment.monthly_contribution).toLocaleString()}
-                        </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Current Value</p>
+                          <p className="text-2xl font-bold">
+                            ${Number(investment.current_value).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Monthly +</p>
+                          <p className="text-2xl font-bold text-success">
+                            ${Number(investment.monthly_contribution).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
+                    )}
+
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-lg font-semibold mb-1">Total Value</p>
+                      <p className="text-3xl font-bold text-primary">
+                        ${Number(investment.current_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                     </div>
 
                     <div className="pt-4 border-t border-border">
@@ -407,7 +551,7 @@ const Investments = () => {
           )}
         </div>
 
-        <Card className="bg-muted/30">
+        <Card className="bg-muted/30 border-border">
           <CardHeader>
             <CardTitle className="text-sm">Disclaimer</CardTitle>
           </CardHeader>
@@ -421,7 +565,7 @@ const Investments = () => {
         </Card>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Investment</DialogTitle>
               <DialogDescription>Update investment details</DialogDescription>

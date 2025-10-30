@@ -105,6 +105,9 @@ export type Database = {
           id: string
           monthly_contribution: number | null
           name: string
+          purchase_price_per_share: number | null
+          shares_owned: number | null
+          ticker_symbol: string | null
           type: Database["public"]["Enums"]["investment_type"]
           updated_at: string | null
           user_id: string
@@ -117,6 +120,9 @@ export type Database = {
           id?: string
           monthly_contribution?: number | null
           name: string
+          purchase_price_per_share?: number | null
+          shares_owned?: number | null
+          ticker_symbol?: string | null
           type: Database["public"]["Enums"]["investment_type"]
           updated_at?: string | null
           user_id: string
@@ -129,6 +135,9 @@ export type Database = {
           id?: string
           monthly_contribution?: number | null
           name?: string
+          purchase_price_per_share?: number | null
+          shares_owned?: number | null
+          ticker_symbol?: string | null
           type?: Database["public"]["Enums"]["investment_type"]
           updated_at?: string | null
           user_id?: string

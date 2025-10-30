@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface Account {
   id: string;
@@ -224,17 +225,53 @@ const Accounts = () => {
           </Dialog>
         </div>
 
-        <Card className="bg-gradient-card shadow-lg border-none">
-          <CardHeader>
-            <CardTitle className="text-2xl">Total Balance</CardTitle>
-            <CardDescription>Combined balance across all accounts</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-gradient-card shadow-elegant border-border">
+            <CardHeader>
+              <CardTitle className="text-xl">Total Balance</CardTitle>
+              <CardDescription>Across all accounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">
+                ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {accounts.length > 0 && (
+            <Card className="bg-gradient-card shadow-elegant border-border">
+              <CardHeader>
+                <CardTitle className="text-xl">Account Distribution</CardTitle>
+                <CardDescription>Breakdown by account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={accounts.map((account, index) => ({
+                        name: account.name,
+                        value: Number(account.balance),
+                        fill: `hsl(${150 + index * 40}, 40%, ${35 + index * 10}%)`
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {accounts.map((_, index) => (
+                        <Cell key={`cell-${index}`} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (

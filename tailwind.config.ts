@@ -68,12 +68,14 @@ export default {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-success": "var(--gradient-success)",
         "gradient-card": "var(--gradient-card)",
+        "gradient-gold": "var(--gradient-gold)",
       },
       boxShadow: {
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
         glow: "var(--shadow-glow)",
+        elegant: "var(--shadow-elegant)",
       },
       borderRadius: {
         lg: "var(--radius)",

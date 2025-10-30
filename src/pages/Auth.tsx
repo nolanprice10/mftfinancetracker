@@ -70,16 +70,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md shadow-elegant border-border">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-gradient-primary rounded-2xl shadow-glow">
-              <Wallet className="h-8 w-8 text-white" />
+              <Wallet className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            FinanceTracker
+            MyFinanceTracker
           </CardTitle>
           <CardDescription>
             Manage your finances with confidence

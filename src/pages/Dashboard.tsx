@@ -98,9 +98,12 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's your financial overview.</p>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">
+            <span className="bg-gradient-primary bg-clip-text text-transparent">MyFinanceTracker</span>
+          </h1>
+          <p className="text-xl font-semibold mb-1">Welcome back!</p>
+          <p className="text-muted-foreground">Here's your financial overview</p>
         </div>
 
         {/* KPI Cards */}

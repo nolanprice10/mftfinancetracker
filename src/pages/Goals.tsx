@@ -76,15 +76,27 @@ const Goals = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      if (!formData.account_id) {
+        toast.error("Please select an account for this goal");
+        return;
+      }
+
+      // Get the selected account's balance to set as initial current_amount
+      const { data: accountData } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("id", formData.account_id)
+        .single();
+
       const { error } = await supabase.from("goals").insert({
         user_id: user.id,
         name: formData.name,
         target_amount: parseFloat(formData.target_amount),
-        current_amount: parseFloat(formData.current_amount),
+        current_amount: accountData?.balance || 0,
         start_date: formData.start_date,
         end_date: formData.end_date,
         notes: formData.notes || null,
-        account_id: formData.account_id || null,
+        account_id: formData.account_id,
       } as any);
 
       if (error) throw error;
@@ -111,16 +123,28 @@ const Goals = () => {
     if (!selectedGoal) return;
 
     try {
+      if (!formData.account_id) {
+        toast.error("Please select an account for this goal");
+        return;
+      }
+
+      // Get the selected account's balance to set as current_amount
+      const { data: accountData } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("id", formData.account_id)
+        .single();
+
       const { error } = await supabase
         .from("goals")
         .update({
           name: formData.name,
           target_amount: parseFloat(formData.target_amount),
-          current_amount: parseFloat(formData.current_amount),
+          current_amount: accountData?.balance || 0,
           start_date: formData.start_date,
           end_date: formData.end_date,
           notes: formData.notes || null,
-          account_id: formData.account_id || null,
+          account_id: formData.account_id,
         } as any)
         .eq("id", selectedGoal.id);
 
@@ -198,19 +222,20 @@ const Goals = () => {
         />
       </div>
       <div className="space-y-2">
-        <Label>Link to Account (optional)</Label>
-        <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })}>
+        <Label>Select Account *</Label>
+        <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })} required>
           <SelectTrigger>
-            <SelectValue placeholder="Select an account" />
+            <SelectValue placeholder="Choose which account this goal tracks" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No account</SelectItem>
             {accounts.map((account) => (
               <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Transactions from this account will automatically update the goal</p>
+        <p className="text-xs text-muted-foreground">
+          Goal progress will automatically match this account's balance
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
