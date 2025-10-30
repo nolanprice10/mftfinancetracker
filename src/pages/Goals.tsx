@@ -237,29 +237,16 @@ const Goals = () => {
           Goal progress will automatically match this account's balance
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Target Amount</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="10000"
-            value={formData.target_amount}
-            onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Current Amount</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="0"
-            value={formData.current_amount}
-            onChange={(e) => setFormData({ ...formData, current_amount: e.target.value })}
-            required
-          />
-        </div>
+      <div className="space-y-2">
+        <Label>Target Amount</Label>
+        <Input
+          type="number"
+          step="0.01"
+          placeholder="10000"
+          value={formData.target_amount}
+          onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
+          required
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

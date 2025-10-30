@@ -2,7 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 interface Transaction {
   id: string;
@@ -156,6 +157,29 @@ const Transactions = () => {
     }
   };
 
+  const categoryData = useMemo(() => {
+    const incomeByCategory = transactions
+      .filter(t => t.type === "income")
+      .reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
+        return acc;
+      }, {} as Record<string, number>);
+
+    const expenseByCategory = transactions
+      .filter(t => t.type === "expense")
+      .reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
+        return acc;
+      }, {} as Record<string, number>);
+
+    return {
+      income: Object.entries(incomeByCategory).map(([name, value]) => ({ name, value })),
+      expense: Object.entries(expenseByCategory).map(([name, value]) => ({ name, value })),
+    };
+  }, [transactions]);
+
+  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
   return (
     <Layout>
       <div className="space-y-6 animate-fade-in">
@@ -208,7 +232,39 @@ const Transactions = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Input placeholder="e.g., Food, Rent, Salary" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} required />
+                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formData.type === "income" ? (
+                        <>
+                          <SelectItem value="Salary">Salary</SelectItem>
+                          <SelectItem value="Freelance">Freelance</SelectItem>
+                          <SelectItem value="Investment Returns">Investment Returns</SelectItem>
+                          <SelectItem value="Business Income">Business Income</SelectItem>
+                          <SelectItem value="Gifts">Gifts</SelectItem>
+                          <SelectItem value="Other Income">Other Income</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="Housing">Housing</SelectItem>
+                          <SelectItem value="Transportation">Transportation</SelectItem>
+                          <SelectItem value="Food & Dining">Food & Dining</SelectItem>
+                          <SelectItem value="Utilities">Utilities</SelectItem>
+                          <SelectItem value="Healthcare">Healthcare</SelectItem>
+                          <SelectItem value="Entertainment">Entertainment</SelectItem>
+                          <SelectItem value="Shopping">Shopping</SelectItem>
+                          <SelectItem value="Personal Care">Personal Care</SelectItem>
+                          <SelectItem value="Education">Education</SelectItem>
+                          <SelectItem value="Insurance">Insurance</SelectItem>
+                          <SelectItem value="Debt Payment">Debt Payment</SelectItem>
+                          <SelectItem value="Savings">Savings</SelectItem>
+                          <SelectItem value="Other Expense">Other Expense</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Date</Label>
@@ -223,6 +279,72 @@ const Transactions = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        {transactions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle>Income by Category</CardTitle>
+                <CardDescription>Breakdown of income sources</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {categoryData.income.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={categoryData.income}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={(entry) => `${entry.name}: $${entry.value.toFixed(0)}`}
+                      >
+                        {categoryData.income.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">No income transactions yet</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle>Expenses by Category</CardTitle>
+                <CardDescription>Breakdown of spending</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {categoryData.expense.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={categoryData.expense}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={(entry) => `${entry.name}: $${entry.value.toFixed(0)}`}
+                      >
+                        {categoryData.expense.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">No expense transactions yet</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Card className="shadow-md">
           <CardHeader>

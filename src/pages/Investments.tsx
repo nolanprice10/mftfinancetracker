@@ -304,32 +304,8 @@ const Investments = () => {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Expected Annual Return (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="10"
-                value={formData.annual_return_pct}
-                onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Years to Project</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="10"
-                value={formData.years_remaining}
-                onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
-                required
-              />
-            </div>
-          </div>
           <p className="text-xs text-muted-foreground">
-            Individual stock values are user-entered estimates and may not reflect real-time market prices.
+            Stock values are manually entered. Update periodically to track performance.
           </p>
         </>
       ) : (
