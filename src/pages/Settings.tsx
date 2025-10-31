@@ -15,10 +15,12 @@ const Settings = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("weak");
 
   useEffect(() => {
     fetchUserData();
@@ -69,22 +71,67 @@ const Settings = () => {
     }
   };
 
+  const calculatePasswordStrength = (password: string): "weak" | "medium" | "strong" => {
+    if (password.length < 8) return "weak";
+    
+    let strength = 0;
+    if (password.length >= 12) strength++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+    if (/\d/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+    
+    if (strength <= 1) return "weak";
+    if (strength <= 2) return "medium";
+    return "strong";
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setNewPassword(value);
+    setPasswordStrength(calculatePasswordStrength(value));
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+    if (!currentPassword) {
+      toast.error("Please enter your current password");
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    if (passwordStrength === "weak") {
+      toast.error("Please use a stronger password with uppercase, lowercase, numbers, and symbols");
       return;
     }
 
     setLoading(true);
 
     try {
+      // Verify current password by attempting to sign in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("User not found");
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        toast.error("Current password is incorrect");
+        setLoading(false);
+        return;
+      }
+
+      // Update password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -92,6 +139,7 @@ const Settings = () => {
       if (error) throw error;
 
       toast.success("Password changed successfully");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
@@ -201,28 +249,58 @@ const Settings = () => {
           <CardContent>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
                 <Input
                   id="new-password"
                   type="password"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
+                  required
                 />
+                {newPassword && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      <div className={`h-1 flex-1 rounded transition-all ${passwordStrength === "weak" ? "bg-destructive" : passwordStrength === "medium" ? "bg-warning" : "bg-success"}`} />
+                      <div className={`h-1 flex-1 rounded transition-all ${passwordStrength === "medium" || passwordStrength === "strong" ? passwordStrength === "medium" ? "bg-warning" : "bg-success" : "bg-muted"}`} />
+                      <div className={`h-1 flex-1 rounded transition-all ${passwordStrength === "strong" ? "bg-success" : "bg-muted"}`} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Password strength: <span className={passwordStrength === "weak" ? "text-destructive" : passwordStrength === "medium" ? "text-warning" : "text-success"}>
+                        {passwordStrength}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Use 12+ characters with uppercase, lowercase, numbers, and symbols
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
                 <Input
                   id="confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
+                  required
                 />
               </div>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !currentPassword || !newPassword || !confirmPassword}>
                 {loading ? "Changing..." : "Change Password"}
               </Button>
             </form>

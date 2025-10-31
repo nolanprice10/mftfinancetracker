@@ -134,7 +134,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground transition-colors duration-300;
   }
 
-  /* Remove focus outlines and add subtle animations */
+  /* Subtle focus states */
   button:focus-visible,
   input:focus-visible,
   textarea:focus-visible,
@@ -142,26 +142,40 @@ All colors MUST be HSL.
     @apply outline-none ring-2 ring-primary/20 ring-offset-2 ring-offset-background;
   }
 
-  /* Smooth hover animations for interactive elements */
+  /* Gentle hover animations for interactive elements */
   button,
   a,
   [role="button"] {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 ease-in-out;
   }
 
   button:hover:not(:disabled),
   a:hover,
   [role="button"]:hover {
-    @apply scale-[1.02];
+    @apply scale-[1.01];
   }
 
-  /* Card hover effects */
-  .hover\\:shadow-glow:hover {
-    @apply shadow-glow;
+  button:active:not(:disabled),
+  a:active,
+  [role="button"]:active {
+    @apply scale-[0.99];
   }
 
-  /* Smooth transitions for dark mode */
+  /* Subtle input interactions */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply translate-y-[-1px];
+  }
+
+  /* Card subtle hover effects */
+  [class*="Card"]:hover,
+  .card:hover {
+    @apply shadow-md;
+  }
+
+  /* Smooth transitions for all color changes */
   * {
-    @apply transition-colors duration-200;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 }

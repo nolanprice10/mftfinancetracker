@@ -17,50 +17,66 @@ interface RiskProfile {
   quiz_responses: any;
 }
 
-const riskQuestions = [
+interface RiskQuestion {
+  id: number;
+  question: string;
+  description: string;
+  options: {
+    value: string;
+    label: string;
+    score: number;
+  }[];
+}
+
+const riskQuestions: RiskQuestion[] = [
   {
     id: 1,
-    question: "What is your investment time horizon?",
+    question: "How long do you plan to keep your money invested?",
+    description: "Think about when you might need this money. Longer time means you can handle more ups and downs.",
     options: [
-      { value: "conservative", label: "Less than 3 years", score: 1 },
-      { value: "moderate", label: "3-10 years", score: 2 },
-      { value: "aggressive", label: "More than 10 years", score: 3 },
+      { value: "conservative", label: "Less than 3 years (saving for something soon)", score: 1 },
+      { value: "moderate", label: "3-10 years (medium-term goals)", score: 2 },
+      { value: "aggressive", label: "More than 10 years (long-term growth)", score: 3 },
     ],
   },
   {
     id: 2,
-    question: "If your portfolio lost 20% in a month, you would:",
+    question: "Imagine your investments lose 20% in one month. How would you feel?",
+    description: "This helps us understand your emotional comfort with market swings.",
     options: [
-      { value: "conservative", label: "Sell everything immediately", score: 1 },
-      { value: "moderate", label: "Hold and wait for recovery", score: 2 },
-      { value: "aggressive", label: "Buy more at the lower price", score: 3 },
+      { value: "conservative", label: "Very stressed - I'd sell to avoid more losses", score: 1 },
+      { value: "moderate", label: "Concerned but patient - I'd wait for recovery", score: 2 },
+      { value: "aggressive", label: "Excited - I'd buy more at lower prices", score: 3 },
     ],
   },
   {
     id: 3,
-    question: "What is your primary investment goal?",
+    question: "What matters most to you with your investments?",
+    description: "Different goals need different strategies.",
     options: [
-      { value: "conservative", label: "Preserve capital with minimal risk", score: 1 },
-      { value: "moderate", label: "Balance growth and stability", score: 2 },
-      { value: "aggressive", label: "Maximize growth potential", score: 3 },
+      { value: "conservative", label: "Keeping my money safe, even if growth is slow", score: 1 },
+      { value: "moderate", label: "A mix of safety and growth", score: 2 },
+      { value: "aggressive", label: "Maximum growth, I can handle the risk", score: 3 },
     ],
   },
   {
     id: 4,
-    question: "How much investment experience do you have?",
+    question: "How familiar are you with investing?",
+    description: "Your experience level helps us recommend appropriate investments.",
     options: [
-      { value: "conservative", label: "None or very little", score: 1 },
-      { value: "moderate", label: "Some experience with basic investments", score: 2 },
-      { value: "aggressive", label: "Extensive experience with various assets", score: 3 },
+      { value: "conservative", label: "New to investing or prefer simple options", score: 1 },
+      { value: "moderate", label: "Some experience with stocks and bonds", score: 2 },
+      { value: "aggressive", label: "Very experienced with different investment types", score: 3 },
     ],
   },
   {
     id: 5,
-    question: "What percentage of portfolio volatility can you tolerate?",
+    question: "How much can your investments change in value each year?",
+    description: "Volatility means how much your account balance might go up or down.",
     options: [
-      { value: "conservative", label: "Less than 5% annual fluctuation", score: 1 },
-      { value: "moderate", label: "5-15% annual fluctuation", score: 2 },
-      { value: "aggressive", label: "Over 15% annual fluctuation", score: 3 },
+      { value: "conservative", label: "Very little change (under 5% swings)", score: 1 },
+      { value: "moderate", label: "Moderate changes (5-15% swings)", score: 2 },
+      { value: "aggressive", label: "Large changes are okay (over 15% swings)", score: 3 },
     ],
   },
 ];
@@ -186,7 +202,11 @@ const Risk = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Please sign in to continue");
+        setLoading(false);
+        return;
+      }
 
       const tolerance = calculateRiskTolerance();
       const capacity = await calculateRiskCapacity();
@@ -209,13 +229,19 @@ const Risk = () => {
         .from("risk_profiles")
         .upsert(profile);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       setRiskProfile(profile as RiskProfile);
-      setStep("results");
       toast.success("Risk profile completed!");
+      setStep("results");
     } catch (error: any) {
+      console.error("Failed to save profile:", error);
       toast.error(error.message || "Failed to save risk profile");
+      setStep("quiz");
+      setCurrentQuestion(0);
     } finally {
       setLoading(false);
     }
@@ -320,7 +346,10 @@ const Risk = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <h2 className="text-xl font-semibold">{question.question}</h2>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold">{question.question}</h2>
+                <p className="text-sm text-muted-foreground">{question.description}</p>
+              </div>
               <RadioGroup
                 value={answers[currentQuestion]?.toString()}
                 onValueChange={(value) => {
