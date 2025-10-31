@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { OnboardingDialog } from "@/components/OnboardingDialog";
 
 interface Account {
   id: string;
@@ -35,25 +36,50 @@ const Dashboard = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     fetchData();
+    checkOnboarding();
   }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("onboarding_progress")
+        .select("completed")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!data || !data.completed) {
+        setShowOnboarding(true);
+      }
+    } catch (error) {
+      // If no record exists, show onboarding
+      setShowOnboarding(true);
+    }
+  };
 
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [accountsRes, goalsRes, transactionsRes] = await Promise.all([
+      const [accountsRes, goalsRes, transactionsRes, profileRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", user.id),
         supabase.from("goals").select("*").eq("user_id", user.id).limit(3),
         supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(30),
+        supabase.from("profiles").select("name").eq("id", user.id).single(),
       ]);
 
       if (accountsRes.data) setAccounts(accountsRes.data);
       if (goalsRes.data) setGoals(goalsRes.data);
       if (transactionsRes.data) setTransactions(transactionsRes.data);
+      if (profileRes.data?.name) setUserName(profileRes.data.name);
     } catch (error: any) {
       toast.error("Failed to load dashboard data");
     } finally {
@@ -97,12 +123,15 @@ const Dashboard = () => {
 
   return (
     <Layout>
+      <OnboardingDialog open={showOnboarding} onOpenChange={setShowOnboarding} />
       <div className="space-y-6 animate-fade-in">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">
             <span className="bg-gradient-primary bg-clip-text text-transparent">MyFinanceTracker</span>
           </h1>
-          <p className="text-xl font-semibold mb-1">Welcome back!</p>
+          <p className="text-xl font-semibold mb-1">
+            Welcome back{userName && `, ${userName}`}!
+          </p>
           <p className="text-muted-foreground">Here's your financial overview</p>
         </div>
 

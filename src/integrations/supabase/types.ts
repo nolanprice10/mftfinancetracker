@@ -145,6 +145,33 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_progress: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          id: string
+          steps_completed: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          steps_completed?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          steps_completed?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -204,6 +231,69 @@ export type Database = {
           message?: string
           source?: string | null
           type?: Database["public"]["Enums"]["recommendation_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      risk_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          quiz_responses: Json | null
+          recommended_profile: string | null
+          risk_capacity: string | null
+          risk_tolerance: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          quiz_responses?: Json | null
+          recommended_profile?: string | null
+          risk_capacity?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          quiz_responses?: Json | null
+          recommended_profile?: string | null
+          risk_capacity?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spending_limits: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          limit_amount: number
+          period_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          limit_amount: number
+          period_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          limit_amount?: number
+          period_type?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

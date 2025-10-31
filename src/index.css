@@ -131,6 +131,37 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+
+  /* Remove focus outlines and add subtle animations */
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-primary/20 ring-offset-2 ring-offset-background;
+  }
+
+  /* Smooth hover animations for interactive elements */
+  button,
+  a,
+  [role="button"] {
+    @apply transition-all duration-200;
+  }
+
+  button:hover:not(:disabled),
+  a:hover,
+  [role="button"]:hover {
+    @apply scale-[1.02];
+  }
+
+  /* Card hover effects */
+  .hover\\:shadow-glow:hover {
+    @apply shadow-glow;
+  }
+
+  /* Smooth transitions for dark mode */
+  * {
+    @apply transition-colors duration-200;
   }
 }

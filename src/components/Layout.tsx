@@ -12,7 +12,9 @@ import {
   LogOut,
   Menu,
   X,
-  Wallet
+  Wallet,
+  Settings as SettingsIcon,
+  Activity
 } from "lucide-react";
 import { toast } from "sonner";
 import { Session } from "@supabase/supabase-js";
@@ -57,7 +59,9 @@ const Layout = ({ children }: LayoutProps) => {
     { icon: Landmark, label: "Accounts", path: "/accounts" },
     { icon: Target, label: "Goals", path: "/goals" },
     { icon: TrendingUp, label: "Investments", path: "/investments" },
+    { icon: Activity, label: "Risk", path: "/risk" },
     { icon: Lightbulb, label: "Recommendations", path: "/recommendations" },
+    { icon: SettingsIcon, label: "Settings", path: "/settings" },
   ];
 
   if (!session) {
