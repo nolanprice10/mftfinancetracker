@@ -43,6 +43,7 @@ const Investments = () => {
     shares_owned: "",
     purchase_price_per_share: "",
   });
+  const [fetchingPrice, setFetchingPrice] = useState(false);
 
   useEffect(() => {
     fetchInvestments();
@@ -177,6 +178,37 @@ const Investments = () => {
     });
   };
 
+  const fetchStockPrice = async (ticker: string) => {
+    if (!ticker) return;
+    
+    setFetchingPrice(true);
+    try {
+      const response = await supabase.functions.invoke('fetch-stock-price', {
+        body: { ticker }
+      });
+
+      if (response.data?.success && response.data?.price) {
+        const price = response.data.price;
+        const shares = parseFloat(formData.shares_owned) || 0;
+        
+        setFormData(prev => ({
+          ...prev,
+          purchase_price_per_share: price.toString(),
+          current_value: shares > 0 ? (price * shares).toString() : price.toString()
+        }));
+        
+        toast.success(`Current price for ${ticker}: $${price}`);
+      } else {
+        toast.error(`Could not fetch price for ${ticker}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching stock price:', error);
+      toast.error('Failed to fetch stock price');
+    } finally {
+      setFetchingPrice(false);
+    }
+  };
+
   const openEditDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
     setFormData({
@@ -253,13 +285,38 @@ const Investments = () => {
       {formData.type === "individual_stock" ? (
         <>
           <div className="space-y-2">
-            <Label>Ticker Symbol</Label>
-            <Input
-              placeholder="e.g., AAPL, MSFT, GOOGL"
-              value={formData.ticker_symbol}
-              onChange={(e) => setFormData({ ...formData, ticker_symbol: e.target.value.toUpperCase() })}
-              required
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label>Ticker Symbol</Label>
+                <Input
+                  placeholder="e.g., AAPL, MSFT, GOOGL"
+                  value={formData.ticker_symbol}
+                  onChange={(e) => {
+                    const ticker = e.target.value.toUpperCase();
+                    setFormData({ ...formData, ticker_symbol: ticker });
+                  }}
+                  onBlur={() => {
+                    if (formData.ticker_symbol && formData.ticker_symbol.length > 0) {
+                      fetchStockPrice(formData.ticker_symbol);
+                    }
+                  }}
+                  required
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  onClick={() => fetchStockPrice(formData.ticker_symbol)}
+                  disabled={!formData.ticker_symbol || fetchingPrice}
+                  variant="outline"
+                >
+                  {fetchingPrice ? "Fetching..." : "Get Price"}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Price fetched from Yahoo Finance
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -269,7 +326,15 @@ const Investments = () => {
                 step="0.001"
                 placeholder="10"
                 value={formData.shares_owned}
-                onChange={(e) => setFormData({ ...formData, shares_owned: e.target.value })}
+                onChange={(e) => {
+                  const shares = e.target.value;
+                  const price = parseFloat(formData.purchase_price_per_share) || 0;
+                  setFormData({ 
+                    ...formData, 
+                    shares_owned: shares,
+                    current_value: shares && price > 0 ? (parseFloat(shares) * price).toString() : formData.current_value
+                  });
+                }}
                 required
               />
             </div>
@@ -278,18 +343,19 @@ const Investments = () => {
               <Input
                 type="number"
                 step="0.01"
-                placeholder="150.00"
-                value={formData.current_value ? (parseFloat(formData.current_value) / (parseFloat(formData.shares_owned) || 1)).toFixed(2) : formData.purchase_price_per_share}
+                placeholder="Auto-fetched"
+                value={formData.purchase_price_per_share}
                 onChange={(e) => {
-                  const pricePerShare = parseFloat(e.target.value);
+                  const price = e.target.value;
                   const shares = parseFloat(formData.shares_owned) || 0;
                   setFormData({ 
                     ...formData, 
-                    purchase_price_per_share: e.target.value,
-                    current_value: (pricePerShare * shares).toString()
+                    purchase_price_per_share: price,
+                    current_value: price && shares > 0 ? (parseFloat(price) * shares).toString() : price
                   });
                 }}
                 required
+                disabled={fetchingPrice}
               />
             </div>
           </div>
@@ -300,13 +366,9 @@ const Investments = () => {
               step="0.01"
               placeholder="Calculated automatically"
               value={formData.current_value}
-              onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-              required
+              disabled
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Stock values are manually entered. Update periodically to track performance.
-          </p>
         </>
       ) : (
         <>

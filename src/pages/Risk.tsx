@@ -186,10 +186,6 @@ const Risk = () => {
   const handleNext = () => {
     if (currentQuestion < riskQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
-      // Clear the answer for the next question
-      const nextAnswers = { ...answers };
-      delete nextAnswers[currentQuestion + 1];
-      setAnswers(nextAnswers);
     } else {
       setStep("capacity");
       calculateAndSaveProfile();
@@ -355,7 +351,7 @@ const Risk = () => {
                 <p className="text-sm text-muted-foreground">{question.description}</p>
               </div>
               <RadioGroup
-                value={answers[currentQuestion]?.toString()}
+                value={answers[currentQuestion]?.toString() || ""}
                 onValueChange={(value) => {
                   const option = question.options.find(o => o.score.toString() === value);
                   if (option) handleAnswer(option.value, option.score);
