@@ -206,11 +206,11 @@ const Auth = () => {
                   <Input
                     id="password-signup"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Choose a secure password (min 8 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>

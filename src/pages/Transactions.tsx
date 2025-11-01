@@ -80,7 +80,7 @@ const Transactions = () => {
 
       const amount = parseFloat(formData.amount);
       
-      // Insert transaction
+      // Insert transaction (trigger will automatically update account balance)
       const { error: txError } = await supabase.from("transactions").insert({
         user_id: user.id,
         account_id: formData.account_id,
@@ -92,17 +92,6 @@ const Transactions = () => {
       } as any);
 
       if (txError) throw txError;
-
-      // Update account balance
-      const { data: account } = await supabase.from("accounts").select("balance").eq("id", formData.account_id).single();
-      
-      if (account) {
-        const newBalance = formData.type === "income" 
-          ? Number(account.balance) + amount 
-          : Number(account.balance) - amount;
-        
-        await supabase.from("accounts").update({ balance: newBalance }).eq("id", formData.account_id);
-      }
 
       toast.success("Transaction added successfully");
       setDialogOpen(false);
@@ -124,23 +113,7 @@ const Transactions = () => {
     if (!deleteTransaction) return;
 
     try {
-      const { data: account } = await supabase
-        .from("accounts")
-        .select("balance")
-        .eq("id", deleteTransaction.account_id)
-        .single();
-
-      if (account) {
-        const newBalance = deleteTransaction.type === "income"
-          ? Number(account.balance) - Number(deleteTransaction.amount)
-          : Number(account.balance) + Number(deleteTransaction.amount);
-
-        await supabase
-          .from("accounts")
-          .update({ balance: newBalance })
-          .eq("id", deleteTransaction.account_id);
-      }
-
+      // Delete transaction (trigger will automatically update account balance)
       const { error } = await supabase
         .from("transactions")
         .delete()

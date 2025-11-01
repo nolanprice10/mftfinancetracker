@@ -45,28 +45,9 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
     if (!transaction) return;
 
     try {
-      const oldAmount = Number(transaction.amount);
       const newAmount = parseFloat(formData.amount);
-      
-      // Reverse old transaction effect
-      const { data: oldAccount } = await supabase
-        .from("accounts")
-        .select("balance")
-        .eq("id", transaction.account_id)
-        .single();
 
-      if (oldAccount) {
-        const reversedBalance = transaction.type === "income"
-          ? Number(oldAccount.balance) - oldAmount
-          : Number(oldAccount.balance) + oldAmount;
-
-        await supabase
-          .from("accounts")
-          .update({ balance: reversedBalance })
-          .eq("id", transaction.account_id);
-      }
-
-      // Update transaction
+      // Update transaction (trigger will automatically update account balance)
       const { error: txError } = await supabase
         .from("transactions")
         .update({
@@ -80,24 +61,6 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
         .eq("id", transaction.id);
 
       if (txError) throw txError;
-
-      // Apply new transaction effect
-      const { data: newAccount } = await supabase
-        .from("accounts")
-        .select("balance")
-        .eq("id", formData.account_id)
-        .single();
-
-      if (newAccount) {
-        const newBalance = formData.type === "income"
-          ? Number(newAccount.balance) + newAmount
-          : Number(newAccount.balance) - newAmount;
-
-        await supabase
-          .from("accounts")
-          .update({ balance: newBalance })
-          .eq("id", formData.account_id);
-      }
 
       toast.success("Transaction updated successfully");
       onOpenChange(false);

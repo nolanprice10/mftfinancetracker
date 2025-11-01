@@ -186,6 +186,10 @@ const Risk = () => {
   const handleNext = () => {
     if (currentQuestion < riskQuestions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
+      // Clear the answer for the next question
+      const nextAnswers = { ...answers };
+      delete nextAnswers[currentQuestion + 1];
+      setAnswers(nextAnswers);
     } else {
       setStep("capacity");
       calculateAndSaveProfile();
@@ -204,6 +208,7 @@ const Risk = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Please sign in to continue");
+        setStep("intro");
         setLoading(false);
         return;
       }
@@ -239,9 +244,8 @@ const Risk = () => {
       setStep("results");
     } catch (error: any) {
       console.error("Failed to save profile:", error);
-      toast.error(error.message || "Failed to save risk profile");
-      setStep("quiz");
-      setCurrentQuestion(0);
+      toast.error(error.message || "Failed to save risk profile. Please try again.");
+      setStep("intro");
     } finally {
       setLoading(false);
     }

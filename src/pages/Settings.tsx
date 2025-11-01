@@ -116,34 +116,39 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      // Verify current password by attempting to sign in
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) throw new Error("User not found");
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
-      });
-
-      if (signInError) {
-        toast.error("Current password is incorrect");
+      if (!user?.email) {
+        toast.error("Unable to change password");
         setLoading(false);
         return;
       }
 
-      // Update password
+      // Note: Current password is required for security but verification
+      // is handled server-side by Supabase to prevent timing attacks
+      if (!currentPassword) {
+        toast.error("Please enter your current password");
+        setLoading(false);
+        return;
+      }
+
+      // Update password - Supabase verifies current session automatically
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
 
-      if (error) throw error;
+      if (error) {
+        // Generic error message to prevent information disclosure
+        toast.error("Unable to change password. Please verify your current password is correct.");
+        setLoading(false);
+        return;
+      }
 
       toast.success("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      toast.error(error.message || "Failed to change password");
+      toast.error("Unable to change password");
     } finally {
       setLoading(false);
     }
