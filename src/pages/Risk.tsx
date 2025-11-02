@@ -218,6 +218,17 @@ const Risk = () => {
         ? tolerance
         : capacity;
 
+      // Ensure values are valid before saving
+      if (!['conservative', 'moderate', 'aggressive'].includes(tolerance)) {
+        throw new Error('Invalid risk tolerance value');
+      }
+      if (!['low', 'medium', 'high'].includes(capacity)) {
+        throw new Error('Invalid risk capacity value');
+      }
+      if (!['conservative', 'moderate', 'aggressive'].includes(recommended)) {
+        throw new Error('Invalid recommended profile value');
+      }
+
       const profile = {
         user_id: user.id,
         risk_tolerance: tolerance,

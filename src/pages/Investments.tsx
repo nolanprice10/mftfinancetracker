@@ -262,6 +262,7 @@ const Investments = () => {
           placeholder="e.g., Roth IRA, AAPL Stock"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          autoComplete="off"
           required
         />
       </div>
@@ -300,6 +301,7 @@ const Investments = () => {
                       fetchStockPrice(formData.ticker_symbol);
                     }
                   }}
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -335,6 +337,7 @@ const Investments = () => {
                     current_value: shares && price > 0 ? (parseFloat(shares) * price).toString() : formData.current_value
                   });
                 }}
+                autoComplete="off"
                 required
               />
             </div>
@@ -354,6 +357,7 @@ const Investments = () => {
                     current_value: price && shares > 0 ? (parseFloat(price) * shares).toString() : price
                   });
                 }}
+                autoComplete="off"
                 required
                 disabled={fetchingPrice}
               />
@@ -381,6 +385,7 @@ const Investments = () => {
                 placeholder="10000"
                 value={formData.current_value}
                 onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                autoComplete="off"
                 required
               />
             </div>
@@ -392,6 +397,7 @@ const Investments = () => {
                 placeholder="500"
                 value={formData.monthly_contribution}
                 onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
+                autoComplete="off"
               />
             </div>
           </div>
@@ -404,6 +410,7 @@ const Investments = () => {
                 placeholder="7"
                 value={formData.annual_return_pct}
                 onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
+                autoComplete="off"
                 required
               />
             </div>
@@ -415,6 +422,7 @@ const Investments = () => {
                 placeholder="10"
                 value={formData.years_remaining}
                 onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
+                autoComplete="off"
                 required
               />
             </div>
