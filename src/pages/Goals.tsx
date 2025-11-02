@@ -227,6 +227,23 @@ const Goals = () => {
     return monthsRemaining > 0 ? remaining / monthsRemaining : remaining;
   };
 
+  const calculateDailyTarget = (goal: Goal) => {
+    const remaining = Number(goal.target_amount) - Number(goal.current_amount);
+    const today = new Date();
+    const end = new Date(goal.end_date);
+    const daysRemaining = Math.max(Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0);
+    return daysRemaining > 0 ? remaining / daysRemaining : remaining;
+  };
+
+  const calculateWeeklyTarget = (goal: Goal) => {
+    const remaining = Number(goal.target_amount) - Number(goal.current_amount);
+    const today = new Date();
+    const end = new Date(goal.end_date);
+    const daysRemaining = Math.max(Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0);
+    const weeksRemaining = Math.max(Math.ceil(daysRemaining / 7), 0);
+    return weeksRemaining > 0 ? remaining / weeksRemaining : remaining;
+  };
+
   const openEditDialog = (goal: Goal) => {
     setSelectedGoal(goal);
     setFormData({
@@ -367,6 +384,8 @@ const Goals = () => {
               const progress = calculateProgress(goal);
               const monthsRemaining = calculateMonthsRemaining(goal.end_date);
               const monthlyTarget = calculateMonthlyTarget(goal);
+              const weeklyTarget = calculateWeeklyTarget(goal);
+              const dailyTarget = calculateDailyTarget(goal);
               const linkedAccount = accounts.find(a => a.id === goal.account_id);
 
               return (
@@ -424,16 +443,32 @@ const Goals = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1">Months Remaining</p>
-                        <p className="text-2xl font-bold">{monthsRemaining}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Daily</p>
+                        <p className="text-lg font-bold">${dailyTarget.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1">Monthly Target</p>
-                        <p className="text-2xl font-bold">${monthlyTarget.toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground mb-1">Weekly</p>
+                        <p className="text-lg font-bold">${weeklyTarget.toFixed(0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Monthly</p>
+                        <p className="text-lg font-bold">${monthlyTarget.toFixed(0)}</p>
                       </div>
                     </div>
+
+                    {monthsRemaining > 0 && progress < 100 && (
+                      <div className="bg-primary/10 rounded-lg p-3 text-sm">
+                        <p className="font-semibold text-primary mb-1">💡 Reach your goal faster:</p>
+                        <ul className="text-muted-foreground space-y-1 text-xs">
+                          <li>• Invest savings with potential 7% returns</li>
+                          <li>• Cut unnecessary subscriptions or expenses</li>
+                          <li>• Start a side hustle to boost income</li>
+                          <li>• Sell unused items for quick cash</li>
+                        </ul>
+                      </div>
+                    )}
 
                     {goal.notes && (
                       <p className="text-sm text-muted-foreground pt-4 border-t border-border">

@@ -147,7 +147,7 @@ const Risk = () => {
   const calculateRiskCapacity = async (): Promise<string> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return "low";
+      if (!user) return "conservative";
 
       // Get user's financial data
       const [transactionsRes, accountsRes] = await Promise.all([
@@ -170,12 +170,12 @@ const Risk = () => {
       const monthlySavings = monthlyIncome - monthlyExpenses;
       const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
 
-      // Determine capacity based on savings rate and balance
-      if (savingsRate > 20 && totalBalance > 10000) return "high";
-      if (savingsRate > 10 && totalBalance > 5000) return "medium";
-      return "low";
+      // Determine capacity based on savings rate and balance - return risk profile types
+      if (savingsRate > 20 && totalBalance > 10000) return "aggressive";
+      if (savingsRate > 10 && totalBalance > 5000) return "moderate";
+      return "conservative";
     } catch (error) {
-      return "low";
+      return "conservative";
     }
   };
 
@@ -222,7 +222,7 @@ const Risk = () => {
       if (!['conservative', 'moderate', 'aggressive'].includes(tolerance)) {
         throw new Error('Invalid risk tolerance value');
       }
-      if (!['low', 'medium', 'high'].includes(capacity)) {
+      if (!['conservative', 'moderate', 'aggressive'].includes(capacity)) {
         throw new Error('Invalid risk capacity value');
       }
       if (!['conservative', 'moderate', 'aggressive'].includes(recommended)) {

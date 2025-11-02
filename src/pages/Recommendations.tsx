@@ -31,17 +31,19 @@ const Recommendations = () => {
       if (!user) return;
 
       // Fetch user financial data
-      const [accountsRes, transactionsRes, goalsRes, investmentsRes] = await Promise.all([
+      const [accountsRes, transactionsRes, goalsRes, investmentsRes, riskProfileRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", user.id),
         supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
         supabase.from("goals").select("*").eq("user_id", user.id),
         supabase.from("investments").select("*").eq("user_id", user.id),
+        supabase.from("risk_profiles").select("*").eq("user_id", user.id).single(),
       ]);
 
       const accounts = accountsRes.data || [];
       const transactions = transactionsRes.data || [];
       const goals = goalsRes.data || [];
       const investments = investmentsRes.data || [];
+      const riskProfile = riskProfileRes.data;
 
       const generatedRecs: Recommendation[] = [];
 
@@ -125,42 +127,59 @@ const Recommendations = () => {
         });
       }
 
-      // Rule 4: Investment opportunities
+      // Rule 4: Investment opportunities with specific recommendations
       const totalInvestmentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
       const totalMonthlyContribution = investments.reduce((sum, inv) => sum + Number(inv.monthly_contribution), 0);
       
       if (monthlyIncome > 0 && totalBalance > 2000 && totalMonthlyContribution < monthlyIncome * 0.1) {
         const recommendedContribution = Math.min(monthlyIncome * 0.1, totalBalance * 0.05);
+        const riskType = riskProfile?.recommended_profile || 'moderate';
+        
+        let investmentSuggestions = '';
+        if (riskType === 'conservative') {
+          investmentSuggestions = ' Consider: 60% bonds (BND), 30% dividend stocks (VYM), 10% high-yield savings.';
+        } else if (riskType === 'moderate') {
+          investmentSuggestions = ' Consider: 40% index funds (VOO, VTI), 30% bonds (BND), 20% growth stocks (QQQ), 10% international (VXUS).';
+        } else {
+          investmentSuggestions = ' Consider: 50% growth stocks (QQQ, ARKK), 30% index funds (VOO), 15% emerging markets (VWO), 5% crypto-adjacent (BITO).';
+        }
+        
         generatedRecs.push({
           id: "investment-opportunity",
           type: "investment",
-          title: "Increase Investment Contributions",
-          message: `With $${totalBalance.toFixed(2)} available, consider investing $${recommendedContribution.toFixed(2)}/month. This is general information, not personalized financial advice.`,
+          title: "Invest to Reach Goals Faster",
+          message: `Investing $${recommendedContribution.toFixed(2)}/month could accelerate your goals with potential 7-10% annual returns.${investmentSuggestions} This is general information, not personalized financial advice.`,
           icon: TrendingUp,
           color: "text-success",
           bgColor: "bg-success/10",
         });
       }
 
-      // Rule 5: Goal progress tracking
+      // Rule 5: Enhanced goal progress tracking with specific action items
       goals.forEach(goal => {
         const progress = (Number(goal.current_amount) / Number(goal.target_amount)) * 100;
         const endDate = new Date(goal.end_date);
         const today = new Date();
-        const monthsRemaining = Math.max(
-          Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)),
-          0
-        );
-        const monthlyTarget = monthsRemaining > 0 
-          ? (Number(goal.target_amount) - Number(goal.current_amount)) / monthsRemaining 
-          : 0;
+        const daysRemaining = Math.max(Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0);
+        const weeksRemaining = Math.max(Math.ceil(daysRemaining / 7), 0);
+        const monthsRemaining = Math.max(Math.ceil(daysRemaining / 30), 0);
+        
+        const remaining = Number(goal.target_amount) - Number(goal.current_amount);
+        const dailyTarget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+        const weeklyTarget = weeksRemaining > 0 ? remaining / weeksRemaining : 0;
+        const monthlyTarget = monthsRemaining > 0 ? remaining / monthsRemaining : 0;
 
         if (progress < 50 && monthsRemaining > 0 && monthsRemaining < 6) {
+          // Calculate how investment could help
+          const assumedReturn = 0.07; // 7% annual return
+          const monthsToInvest = monthsRemaining;
+          const investmentBoost = monthlyTarget * ((Math.pow(1 + assumedReturn/12, monthsToInvest) - 1) / (assumedReturn/12)) - (monthlyTarget * monthsToInvest);
+          
           generatedRecs.push({
             id: `goal-${goal.id}`,
             type: "goal",
-            title: `${goal.name} Behind Schedule`,
-            message: `You're ${progress.toFixed(0)}% toward your goal. To reach $${Number(goal.target_amount).toFixed(0)} by ${endDate.toLocaleDateString()}, save $${monthlyTarget.toFixed(2)}/month.`,
+            title: `Accelerate ${goal.name}`,
+            message: `You're ${progress.toFixed(0)}% complete. Save $${dailyTarget.toFixed(2)}/day, $${weeklyTarget.toFixed(2)}/week, or $${monthlyTarget.toFixed(2)}/month to reach your goal by ${endDate.toLocaleDateString()}. 💡 To get there faster: (1) Invest savings with potential 7% returns (could gain ~$${investmentBoost.toFixed(0)}), (2) Find $${(monthlyTarget * 0.2).toFixed(0)}/month in expense reductions, (3) Pick up a side hustle earning $${(monthlyTarget * 0.5).toFixed(0)}/month.`,
             icon: Target,
             color: "text-accent",
             bgColor: "bg-accent/10",
@@ -170,7 +189,7 @@ const Recommendations = () => {
             id: `goal-success-${goal.id}`,
             type: "goal",
             title: `${goal.name} Almost Complete!`,
-            message: `Great progress! You're ${progress.toFixed(0)}% toward your goal. Only $${(Number(goal.target_amount) - Number(goal.current_amount)).toFixed(2)} left!`,
+            message: `Great progress! You're ${progress.toFixed(0)}% there. Just $${dailyTarget.toFixed(2)}/day or $${weeklyTarget.toFixed(2)}/week needed. Final push: Cut one subscription ($10-15/month) or sell unused items to finish faster!`,
             icon: Target,
             color: "text-success",
             bgColor: "bg-success/10",
