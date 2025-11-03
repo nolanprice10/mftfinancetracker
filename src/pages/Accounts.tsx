@@ -65,12 +65,27 @@ const Accounts = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase.from("accounts").insert({
-        user_id: user.id,
+      // Validate input data
+      const { accountSchema } = await import("@/lib/validation");
+      const validationResult = accountSchema.safeParse({
         name: formData.name,
         balance: parseFloat(formData.balance),
-        type: formData.type as any,
-        notes: formData.notes || null,
+        type: formData.type,
+        notes: formData.notes || null
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
+
+      const validated = validationResult.data;
+      const { error } = await supabase.from("accounts").insert({
+        user_id: user.id,
+        name: validated.name,
+        balance: validated.balance,
+        type: validated.type as any,
+        notes: validated.notes,
       } as any);
 
       if (error) throw error;
@@ -89,13 +104,28 @@ const Accounts = () => {
     if (!selectedAccount) return;
 
     try {
+      // Validate input data
+      const { accountSchema } = await import("@/lib/validation");
+      const validationResult = accountSchema.safeParse({
+        name: formData.name,
+        balance: parseFloat(formData.balance),
+        type: formData.type,
+        notes: formData.notes || null
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
+
+      const validated = validationResult.data;
       const { error } = await supabase
         .from("accounts")
         .update({
-          name: formData.name,
-          balance: parseFloat(formData.balance),
-          type: formData.type as any,
-          notes: formData.notes || null,
+          name: validated.name,
+          balance: validated.balance,
+          type: validated.type as any,
+          notes: validated.notes,
         } as any)
         .eq("id", selectedAccount.id);
 

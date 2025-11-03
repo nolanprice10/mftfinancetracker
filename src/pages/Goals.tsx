@@ -81,6 +81,22 @@ const Goals = () => {
         return;
       }
 
+      // Validate input data
+      const { goalSchema } = await import("@/lib/validation");
+      const validationResult = goalSchema.safeParse({
+        name: formData.name,
+        target_amount: parseFloat(formData.target_amount),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        notes: formData.notes || null,
+        account_id: formData.account_id === "overall" ? null : formData.account_id
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
+
       let currentAmount = 0;
 
       if (formData.account_id === "overall") {
@@ -102,15 +118,16 @@ const Goals = () => {
         currentAmount = accountData?.balance || 0;
       }
 
+      const validated = validationResult.data;
       const { error } = await supabase.from("goals").insert({
         user_id: user.id,
-        name: formData.name,
-        target_amount: parseFloat(formData.target_amount),
+        name: validated.name,
+        target_amount: validated.target_amount,
         current_amount: currentAmount,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        notes: formData.notes || null,
-        account_id: formData.account_id === "overall" ? null : formData.account_id,
+        start_date: validated.start_date,
+        end_date: validated.end_date,
+        notes: validated.notes,
+        account_id: validated.account_id,
       } as any);
 
       if (error) throw error;
@@ -145,6 +162,22 @@ const Goals = () => {
         return;
       }
 
+      // Validate input data
+      const { goalSchema } = await import("@/lib/validation");
+      const validationResult = goalSchema.safeParse({
+        name: formData.name,
+        target_amount: parseFloat(formData.target_amount),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        notes: formData.notes || null,
+        account_id: formData.account_id === "overall" ? null : formData.account_id
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
+
       let currentAmount = 0;
 
       if (formData.account_id === "overall") {
@@ -166,16 +199,17 @@ const Goals = () => {
         currentAmount = accountData?.balance || 0;
       }
 
+      const validated = validationResult.data;
       const { error } = await supabase
         .from("goals")
         .update({
-          name: formData.name,
-          target_amount: parseFloat(formData.target_amount),
+          name: validated.name,
+          target_amount: validated.target_amount,
           current_amount: currentAmount,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          notes: formData.notes || null,
-          account_id: formData.account_id === "overall" ? null : formData.account_id,
+          start_date: validated.start_date,
+          end_date: validated.end_date,
+          notes: validated.notes,
+          account_id: validated.account_id,
         } as any)
         .eq("id", selectedGoal.id);
 

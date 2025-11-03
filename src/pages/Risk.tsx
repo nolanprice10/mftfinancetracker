@@ -247,22 +247,29 @@ const Risk = () => {
         throw new Error('Invalid recommended profile value');
       }
 
-      const profile = {
-        user_id: user.id,
+      // Validate the profile data
+      const { riskProfileSchema } = await import("@/lib/validation");
+      const validationResult = riskProfileSchema.safeParse({
         risk_tolerance: tolerance,
         risk_capacity: capacity,
         recommended_profile: recommended,
-        quiz_responses: answers,
+        quiz_responses: answers
+      });
+
+      if (!validationResult.success) {
+        throw new Error(validationResult.error.errors[0].message);
+      }
+
+      const profile = {
+        user_id: user.id,
+        ...validationResult.data
       };
 
       const { error } = await supabase
         .from("risk_profiles")
         .upsert(profile);
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       setRiskProfile(profile as RiskProfile);
       toast.success("Risk profile completed!");

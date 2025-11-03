@@ -78,17 +78,33 @@ const Transactions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const amount = parseFloat(formData.amount);
+      // Validate input data
+      const { transactionSchema } = await import("@/lib/validation");
+      const validationResult = transactionSchema.safeParse({
+        amount: parseFloat(formData.amount),
+        type: formData.type,
+        category: formData.category,
+        date: formData.date,
+        notes: formData.notes || null,
+        account_id: formData.account_id
+      });
+
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
+      }
+
+      const validated = validationResult.data;
       
       // Insert transaction (trigger will automatically update account balance)
       const { error: txError } = await supabase.from("transactions").insert({
         user_id: user.id,
-        account_id: formData.account_id,
-        type: formData.type as any,
-        category: formData.category,
-        amount,
-        date: formData.date,
-        notes: formData.notes || null,
+        account_id: validated.account_id,
+        type: validated.type as any,
+        category: validated.category,
+        amount: validated.amount,
+        date: validated.date,
+        notes: validated.notes,
       } as any);
 
       if (txError) throw txError;

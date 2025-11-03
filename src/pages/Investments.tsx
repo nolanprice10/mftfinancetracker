@@ -75,21 +75,38 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const investmentData: any = {
-        user_id: user.id,
+      // Validate input data
+      const { investmentSchema } = await import("@/lib/validation");
+      const validationResult = investmentSchema.safeParse({
         name: formData.name,
-        type: formData.type as any,
+        type: formData.type,
         current_value: parseFloat(formData.current_value),
         monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
         annual_return_pct: parseFloat(formData.annual_return_pct),
         years_remaining: parseFloat(formData.years_remaining),
-      };
+        ticker_symbol: formData.type === "individual_stock" ? formData.ticker_symbol || null : null,
+        shares_owned: formData.type === "individual_stock" && formData.shares_owned ? parseFloat(formData.shares_owned) : null,
+        purchase_price_per_share: formData.type === "individual_stock" && formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null
+      });
 
-      if (formData.type === "individual_stock") {
-        investmentData.ticker_symbol = formData.ticker_symbol || null;
-        investmentData.shares_owned = formData.shares_owned ? parseFloat(formData.shares_owned) : null;
-        investmentData.purchase_price_per_share = formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null;
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
       }
+
+      const validated = validationResult.data;
+      const investmentData: any = {
+        user_id: user.id,
+        name: validated.name,
+        type: validated.type as any,
+        current_value: validated.current_value,
+        monthly_contribution: validated.monthly_contribution || 0,
+        annual_return_pct: validated.annual_return_pct,
+        years_remaining: validated.years_remaining,
+        ticker_symbol: validated.ticker_symbol,
+        shares_owned: validated.shares_owned,
+        purchase_price_per_share: validated.purchase_price_per_share
+      };
 
       const { error } = await supabase.from("investments").insert(investmentData);
 
@@ -109,24 +126,37 @@ const Investments = () => {
     if (!selectedInvestment) return;
 
     try {
-      const investmentData: any = {
+      // Validate input data
+      const { investmentSchema } = await import("@/lib/validation");
+      const validationResult = investmentSchema.safeParse({
         name: formData.name,
-        type: formData.type as any,
+        type: formData.type,
         current_value: parseFloat(formData.current_value),
         monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
         annual_return_pct: parseFloat(formData.annual_return_pct),
         years_remaining: parseFloat(formData.years_remaining),
-      };
+        ticker_symbol: formData.type === "individual_stock" ? formData.ticker_symbol || null : null,
+        shares_owned: formData.type === "individual_stock" && formData.shares_owned ? parseFloat(formData.shares_owned) : null,
+        purchase_price_per_share: formData.type === "individual_stock" && formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null
+      });
 
-      if (formData.type === "individual_stock") {
-        investmentData.ticker_symbol = formData.ticker_symbol || null;
-        investmentData.shares_owned = formData.shares_owned ? parseFloat(formData.shares_owned) : null;
-        investmentData.purchase_price_per_share = formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null;
-      } else {
-        investmentData.ticker_symbol = null;
-        investmentData.shares_owned = null;
-        investmentData.purchase_price_per_share = null;
+      if (!validationResult.success) {
+        toast.error(validationResult.error.errors[0].message);
+        return;
       }
+
+      const validated = validationResult.data;
+      const investmentData: any = {
+        name: validated.name,
+        type: validated.type as any,
+        current_value: validated.current_value,
+        monthly_contribution: validated.monthly_contribution || 0,
+        annual_return_pct: validated.annual_return_pct,
+        years_remaining: validated.years_remaining,
+        ticker_symbol: validated.ticker_symbol,
+        shares_owned: validated.shares_owned,
+        purchase_price_per_share: validated.purchase_price_per_share
+      };
 
       const { error } = await supabase
         .from("investments")
