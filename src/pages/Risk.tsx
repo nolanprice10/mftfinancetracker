@@ -28,6 +28,13 @@ interface RiskQuestion {
   }[];
 }
 
+interface InvestmentRecommendation {
+  name: string;
+  ticker?: string;
+  allocation: string;
+  description: string;
+}
+
 const riskQuestions: RiskQuestion[] = [
   {
     id: 1,
@@ -83,24 +90,26 @@ const riskQuestions: RiskQuestion[] = [
 
 const investmentRecommendations = {
   conservative: [
-    { name: "High-Yield Savings Account", allocation: "40%", description: "FDIC insured, liquid emergency fund" },
-    { name: "Treasury Bonds (T-Bills)", allocation: "30%", description: "Government-backed, low-risk bonds" },
-    { name: "Investment-Grade Corporate Bonds", allocation: "20%", description: "Stable corporate debt securities" },
-    { name: "Large-Cap Dividend Stocks", allocation: "10%", description: "Established companies with consistent dividends" },
+    { name: "Marcus by Goldman Sachs High-Yield Savings", ticker: "4.5% APY", allocation: "40%", description: "FDIC insured up to $250k, no minimums, daily compounding interest for emergency fund" },
+    { name: "iShares 1-3 Year Treasury Bond ETF", ticker: "SHY", allocation: "30%", description: "Low-volatility government bonds, ideal for capital preservation with modest returns" },
+    { name: "Vanguard Investment-Grade Corporate Bond ETF", ticker: "VCIT", allocation: "20%", description: "Diversified basket of high-quality corporate debt from stable companies like Apple, Microsoft" },
+    { name: "Vanguard Dividend Appreciation ETF", ticker: "VIG", allocation: "10%", description: "Blue-chip stocks with 10+ years of dividend growth (Johnson & Johnson, Procter & Gamble)" },
   ],
   moderate: [
-    { name: "Index Funds (S&P 500)", allocation: "35%", description: "Diversified equity exposure" },
-    { name: "Bond Index Funds", allocation: "30%", description: "Fixed-income stability" },
-    { name: "Real Estate Investment Trusts (REITs)", allocation: "15%", description: "Property market exposure" },
-    { name: "International Stocks", allocation: "10%", description: "Global diversification" },
-    { name: "High-Yield Savings", allocation: "10%", description: "Cash reserves" },
+    { name: "Vanguard S&P 500 ETF", ticker: "VOO", allocation: "35%", description: "Tracks 500 largest US companies with ultra-low 0.03% expense ratio—Warren Buffett's recommendation" },
+    { name: "Vanguard Total Bond Market ETF", ticker: "BND", allocation: "30%", description: "7,000+ US government and corporate bonds for stability and income generation" },
+    { name: "Vanguard Real Estate ETF", ticker: "VNQ", allocation: "15%", description: "Exposure to 160+ REITs including data centers, apartments, and industrial properties" },
+    { name: "Vanguard Total International Stock ETF", ticker: "VXUS", allocation: "10%", description: "8,000+ non-US stocks across developed and emerging markets for global diversification" },
+    { name: "Ally Bank High-Yield Savings", ticker: "4.25% APY", allocation: "10%", description: "FDIC insured emergency fund with no monthly fees and 24/7 access" },
   ],
   aggressive: [
-    { name: "Growth Stocks & Tech ETFs", allocation: "40%", description: "High-growth potential equities" },
-    { name: "Small-Cap & Emerging Markets", allocation: "25%", description: "Higher risk, higher reward" },
-    { name: "Index Funds (Total Market)", allocation: "20%", description: "Broad market exposure" },
-    { name: "Alternative Investments", allocation: "10%", description: "Commodities, crypto (small allocation)" },
-    { name: "Bond Funds", allocation: "5%", description: "Minimal stability component" },
+    { name: "Invesco QQQ Trust", ticker: "QQQ", allocation: "25%", description: "Top 100 Nasdaq stocks—heavy tech exposure to Apple, Microsoft, Nvidia, Tesla, Amazon" },
+    { name: "ARK Innovation ETF", ticker: "ARKK", allocation: "15%", description: "Actively managed disruptive tech fund focusing on AI, genomics, fintech, and robotics" },
+    { name: "Vanguard Small-Cap Growth ETF", ticker: "VBK", allocation: "15%", description: "Small companies with high growth potential—historically higher returns but more volatile" },
+    { name: "iShares MSCI Emerging Markets ETF", ticker: "EEM", allocation: "10%", description: "Exposure to rapidly growing economies like China, India, Taiwan, South Korea" },
+    { name: "Vanguard Total Stock Market ETF", ticker: "VTI", allocation: "20%", description: "Complete US market exposure—4,000+ stocks from mega-cap to micro-cap" },
+    { name: "SPDR Gold Shares", ticker: "GLD", allocation: "8%", description: "Physical gold ETF as inflation hedge and portfolio diversifier during market uncertainty" },
+    { name: "iShares Core U.S. Aggregate Bond ETF", ticker: "AGG", allocation: "7%", description: "Broad bond exposure for minimal stability during high-volatility growth periods" },
   ],
 };
 
@@ -510,11 +519,18 @@ const Risk = () => {
                   <div key={index} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{rec.name}</h3>
-                          <Badge variant="secondary">{rec.allocation}</Badge>
+                        <div className="flex flex-col gap-1 mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold">{rec.name}</h3>
+                            <Badge variant="secondary">{rec.allocation}</Badge>
+                          </div>
+                          {'ticker' in rec && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-mono text-xs">{rec.ticker}</Badge>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">{rec.description}</p>
+                        <p className="text-sm text-muted-foreground">{rec.description}</p>
                       </div>
                     </div>
                     <Progress value={parseInt(rec.allocation)} className="h-2 mt-2" />
@@ -523,17 +539,26 @@ const Risk = () => {
               </div>
               <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-3">
                 <div>
-                  <h4 className="font-semibold mb-2">💡 Understanding Diversification</h4>
+                  <h4 className="font-semibold mb-2">💡 How to Actually Invest</h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    You can buy these ETFs through any brokerage app like Fidelity, Vanguard, Schwab, or Robinhood. Search for the ticker symbol (e.g., "VOO") and purchase shares—most brokers now offer commission-free trading.
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    Notice how your portfolio spreads across different investment types? This is called diversification—the financial equivalent of "don't put all your eggs in one basket." When one investment dips, others may rise, smoothing out your overall returns.
+                    <strong>Pro tip:</strong> Set up automatic monthly investments (dollar-cost averaging) instead of trying to time the market. Investing $500/month consistently beats waiting for the "perfect" moment.
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-2">Important Disclaimer</h4>
+                  <h4 className="font-semibold mb-2">💡 Understanding Diversification</h4>
                   <p className="text-sm text-muted-foreground">
-                    These recommendations are for educational purposes only and do not constitute financial advice. 
-                    Always consult with a qualified financial advisor before making investment decisions. Past 
-                    performance does not guarantee future results.
+                    Notice how your portfolio spreads across different asset types? This diversification means when tech stocks drop, your bonds might hold steady. When US markets struggle, international stocks might perform better. It's the financial equivalent of "don't put all your eggs in one basket."
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">⚠️ Important Disclaimer</h4>
+                  <p className="text-sm text-muted-foreground">
+                    These specific investment recommendations are for educational purposes only and do not constitute financial advice. 
+                    Always research thoroughly and consult with a qualified financial advisor before making investment decisions. Past 
+                    performance does not guarantee future results. ETF expense ratios, holdings, and performance vary over time.
                   </p>
                 </div>
               </div>
