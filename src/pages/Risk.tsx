@@ -147,7 +147,7 @@ const Risk = () => {
   const calculateRiskCapacity = async (): Promise<string> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return "conservative";
+      if (!user) return "low";
 
       // Get user's financial data
       const [transactionsRes, accountsRes] = await Promise.all([
@@ -170,12 +170,13 @@ const Risk = () => {
       const monthlySavings = monthlyIncome - monthlyExpenses;
       const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
 
-      // Determine capacity based on savings rate and balance - return risk profile types
-      if (savingsRate > 20 && totalBalance > 10000) return "aggressive";
-      if (savingsRate > 10 && totalBalance > 5000) return "moderate";
-      return "conservative";
+      // Determine capacity based on savings rate and balance
+      // Higher savings rate + larger emergency fund = higher capacity for risk
+      if (savingsRate > 20 && totalBalance > 10000) return "high";
+      if (savingsRate > 10 && totalBalance > 5000) return "medium";
+      return "low";
     } catch (error) {
-      return "conservative";
+      return "low";
     }
   };
 
@@ -213,16 +214,24 @@ const Risk = () => {
       const capacity = await calculateRiskCapacity();
       
       // Determine recommended profile (more conservative of the two)
-      const profileHierarchy = { conservative: 1, moderate: 2, aggressive: 3 };
-      const recommended = profileHierarchy[tolerance as keyof typeof profileHierarchy] <= profileHierarchy[capacity as keyof typeof profileHierarchy]
+      // Map capacity levels to tolerance levels for comparison
+      const toleranceHierarchy = { conservative: 1, moderate: 2, aggressive: 3 };
+      const capacityHierarchy = { low: 1, medium: 2, high: 3 };
+      const capacityToTolerance = { low: 'conservative', medium: 'moderate', high: 'aggressive' };
+      
+      const toleranceLevel = toleranceHierarchy[tolerance as keyof typeof toleranceHierarchy];
+      const capacityLevel = capacityHierarchy[capacity as keyof typeof capacityHierarchy];
+      
+      // Choose the more conservative option
+      const recommended = toleranceLevel <= capacityLevel
         ? tolerance
-        : capacity;
+        : capacityToTolerance[capacity as keyof typeof capacityToTolerance];
 
       // Ensure values are valid before saving
       if (!['conservative', 'moderate', 'aggressive'].includes(tolerance)) {
         throw new Error('Invalid risk tolerance value');
       }
-      if (!['conservative', 'moderate', 'aggressive'].includes(capacity)) {
+      if (!['low', 'medium', 'high'].includes(capacity)) {
         throw new Error('Invalid risk capacity value');
       }
       if (!['conservative', 'moderate', 'aggressive'].includes(recommended)) {
@@ -286,11 +295,11 @@ const Risk = () => {
     return (
       <Layout>
         <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-          <Card className="shadow-elegant border-border">
+            <Card className="shadow-elegant border-border">
             <CardHeader>
               <CardTitle className="text-3xl">Risk Assessment</CardTitle>
               <CardDescription>
-                Discover your investment risk profile and get personalized recommendations
+                Understanding your risk tolerance helps you invest confidently. This quick 5-question assessment considers both your emotional comfort with market changes and your financial capacity to handle them.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -302,7 +311,7 @@ const Risk = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Risk Tolerance Assessment</h3>
                     <p className="text-sm text-muted-foreground">
-                      Answer 5 questions to understand your emotional comfort with investment volatility
+                      Your risk tolerance measures how comfortable you feel with market ups and downs. It's like knowing if you prefer a smooth highway or a thrilling rollercoaster—both can get you to your destination.
                     </p>
                   </div>
                 </div>
@@ -313,7 +322,7 @@ const Risk = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Risk Capacity Analysis</h3>
                     <p className="text-sm text-muted-foreground">
-                      Automated analysis of your financial situation based on income, expenses, and savings
+                      Risk capacity is different from tolerance—it's about what you can actually afford to risk. Someone with a healthy emergency fund and stable income has higher capacity, even if they don't like volatility.
                     </p>
                   </div>
                 </div>
@@ -324,7 +333,7 @@ const Risk = () => {
                   <div>
                     <h3 className="font-semibold mb-1">Personalized Recommendations</h3>
                     <p className="text-sm text-muted-foreground">
-                      Receive investment allocations tailored to your unique risk profile
+                      We'll recommend the more conservative of your tolerance and capacity. Why? Because investing what you can't afford to lose—even if you're comfortable with risk—isn't wise financial planning.
                     </p>
                   </div>
                 </div>
@@ -461,7 +470,13 @@ const Risk = () => {
                     {riskProfile.risk_capacity}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Based on your financial situation</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {riskProfile.risk_capacity === 'high' 
+                    ? "Your strong savings rate and emergency fund give you financial flexibility to take on more risk."
+                    : riskProfile.risk_capacity === 'medium'
+                    ? "You have a solid foundation, but should balance growth with stability."
+                    : "Focus on building your emergency fund before taking on significant investment risk."}
+                </p>
               </CardContent>
             </Card>
 
@@ -506,13 +521,21 @@ const Risk = () => {
                   </div>
                 ))}
               </div>
-              <div className="mt-6 p-4 rounded-lg bg-muted/50">
-                <h4 className="font-semibold mb-2">Important Disclaimer</h4>
-                <p className="text-sm text-muted-foreground">
-                  These recommendations are for educational purposes only and do not constitute financial advice. 
-                  Always consult with a qualified financial advisor before making investment decisions. Past 
-                  performance does not guarantee future results.
-                </p>
+              <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-3">
+                <div>
+                  <h4 className="font-semibold mb-2">💡 Understanding Diversification</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Notice how your portfolio spreads across different investment types? This is called diversification—the financial equivalent of "don't put all your eggs in one basket." When one investment dips, others may rise, smoothing out your overall returns.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Important Disclaimer</h4>
+                  <p className="text-sm text-muted-foreground">
+                    These recommendations are for educational purposes only and do not constitute financial advice. 
+                    Always consult with a qualified financial advisor before making investment decisions. Past 
+                    performance does not guarantee future results.
+                  </p>
+                </div>
               </div>
               <Button onClick={retakeQuiz} variant="outline" className="w-full mt-4">
                 Retake Assessment

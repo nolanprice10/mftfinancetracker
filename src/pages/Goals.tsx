@@ -258,18 +258,36 @@ const Goals = () => {
     setEditDialogOpen(true);
   };
 
-  const GoalForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Goal Name</Label>
-        <Input
-          placeholder="e.g., Emergency Fund"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          autoComplete="off"
-          required
-        />
-      </div>
+  const GoalForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
+    // Local state to prevent keyboard dismissal on mobile
+    const [localName, setLocalName] = useState(formData.name);
+    const [localTargetAmount, setLocalTargetAmount] = useState(formData.target_amount);
+    const [localNotes, setLocalNotes] = useState(formData.notes);
+
+    useEffect(() => {
+      setLocalName(formData.name);
+      setLocalTargetAmount(formData.target_amount);
+      setLocalNotes(formData.notes);
+    }, [formData.name, formData.target_amount, formData.notes]);
+
+    const handleLocalSubmit = (e: React.FormEvent) => {
+      setFormData({ ...formData, name: localName, target_amount: localTargetAmount, notes: localNotes });
+      onSubmit(e);
+    };
+
+    return (
+      <form onSubmit={handleLocalSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Goal Name</Label>
+          <Input
+            placeholder="e.g., Emergency Fund"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, name: e.target.value })}
+            autoComplete="off"
+            required
+          />
+        </div>
       <div className="space-y-2">
         <Label>Select Account *</Label>
         <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })} required>
@@ -289,18 +307,22 @@ const Goals = () => {
             : "Goal progress will automatically match this account's balance"}
         </p>
       </div>
-      <div className="space-y-2">
-        <Label>Target Amount</Label>
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="10000"
-          value={formData.target_amount}
-          onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-          autoComplete="off"
-          required
-        />
-      </div>
+        <div className="space-y-2">
+          <Label>Target Amount</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="10000"
+            value={localTargetAmount}
+            onChange={(e) => setLocalTargetAmount(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, target_amount: e.target.value })}
+            autoComplete="off"
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            💡 Tip: Round numbers are easier to track mentally. Instead of $9,847, aim for $10,000.
+          </p>
+        </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Start Date</Label>
@@ -321,18 +343,20 @@ const Goals = () => {
           />
         </div>
       </div>
-      <div className="space-y-2">
-        <Label>Notes (optional)</Label>
-        <Input
-          placeholder="Add details..."
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          autoComplete="off"
-        />
-      </div>
-      <Button type="submit" className="w-full">{buttonText}</Button>
-    </form>
-  );
+        <div className="space-y-2">
+          <Label>Notes (optional)</Label>
+          <Input
+            placeholder="Add details..."
+            value={localNotes}
+            onChange={(e) => setLocalNotes(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, notes: e.target.value })}
+            autoComplete="off"
+          />
+        </div>
+        <Button type="submit" className="w-full">{buttonText}</Button>
+      </form>
+    );
+  };
 
   return (
     <Layout>
