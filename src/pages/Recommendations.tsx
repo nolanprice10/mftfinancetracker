@@ -169,7 +169,19 @@ const Recommendations = () => {
         const weeklyTarget = weeksRemaining > 0 ? remaining / weeksRemaining : 0;
         const monthlyTarget = monthsRemaining > 0 ? remaining / monthsRemaining : 0;
 
-        if (progress < 50 && monthsRemaining > 0 && monthsRemaining < 6) {
+        if (progress >= 100) {
+          // Goal achieved!
+          const excess = Number(goal.current_amount) - Number(goal.target_amount);
+          generatedRecs.push({
+            id: `goal-achieved-${goal.id}`,
+            type: "goal",
+            title: `🎉 ${goal.name} Achieved!`,
+            message: `Congratulations! You've reached your goal of $${Number(goal.target_amount).toLocaleString()} (currently at $${Number(goal.current_amount).toLocaleString()}). Consider setting a new financial goal or investing the surplus ($${excess.toFixed(2)}) for long-term growth.`,
+            icon: Target,
+            color: "text-success",
+            bgColor: "bg-success/10",
+          });
+        } else if (progress < 50 && monthsRemaining > 0 && monthsRemaining < 6) {
           // Calculate how investment could help
           const assumedReturn = 0.07; // 7% annual return
           const monthsToInvest = monthsRemaining;
@@ -184,7 +196,7 @@ const Recommendations = () => {
             color: "text-accent",
             bgColor: "bg-accent/10",
           });
-        } else if (progress >= 80) {
+        } else if (progress >= 80 && progress < 100) {
           generatedRecs.push({
             id: `goal-success-${goal.id}`,
             type: "goal",

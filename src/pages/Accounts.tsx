@@ -181,54 +181,78 @@ const Accounts = () => {
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
-  const AccountForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Account Name</Label>
-        <Input
-          placeholder="e.g., Main Checking"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Type</Label>
-        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="checking">Checking</SelectItem>
-            <SelectItem value="savings">Savings</SelectItem>
-            <SelectItem value="brokerage">Brokerage</SelectItem>
-            <SelectItem value="retirement">Retirement</SelectItem>
-            <SelectItem value="cash">Cash</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Balance</Label>
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="0.00"
-          value={formData.balance}
-          onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Notes (optional)</Label>
-        <Input
-          placeholder="Add details..."
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-        />
-      </div>
-      <Button type="submit" className="w-full">{buttonText}</Button>
-    </form>
-  );
+  const AccountForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
+    // Local state to prevent keyboard dismissal on mobile
+    const [localName, setLocalName] = useState(formData.name);
+    const [localBalance, setLocalBalance] = useState(formData.balance);
+    const [localNotes, setLocalNotes] = useState(formData.notes);
+
+    useEffect(() => {
+      setLocalName(formData.name);
+      setLocalBalance(formData.balance);
+      setLocalNotes(formData.notes);
+    }, [formData.name, formData.balance, formData.notes]);
+
+    const handleLocalSubmit = (e: React.FormEvent) => {
+      setFormData({ ...formData, name: localName, balance: localBalance, notes: localNotes });
+      onSubmit(e);
+    };
+
+    return (
+      <form onSubmit={handleLocalSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Account Name</Label>
+          <Input
+            placeholder="e.g., Main Checking"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, name: e.target.value })}
+            autoComplete="off"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Type</Label>
+          <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="checking">Checking</SelectItem>
+              <SelectItem value="savings">Savings</SelectItem>
+              <SelectItem value="brokerage">Brokerage</SelectItem>
+              <SelectItem value="retirement">Retirement</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Balance</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={localBalance}
+            onChange={(e) => setLocalBalance(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, balance: e.target.value })}
+            autoComplete="off"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Notes (optional)</Label>
+          <Input
+            placeholder="Add details..."
+            value={localNotes}
+            onChange={(e) => setLocalNotes(e.target.value)}
+            onBlur={(e) => setFormData({ ...formData, notes: e.target.value })}
+            autoComplete="off"
+          />
+        </div>
+        <Button type="submit" className="w-full">{buttonText}</Button>
+      </form>
+    );
+  };
 
   return (
     <Layout>
