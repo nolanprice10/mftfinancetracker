@@ -1,0 +1,21 @@
+-- Create trigger to update account balance when transactions change
+DROP TRIGGER IF EXISTS update_account_balance_trigger ON public.transactions;
+CREATE TRIGGER update_account_balance_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON public.transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_account_balance_from_transaction();
+
+-- Create trigger to sync goal with account balance when account changes
+DROP TRIGGER IF EXISTS sync_goal_balance_trigger ON public.accounts;
+CREATE TRIGGER sync_goal_balance_trigger
+  AFTER UPDATE OF balance ON public.accounts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_goal_with_account_balance();
+
+-- Create trigger to update goal from transaction when transaction has goal_id
+DROP TRIGGER IF EXISTS update_goal_from_transaction_trigger ON public.transactions;
+CREATE TRIGGER update_goal_from_transaction_trigger
+  AFTER INSERT ON public.transactions
+  FOR EACH ROW
+  WHEN (NEW.goal_id IS NOT NULL)
+  EXECUTE FUNCTION public.update_goal_from_transaction();
