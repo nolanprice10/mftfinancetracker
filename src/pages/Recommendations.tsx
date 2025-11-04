@@ -166,28 +166,104 @@ const Recommendations = () => {
         const recommendedContribution = Math.min(monthlyIncome * 0.15, totalBalance * 0.05);
         const riskType = riskProfile?.recommended_profile || 'moderate';
         
-        // Calculate 10-year compound growth projection
-        const yearsToProject = 10;
-        const annualReturn = riskType === 'conservative' ? 0.06 : riskType === 'moderate' ? 0.08 : 0.10;
-        const monthlyReturn = annualReturn / 12;
-        const futureValue = recommendedContribution * (((Math.pow(1 + monthlyReturn, yearsToProject * 12) - 1) / monthlyReturn));
-        const totalContributed = recommendedContribution * yearsToProject * 12;
-        const earnings = futureValue - totalContributed;
+        // Calculate projections for 5, 10, and 20 years
+        const projections = [5, 10, 20].map(years => {
+          const annualReturn = riskType === 'conservative' ? 0.06 : riskType === 'moderate' ? 0.08 : 0.10;
+          const monthlyReturn = annualReturn / 12;
+          const futureValue = recommendedContribution * (((Math.pow(1 + monthlyReturn, years * 12) - 1) / monthlyReturn));
+          const totalContributed = recommendedContribution * years * 12;
+          const earnings = futureValue - totalContributed;
+          return { years, futureValue, earnings, totalContributed };
+        });
         
         let investmentDetails = '';
+        let platformDetails = '';
+        
         if (riskType === 'conservative') {
-          investmentDetails = `Start with: (1) Vanguard Total Bond (BND) - 50% allocation for stability, (2) Dividend Aristocrats ETF (NOBL) - 30% for steady income, (3) High-yield savings (Ally, Marcus) - 15% for liquidity, (4) Treasury I-Bonds - 5% for inflation protection. Expected: 6% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
+          investmentDetails = `**Conservative Portfolio** (Target: 6% annual return)
+          
+📊 **Exact Allocation:**
+• **Vanguard Total Bond Market (BND)** - 40% | $${(recommendedContribution * 0.40).toFixed(0)}/month
+  Low risk, steady income, expense ratio 0.03%
+  
+• **iShares Dividend Aristocrats (NOBL)** - 25% | $${(recommendedContribution * 0.25).toFixed(0)}/month
+  Companies with 25+ years of dividend growth
+  
+• **Vanguard Balanced Index (VBIAX)** - 20% | $${(recommendedContribution * 0.20).toFixed(0)}/month
+  60/40 stock/bond mix, automatic rebalancing
+  
+• **High-Yield Savings (Ally/Marcus)** - 10% | $${(recommendedContribution * 0.10).toFixed(0)}/month
+  4-5% APY, instant liquidity for emergencies
+  
+• **Treasury I-Bonds** - 5% | $${(recommendedContribution * 0.05).toFixed(0)}/month
+  Inflation protection, backed by US government
+
+📈 **Growth Projection:**
+• 5 years: $${projections[0].futureValue.toFixed(0)} (Gain: $${projections[0].earnings.toFixed(0)})
+• 10 years: $${projections[1].futureValue.toFixed(0)} (Gain: $${projections[1].earnings.toFixed(0)})
+• 20 years: $${projections[2].futureValue.toFixed(0)} (Gain: $${projections[2].earnings.toFixed(0)})`;
+          
+          platformDetails = `**Where to Invest:** Vanguard (lowest fees, best for index funds), Fidelity (no account minimum, excellent research tools), or Charles Schwab (great mobile app, 24/7 support). **Tax Strategy:** Max out Roth IRA first ($7,000/year limit if under 50) for tax-free growth.`;
         } else if (riskType === 'moderate') {
-          investmentDetails = `Balanced portfolio: (1) S&P 500 Index (VOO or SPY) - 35% for market returns, (2) Total Stock Market (VTI) - 25% for diversification, (3) Total Bond Market (BND) - 20% for stability, (4) Tech Growth (QQQ) - 12% for upside, (5) International (VXUS) - 8% for global exposure. Expected: 8% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
+          investmentDetails = `**Moderate Portfolio** (Target: 8% annual return)
+          
+📊 **Exact Allocation:**
+• **Vanguard S&P 500 (VOO)** - 30% | $${(recommendedContribution * 0.30).toFixed(0)}/month
+  Tracks top 500 US companies, expense ratio 0.03%
+  
+• **Vanguard Total Stock Market (VTI)** - 25% | $${(recommendedContribution * 0.25).toFixed(0)}/month
+  Entire US stock market, 4,000+ holdings
+  
+• **Vanguard Total Bond Market (BND)** - 20% | $${(recommendedContribution * 0.20).toFixed(0)}/month
+  Bonds for stability during downturns
+  
+• **Invesco QQQ Trust (QQQ)** - 15% | $${(recommendedContribution * 0.15).toFixed(0)}/month
+  Top 100 Nasdaq stocks (tech-heavy)
+  
+• **Vanguard Total International (VXUS)** - 10% | $${(recommendedContribution * 0.10).toFixed(0)}/month
+  International diversification, 8,000+ stocks
+
+📈 **Growth Projection:**
+• 5 years: $${projections[0].futureValue.toFixed(0)} (Gain: $${projections[0].earnings.toFixed(0)})
+• 10 years: $${projections[1].futureValue.toFixed(0)} (Gain: $${projections[1].earnings.toFixed(0)})
+• 20 years: $${projections[2].futureValue.toFixed(0)} (Gain: $${projections[2].earnings.toFixed(0)})`;
+          
+          platformDetails = `**Where to Invest:** Fidelity (zero-fee index funds + fractional shares), Vanguard (rock-bottom expense ratios), or M1 Finance (automatic rebalancing + no fees). **Tax Strategy:** Contribute to 401(k) up to employer match, then max Roth IRA, then back to 401(k). **Rebalancing:** Review quarterly, rebalance if any allocation drifts >5%.`;
         } else {
-          investmentDetails = `Growth-focused: (1) Nasdaq 100 (QQQ) - 35% for tech exposure, (2) Growth ETF (ARKK or VUG) - 25% for innovation, (3) S&P 500 (VOO) - 20% for stability, (4) Emerging Markets (VWO or IEMG) - 12% for high growth, (5) Small Cap (VB) - 8% for aggressive gains. Expected: 10% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
+          investmentDetails = `**Aggressive Growth Portfolio** (Target: 10% annual return)
+          
+📊 **Exact Allocation:**
+• **Invesco QQQ Trust (QQQ)** - 30% | $${(recommendedContribution * 0.30).toFixed(0)}/month
+  Top tech stocks: Apple, Microsoft, Amazon, Nvidia
+  
+• **ARK Innovation ETF (ARKK)** - 20% | $${(recommendedContribution * 0.20).toFixed(0)}/month
+  Disruptive innovation: AI, genomics, fintech
+  
+• **Vanguard S&P 500 (VOO)** - 20% | $${(recommendedContribution * 0.20).toFixed(0)}/month
+  Core holding for stability
+  
+• **Vanguard Small-Cap (VB)** - 15% | $${(recommendedContribution * 0.15).toFixed(0)}/month
+  Higher growth potential than large caps
+  
+• **iShares MSCI Emerging Markets (IEMG)** - 10% | $${(recommendedContribution * 0.10).toFixed(0)}/month
+  China, India, Brazil growth exposure
+  
+• **Individual Growth Stocks** - 5% | $${(recommendedContribution * 0.05).toFixed(0)}/month
+  High conviction picks (research required)
+
+📈 **Growth Projection:**
+• 5 years: $${projections[0].futureValue.toFixed(0)} (Gain: $${projections[0].earnings.toFixed(0)})
+• 10 years: $${projections[1].futureValue.toFixed(0)} (Gain: $${projections[1].earnings.toFixed(0)})
+• 20 years: $${projections[2].futureValue.toFixed(0)} (Gain: $${projections[2].earnings.toFixed(0)})`;
+          
+          platformDetails = `**Where to Invest:** Fidelity (great research + fractional shares), Webull (free Level 2 data for stock picking), or E*TRADE (powerful trading tools). **Tax Strategy:** Max out Roth IRA for tax-free gains on high-growth investments. **Risk Warning:** This is aggressive - only invest money you won't need for 10+ years. Keep 6 months expenses in savings first.`;
         }
         
         generatedRecs.push({
           id: "investment-opportunity",
           type: "investment",
-          title: `Invest $${recommendedContribution.toFixed(0)}/Month → Earn $${earnings.toFixed(0)} in ${yearsToProject} Years`,
-          message: `Investing just $${recommendedContribution.toFixed(2)}/month (${((recommendedContribution/monthlyIncome)*100).toFixed(0)}% of income) could grow to $${futureValue.toFixed(0)} by year ${yearsToProject}. ${investmentDetails} Open account with: Fidelity, Vanguard, or Charles Schwab (no minimum, commission-free). This is educational information, not financial advice.`,
+          title: `Invest $${recommendedContribution.toFixed(0)}/Month → Build $${projections[1].futureValue.toFixed(0)} in 10 Years`,
+          message: `${investmentDetails}\n\n${platformDetails}\n\n💡 **Getting Started:** Open account this week (takes 15 min), enable auto-invest for $${recommendedContribution.toFixed(0)}/month, dollar-cost average (don't try to time market). **This is educational information, not personalized financial advice. Past performance doesn't guarantee future results.**`,
           icon: TrendingUp,
           color: "text-success",
           bgColor: "bg-success/10",
