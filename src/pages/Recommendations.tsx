@@ -88,7 +88,7 @@ const Recommendations = () => {
         });
       }
 
-      // Rule 2: High spending in categories
+      // Rule 2: Specific spending cut recommendations by category
       if (monthlyExpenses > 0 && monthlyIncome > 0) {
         const categorySpending: Record<string, number> = {};
         monthlyTransactions
@@ -97,20 +97,51 @@ const Recommendations = () => {
             categorySpending[t.category] = (categorySpending[t.category] || 0) + Number(t.amount);
           });
 
+        // Category-specific actionable recommendations
+        const categoryAdvice: Record<string, (amount: number) => string> = {
+          "Food": (amt) => `You spent $${amt.toFixed(2)} on food this month. Try: (1) Meal prep Sundays - save $${(amt * 0.25).toFixed(0)}/month, (2) Pack lunch 3x/week - save $${(amt * 0.15).toFixed(0)}/month, (3) Use generic brands - save $${(amt * 0.10).toFixed(0)}/month, (4) Cut one restaurant visit/week - save $${Math.min(amt * 0.15, 160).toFixed(0)}/month.`,
+          "Shopping": (amt) => `You spent $${amt.toFixed(2)} on shopping. Cut back with: (1) 30-day rule: wait 30 days before non-essential purchases, (2) Unsubscribe from promotional emails, (3) Use cashback apps (Rakuten, Honey) - earn $${(amt * 0.03).toFixed(0)}/month back, (4) Try a "no-spend" challenge for 1 week/month - save $${(amt * 0.25).toFixed(0)}.`,
+          "Entertainment": (amt) => `Entertainment costs: $${amt.toFixed(2)}/month. Reduce by: (1) Share streaming services with family - save $${Math.min(amt * 0.40, 50).toFixed(0)}/month, (2) Use library for books/movies - save $${Math.min(amt * 0.15, 30).toFixed(0)}/month, (3) Find free local events, (4) Rotate subscriptions (Netflix one month, Hulu next) - save $${Math.min(amt * 0.33, 40).toFixed(0)}/month.`,
+          "Transportation": (amt) => `Transportation: $${amt.toFixed(2)}/month. Save by: (1) Carpool 2x/week - save $${(amt * 0.20).toFixed(0)}/month on gas, (2) Use public transit when possible - save $${(amt * 0.30).toFixed(0)}/month, (3) Bike for trips under 3 miles, (4) Compare gas prices with GasBuddy app - save $${(amt * 0.05).toFixed(0)}/month.`,
+          "Utilities": (amt) => `Utilities: $${amt.toFixed(2)}/month. Lower by: (1) LED bulbs in 10 fixtures - save $${Math.min(amt * 0.12, 15).toFixed(0)}/month, (2) Smart thermostat (adjust 3°) - save $${Math.min(amt * 0.10, 20).toFixed(0)}/month, (3) Unplug "vampire" devices - save $${Math.min(amt * 0.08, 12).toFixed(0)}/month, (4) Cold water for laundry - save $${Math.min(amt * 0.05, 8).toFixed(0)}/month.`,
+          "Healthcare": (amt) => `Healthcare: $${amt.toFixed(2)}/month. Optimize by: (1) Use generic medications - save $${(amt * 0.20).toFixed(0)}/month, (2) Check if eligible for HSA/FSA tax savings, (3) Use GoodRx for prescription discounts - potential $${(amt * 0.15).toFixed(0)}/month savings, (4) Preventive care to avoid bigger bills later.`,
+        };
+
         Object.entries(categorySpending).forEach(([category, amount]) => {
           const pct = (amount / monthlyIncome) * 100;
           if (pct > 25) {
+            const advice = categoryAdvice[category] 
+              ? categoryAdvice[category](amount)
+              : `You spent ${pct.toFixed(0)}% of income ($${amount.toFixed(2)}) on ${category}. Try: (1) Track every purchase for 1 week to identify waste, (2) Set a weekly budget of $${(amount / 4.33 * 0.85).toFixed(0)}, (3) Find one expense to eliminate - save $${(amount * 0.15).toFixed(0)}/month.`;
+            
             generatedRecs.push({
               id: `high-${category}`,
               type: "spending",
-              title: `Reduce ${category} Expenses`,
-              message: `You spent ${pct.toFixed(0)}% of your monthly income on ${category} ($${amount.toFixed(2)}). Consider reducing by 10% to save $${(amount * 0.1).toFixed(2)}/month.`,
+              title: `Cut ${category} Spending by $${(amount * 0.2).toFixed(0)}/Month`,
+              message: advice,
               icon: TrendingDown,
               color: "text-warning",
               bgColor: "bg-warning/10",
             });
           }
         });
+
+        // Add general savings strategies if spending is high but no category dominates
+        if (monthlyExpenses > monthlyIncome * 0.8 && Object.keys(categorySpending).length > 0) {
+          const topCategories = Object.entries(categorySpending)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+          
+          generatedRecs.push({
+            id: "general-savings",
+            type: "saving",
+            title: "Universal Money-Saving Strategies",
+            message: `Your top expenses: ${topCategories.map(([cat, amt]) => `${cat} ($${amt.toFixed(0)})`).join(", ")}. Quick wins: (1) Negotiate bills (internet, phone, insurance) - save $50-100/month, (2) Cancel unused subscriptions - average person wastes $80/month, (3) Use cashback credit card for all purchases - earn 1.5-2% back ($${(monthlyExpenses * 0.015).toFixed(0)}/month), (4) Automate savings: transfer $${Math.min(monthlyIncome * 0.10, 500).toFixed(0)} to savings on payday.`,
+            icon: PiggyBank,
+            color: "text-primary",
+            bgColor: "bg-primary/10",
+          });
+        }
       }
 
       // Rule 3: Emergency fund recommendation
@@ -127,28 +158,51 @@ const Recommendations = () => {
         });
       }
 
-      // Rule 4: Investment opportunities with specific recommendations
+      // Rule 4: Detailed investment opportunities with compound growth projections
       const totalInvestmentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
       const totalMonthlyContribution = investments.reduce((sum, inv) => sum + Number(inv.monthly_contribution), 0);
       
-      if (monthlyIncome > 0 && totalBalance > 2000 && totalMonthlyContribution < monthlyIncome * 0.1) {
-        const recommendedContribution = Math.min(monthlyIncome * 0.1, totalBalance * 0.05);
+      if (monthlyIncome > 0 && totalBalance > 2000 && totalMonthlyContribution < monthlyIncome * 0.15) {
+        const recommendedContribution = Math.min(monthlyIncome * 0.15, totalBalance * 0.05);
         const riskType = riskProfile?.recommended_profile || 'moderate';
         
-        let investmentSuggestions = '';
+        // Calculate 10-year compound growth projection
+        const yearsToProject = 10;
+        const annualReturn = riskType === 'conservative' ? 0.06 : riskType === 'moderate' ? 0.08 : 0.10;
+        const monthlyReturn = annualReturn / 12;
+        const futureValue = recommendedContribution * (((Math.pow(1 + monthlyReturn, yearsToProject * 12) - 1) / monthlyReturn));
+        const totalContributed = recommendedContribution * yearsToProject * 12;
+        const earnings = futureValue - totalContributed;
+        
+        let investmentDetails = '';
         if (riskType === 'conservative') {
-          investmentSuggestions = ' Consider: 60% bonds (BND), 30% dividend stocks (VYM), 10% high-yield savings.';
+          investmentDetails = `Start with: (1) Vanguard Total Bond (BND) - 50% allocation for stability, (2) Dividend Aristocrats ETF (NOBL) - 30% for steady income, (3) High-yield savings (Ally, Marcus) - 15% for liquidity, (4) Treasury I-Bonds - 5% for inflation protection. Expected: 6% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
         } else if (riskType === 'moderate') {
-          investmentSuggestions = ' Consider: 40% index funds (VOO, VTI), 30% bonds (BND), 20% growth stocks (QQQ), 10% international (VXUS).';
+          investmentDetails = `Balanced portfolio: (1) S&P 500 Index (VOO or SPY) - 35% for market returns, (2) Total Stock Market (VTI) - 25% for diversification, (3) Total Bond Market (BND) - 20% for stability, (4) Tech Growth (QQQ) - 12% for upside, (5) International (VXUS) - 8% for global exposure. Expected: 8% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
         } else {
-          investmentSuggestions = ' Consider: 50% growth stocks (QQQ, ARKK), 30% index funds (VOO), 15% emerging markets (VWO), 5% crypto-adjacent (BITO).';
+          investmentDetails = `Growth-focused: (1) Nasdaq 100 (QQQ) - 35% for tech exposure, (2) Growth ETF (ARKK or VUG) - 25% for innovation, (3) S&P 500 (VOO) - 20% for stability, (4) Emerging Markets (VWO or IEMG) - 12% for high growth, (5) Small Cap (VB) - 8% for aggressive gains. Expected: 10% annual return = $${futureValue.toFixed(0)} in ${yearsToProject} years ($${earnings.toFixed(0)} in gains).`;
         }
         
         generatedRecs.push({
           id: "investment-opportunity",
           type: "investment",
-          title: "Invest to Reach Goals Faster",
-          message: `Investing $${recommendedContribution.toFixed(2)}/month could accelerate your goals with potential 7-10% annual returns.${investmentSuggestions} This is general information, not personalized financial advice.`,
+          title: `Invest $${recommendedContribution.toFixed(0)}/Month → Earn $${earnings.toFixed(0)} in ${yearsToProject} Years`,
+          message: `Investing just $${recommendedContribution.toFixed(2)}/month (${((recommendedContribution/monthlyIncome)*100).toFixed(0)}% of income) could grow to $${futureValue.toFixed(0)} by year ${yearsToProject}. ${investmentDetails} Open account with: Fidelity, Vanguard, or Charles Schwab (no minimum, commission-free). This is educational information, not financial advice.`,
+          icon: TrendingUp,
+          color: "text-success",
+          bgColor: "bg-success/10",
+        });
+      }
+
+      // Rule 4b: Income generation opportunities
+      if (monthlyIncome > 0 && monthlyIncome < 6000) {
+        const targetExtra = Math.min(monthlyIncome * 0.25, 1000);
+        
+        generatedRecs.push({
+          id: "income-opportunities",
+          type: "investment",
+          title: `Boost Income by $${targetExtra.toFixed(0)}/Month`,
+          message: `Ways to earn an extra $${targetExtra.toFixed(0)}/month: (1) Freelance your skills on Upwork/Fiverr (writing, design, coding) - $25-100/hr, start with 5 hrs/week, (2) Gig economy (DoorDash, Uber) - $15-25/hr on weekends, 8 hrs/week = $${Math.min(targetExtra * 0.5, 500).toFixed(0)}/month, (3) Sell unused items on Facebook Marketplace/eBay - one-time $${Math.min(targetExtra * 0.8, 400).toFixed(0)}, then $${Math.min(targetExtra * 0.3, 150).toFixed(0)}/month ongoing, (4) Online tutoring (Wyzant, Chegg) - $20-40/hr, (5) Rent spare room/parking space - $${Math.min(targetExtra * 1.5, 800).toFixed(0)}/month passive, (6) Create digital products (templates, courses) on Etsy/Gumroad - start small, scale to $${Math.min(targetExtra * 0.6, 300).toFixed(0)}/month. Pick ONE to start this week.`,
           icon: TrendingUp,
           color: "text-success",
           bgColor: "bg-success/10",
