@@ -137,13 +137,14 @@ const Dashboard = () => {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
-              <DollarSign className="h-5 w-5 text-primary" />
+          <Card className="bg-gradient-card border-none shadow-luxe hover:shadow-glow transition-all duration-500 overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
+              <CardTitle className="text-sm font-medium relative z-10">Total Balance</CardTitle>
+              <DollarSign className="h-5 w-5 text-primary relative z-10" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-105">${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <p className="text-xs text-muted-foreground mt-1">Across all accounts</p>
             </CardContent>
           </Card>
@@ -202,13 +203,14 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
-              <TargetIcon className="h-5 w-5 text-primary" />
+          <Card className="bg-gradient-card border-none shadow-luxe hover:shadow-glow transition-all duration-500 overflow-hidden group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
+              <CardTitle className="text-sm font-medium relative z-10">Active Goals</CardTitle>
+              <TargetIcon className="h-5 w-5 text-primary relative z-10" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{goals.length}</div>
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-105">{goals.length}</div>
               <p className="text-xs text-muted-foreground mt-1">Financial goals in progress</p>
             </CardContent>
           </Card>
@@ -216,14 +218,14 @@ const Dashboard = () => {
 
         {/* Goals Preview */}
         {goals.length > 0 && (
-          <Card className="shadow-md">
+          <Card className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Your Goals</CardTitle>
-                <CardDescription>Track your progress towards financial goals</CardDescription>
+                <CardDescription>Track your progress towards financial milestones</CardDescription>
               </div>
               <Link to="/goals">
-                <Button variant="outline" size="sm">View All</Button>
+                <Button variant="outline" size="sm" className="hover:shadow-md transition-all">View All</Button>
               </Link>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -246,10 +248,10 @@ const Dashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <Card className="shadow-md">
+        <Card className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Get started with common tasks</CardDescription>
+            <CardDescription>Streamline your financial management</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

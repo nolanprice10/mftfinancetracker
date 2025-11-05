@@ -122,19 +122,19 @@ const Layout = ({ children }: LayoutProps) => {
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:flex lg:flex-col lg:w-64 lg:h-screen bg-card border-r border-border">
-        <div className="p-6 border-b border-border">
+      <aside className="hidden lg:fixed lg:flex lg:flex-col lg:w-64 lg:h-screen bg-card/95 backdrop-blur-sm border-r border-border/50 shadow-elegant">
+        <div className="p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-primary rounded-xl shadow-glow">
+            <div className="p-2 bg-gradient-wealth rounded-xl shadow-glow transition-all duration-300 hover:scale-110">
               <Wallet className="h-6 w-6 text-white" />
             </div>
-            <span className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
+            <span className="font-bold text-xl bg-gradient-wealth bg-clip-text text-transparent">
               MyFinanceTracker
             </span>
           </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -142,10 +142,10 @@ const Layout = ({ children }: LayoutProps) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                   isActive
-                    ? "bg-gradient-primary text-white shadow-md transform scale-105"
-                    : "hover:bg-muted hover:scale-105"
+                    ? "bg-gradient-wealth text-white shadow-elegant"
+                    : "hover:bg-muted/50 hover:translate-x-1"
                 }`}
               >
                 <Icon className="h-5 w-5" />

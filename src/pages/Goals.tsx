@@ -394,15 +394,15 @@ const Goals = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-luxe-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Financial Goals</h1>
-            <p className="text-muted-foreground">Track your savings and investment goals</p>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Financial Goals</h1>
+            <p className="text-muted-foreground">Milestone tracking and progress</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="shadow-elegant hover:shadow-luxe transition-all">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Goal
               </Button>
@@ -417,10 +417,10 @@ const Goals = () => {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
           {loading ? (
             [1, 2].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="animate-pulse shadow-elegant">
                 <CardHeader className="space-y-2">
                   <div className="h-4 bg-muted rounded w-3/4"></div>
                   <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -432,9 +432,13 @@ const Goals = () => {
               </Card>
             ))
           ) : goals.length === 0 ? (
-            <Card className="col-span-full">
-              <CardContent className="text-center py-12 text-muted-foreground">
-                No goals yet. Create your first goal to start tracking your progress!
+            <Card className="col-span-full shadow-luxe border-border/50">
+              <CardContent className="text-center py-16">
+                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Target className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-muted-foreground text-lg">No goals yet</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Create your first milestone</p>
               </CardContent>
             </Card>
           ) : (
@@ -447,8 +451,8 @@ const Goals = () => {
               const linkedAccount = accounts.find(a => a.id === goal.account_id);
 
               return (
-                <Card key={goal.id} className="shadow-md hover:shadow-glow transition-shadow">
-                  <CardHeader>
+                <Card key={goal.id} className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card overflow-hidden group">
+                  <CardHeader className="relative">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">{goal.name}</CardTitle>

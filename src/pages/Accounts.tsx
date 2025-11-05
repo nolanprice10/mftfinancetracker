@@ -256,15 +256,15 @@ const Accounts = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-luxe-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Accounts</h1>
-            <p className="text-muted-foreground">Manage your financial accounts</p>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Accounts</h1>
+            <p className="text-muted-foreground">Wealth account management</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="shadow-elegant hover:shadow-luxe transition-all">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Account
               </Button>
@@ -279,24 +279,26 @@ const Accounts = () => {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gradient-card shadow-elegant border-border">
-            <CardHeader>
-              <CardTitle className="text-xl">Total Balance</CardTitle>
-              <CardDescription>Across all accounts</CardDescription>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
+          <Card className="bg-gradient-card shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
+              <CardTitle className="text-xl relative z-10">Total Balance</CardTitle>
+              <CardDescription className="relative z-10">Across all accounts</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-primary">
+            <CardContent className="relative z-10">
+              <div className="text-5xl font-bold text-primary transition-all duration-300 group-hover:scale-105">
                 ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>
 
           {accounts.length > 0 && (
-            <Card className="bg-gradient-card shadow-elegant border-border">
-              <CardHeader>
-                <CardTitle className="text-xl">Account Distribution</CardTitle>
-                <CardDescription>Breakdown by account</CardDescription>
+            <Card className="bg-gradient-card shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
+              <CardHeader className="relative">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-success/5 rounded-full blur-2xl group-hover:bg-success/10 transition-all duration-700"></div>
+                <CardTitle className="text-xl relative z-10">Account Distribution</CardTitle>
+                <CardDescription className="relative z-10">Breakdown by account</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -327,10 +329,10 @@ const Accounts = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
           {loading ? (
             [1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="animate-pulse shadow-elegant">
                 <CardHeader className="space-y-2">
                   <div className="h-4 bg-muted rounded w-3/4"></div>
                   <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -341,24 +343,29 @@ const Accounts = () => {
               </Card>
             ))
           ) : accounts.length === 0 ? (
-            <Card className="col-span-full">
-              <CardContent className="text-center py-12 text-muted-foreground">
-                No accounts yet. Create your first account to get started!
+            <Card className="col-span-full shadow-luxe border-border/50">
+              <CardContent className="text-center py-16">
+                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Wallet className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-muted-foreground text-lg">No accounts yet</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Create your first account to begin tracking</p>
               </CardContent>
             </Card>
           ) : (
             accounts.map((account) => (
-              <Card key={account.id} className="shadow-md hover:shadow-glow transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
+              <Card key={account.id} className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card overflow-hidden group">
+                <CardHeader className="relative">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
+                  <div className="flex items-start justify-between relative z-10">
                     <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">{account.name}</CardTitle>
+                      <CardTitle className="text-xl mb-2 transition-colors duration-300 group-hover:text-primary">{account.name}</CardTitle>
                       <Badge className={accountTypeColors[account.type] || "bg-primary"}>
                         {account.type}
                       </Badge>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(account)}>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(account)} className="hover:bg-primary/10 transition-all">
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -368,18 +375,19 @@ const Accounts = () => {
                           setSelectedAccount(account);
                           setDeleteDialogOpen(true);
                         }}
+                        className="hover:bg-destructive/10 transition-all"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
+                <CardContent className="relative z-10">
+                  <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent transition-all duration-300 group-hover:scale-105">
                     ${Number(account.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   {account.notes && (
-                    <p className="text-sm text-muted-foreground mt-2">{account.notes}</p>
+                    <p className="text-sm text-muted-foreground mt-3 italic">{account.notes}</p>
                   )}
                 </CardContent>
               </Card>
