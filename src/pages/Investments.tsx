@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Investment {
   id: string;
@@ -284,6 +285,98 @@ const Investments = () => {
   const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
   const totalFutureValue = investments.reduce((sum, inv) => sum + calculateFutureValue(inv), 0);
 
+  // Portfolio Risk Analysis
+  const analyzePortfolioRisk = () => {
+    if (investments.length === 0) return null;
+
+    const totalValue = totalCurrentValue;
+    const allocations = investments.reduce((acc, inv) => {
+      const type = inv.type;
+      const value = Number(inv.current_value);
+      acc[type] = (acc[type] || 0) + value;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const percentages = Object.entries(allocations).reduce((acc, [type, value]) => {
+      acc[type] = (value / totalValue) * 100;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Risk scoring: higher risk = higher score
+    const riskScores: Record<string, number> = {
+      individual_stock: 85,
+      taxable_etf: 55,
+      index_fund: 45,
+      roth_ira: 40,
+      savings: 10,
+      other: 50,
+    };
+
+    const portfolioRiskScore = Object.entries(percentages).reduce((score, [type, pct]) => {
+      return score + (riskScores[type] || 50) * (pct / 100);
+    }, 0);
+
+    // Diversification score (more types = better diversification)
+    const numTypes = Object.keys(allocations).length;
+    const diversificationScore = Math.min(100, (numTypes / 4) * 100);
+
+    // Single investment concentration risk
+    const largestAllocation = Math.max(...Object.values(percentages));
+    const concentrationRisk = largestAllocation > 50 ? "High" : largestAllocation > 30 ? "Medium" : "Low";
+
+    let riskLevel: "Conservative" | "Moderate" | "Aggressive" | "Very Aggressive";
+    let riskColor: string;
+    let recommendations: string[];
+
+    if (portfolioRiskScore < 30) {
+      riskLevel = "Conservative";
+      riskColor = "text-success";
+      recommendations = [
+        "Your portfolio is well-balanced for capital preservation",
+        "Consider adding growth investments for long-term gains",
+        "High-yield savings provide stability but lower returns",
+      ];
+    } else if (portfolioRiskScore < 50) {
+      riskLevel = "Moderate";
+      riskColor = "text-primary";
+      recommendations = [
+        "Balanced approach between growth and security",
+        "Good mix of risk and stability",
+        "Consider tax-advantaged accounts like Roth IRA",
+      ];
+    } else if (portfolioRiskScore < 70) {
+      riskLevel = "Aggressive";
+      riskColor = "text-warning";
+      recommendations = [
+        "Higher growth potential with increased volatility",
+        "Ensure emergency fund is separate from investments",
+        "Review individual stock positions for over-concentration",
+      ];
+    } else {
+      riskLevel = "Very Aggressive";
+      riskColor = "text-destructive";
+      recommendations = [
+        "Very high risk - significant volatility expected",
+        "Consider diversifying into index funds and bonds",
+        "Only suitable if you have long time horizon (10+ years)",
+        "Ensure you can withstand 30-50% portfolio declines",
+      ];
+    }
+
+    return {
+      riskLevel,
+      riskScore: portfolioRiskScore,
+      riskColor,
+      diversificationScore,
+      concentrationRisk,
+      largestAllocation,
+      allocations: percentages,
+      recommendations,
+    };
+  };
+
+  const riskAnalysis = analyzePortfolioRisk();
+
   const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -465,15 +558,15 @@ const Investments = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-luxe-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Investments</h1>
-            <p className="text-muted-foreground">Track your investment portfolio and projections</p>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Investments</h1>
+            <p className="text-muted-foreground">Portfolio analysis and wealth projections</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="shadow-elegant hover:shadow-luxe transition-all">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Investment
               </Button>
@@ -488,36 +581,125 @@ const Investments = () => {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-gradient-card shadow-elegant border-border">
-            <CardHeader>
-              <CardTitle className="text-xl">Current Portfolio Value</CardTitle>
-              <CardDescription>Total value of all investments</CardDescription>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
+          <Card className="bg-gradient-card shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700"></div>
+              <CardTitle className="text-xl relative z-10">Current Portfolio Value</CardTitle>
+              <CardDescription className="relative z-10">Total wealth under management</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-primary">
+            <CardContent className="relative z-10">
+              <div className="text-5xl font-bold text-primary transition-all duration-300 group-hover:scale-105">
                 ${totalCurrentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-success shadow-elegant border-none">
-            <CardHeader>
-              <CardTitle className="text-xl text-success-foreground">Projected Future Value</CardTitle>
-              <CardDescription className="text-success-foreground/80">Based on contributions and returns</CardDescription>
+          <Card className="bg-gradient-success shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
+            <CardHeader className="relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
+              <CardTitle className="text-xl text-success-foreground relative z-10 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Projected Future Value
+              </CardTitle>
+              <CardDescription className="text-success-foreground/80 relative z-10">Compound growth trajectory</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-success-foreground">
+            <CardContent className="relative z-10">
+              <div className="text-5xl font-bold text-success-foreground transition-all duration-300 group-hover:scale-105">
                 ${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {riskAnalysis && (
+          <Card className="bg-gradient-card shadow-luxe border-none animate-luxe-fade-in overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Shield className="h-6 w-6 text-primary" />
+                Portfolio Risk Analysis
+              </CardTitle>
+              <CardDescription>Diversification and allocation assessment</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Risk Profile</span>
+                    <AlertTriangle className={`h-5 w-5 ${riskAnalysis.riskColor}`} />
+                  </div>
+                  <div className={`text-2xl font-bold ${riskAnalysis.riskColor}`}>
+                    {riskAnalysis.riskLevel}
+                  </div>
+                  <Progress value={riskAnalysis.riskScore} className="h-2" />
+                  <p className="text-xs text-muted-foreground">Risk Score: {riskAnalysis.riskScore.toFixed(0)}/100</p>
+                </div>
+
+                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Diversification</span>
+                    <Target className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className={`text-2xl font-bold ${riskAnalysis.diversificationScore > 75 ? 'text-success' : riskAnalysis.diversificationScore > 50 ? 'text-primary' : 'text-warning'}`}>
+                    {riskAnalysis.diversificationScore > 75 ? 'Excellent' : riskAnalysis.diversificationScore > 50 ? 'Good' : 'Limited'}
+                  </div>
+                  <Progress value={riskAnalysis.diversificationScore} className="h-2" />
+                  <p className="text-xs text-muted-foreground">{Object.keys(riskAnalysis.allocations).length} asset types</p>
+                </div>
+
+                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Concentration</span>
+                    <Shield className={`h-5 w-5 ${riskAnalysis.concentrationRisk === 'Low' ? 'text-success' : riskAnalysis.concentrationRisk === 'Medium' ? 'text-warning' : 'text-destructive'}`} />
+                  </div>
+                  <div className={`text-2xl font-bold ${riskAnalysis.concentrationRisk === 'Low' ? 'text-success' : riskAnalysis.concentrationRisk === 'Medium' ? 'text-warning' : 'text-destructive'}`}>
+                    {riskAnalysis.concentrationRisk}
+                  </div>
+                  <Progress value={riskAnalysis.largestAllocation} className="h-2" />
+                  <p className="text-xs text-muted-foreground">Largest: {riskAnalysis.largestAllocation.toFixed(1)}%</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-5 rounded-lg bg-primary/5 border border-primary/20">
+                <h4 className="font-semibold text-sm text-primary flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Allocation Breakdown
+                </h4>
+                <div className="space-y-2">
+                  {Object.entries(riskAnalysis.allocations).map(([type, percentage]) => (
+                    <div key={type} className="flex items-center justify-between gap-3">
+                      <span className="text-sm capitalize">{type.replace(/_/g, ' ')}</span>
+                      <div className="flex items-center gap-2 flex-1 max-w-xs">
+                        <Progress value={percentage} className="h-2" />
+                        <span className="text-sm font-medium min-w-[3rem] text-right">{percentage.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2 p-5 rounded-lg bg-muted/20 border border-border/50">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  Recommendations
+                </h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {riskAnalysis.recommendations.map((rec, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>{rec}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
           {loading ? (
             [1, 2].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="animate-pulse shadow-elegant">
                 <CardHeader className="space-y-2">
                   <div className="h-4 bg-muted rounded w-3/4"></div>
                   <div className="h-3 bg-muted rounded w-1/2"></div>
@@ -528,9 +710,13 @@ const Investments = () => {
               </Card>
             ))
           ) : investments.length === 0 ? (
-            <Card className="col-span-full">
-              <CardContent className="text-center py-12 text-muted-foreground">
-                No investments yet. Add your first investment to start tracking!
+            <Card className="col-span-full shadow-luxe border-border/50">
+              <CardContent className="text-center py-16">
+                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-muted-foreground text-lg">No investments yet</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Begin building your wealth portfolio</p>
               </CardContent>
             </Card>
           ) : (
@@ -540,22 +726,28 @@ const Investments = () => {
               const gainPercentage = (totalGain / Number(investment.current_value)) * 100;
 
               return (
-                <Card key={investment.id} className="shadow-md hover:shadow-glow transition-shadow border-border">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
+                <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card overflow-hidden group">
+                  <CardHeader className="relative">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
+                    <div className="flex items-start justify-between relative z-10">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">
+                        <CardTitle className="text-xl mb-2 transition-colors duration-300 group-hover:text-primary">
                           {investment.name}
                           {investment.ticker_symbol && (
-                            <span className="ml-2 text-sm text-muted-foreground">({investment.ticker_symbol})</span>
+                            <span className="ml-2 text-sm text-muted-foreground font-normal">({investment.ticker_symbol})</span>
                           )}
                         </CardTitle>
                         <Badge className={investmentTypeColors[investment.type] || "bg-primary"}>
                           {investment.type.replace(/_/g, " ")}
                         </Badge>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => openEditDialog(investment)}>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => openEditDialog(investment)}
+                          className="hover:bg-primary/10 transition-all"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
@@ -565,21 +757,22 @@ const Investments = () => {
                             setSelectedInvestment(investment);
                             setDeleteDialogOpen(true);
                           }}
+                          className="hover:bg-destructive/10 transition-all"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5 relative z-10">
                     {investment.type === "individual_stock" && investment.shares_owned ? (
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Shares Owned</p>
+                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <p className="text-xs text-muted-foreground mb-1.5">Shares Owned</p>
                           <p className="text-xl font-bold">{Number(investment.shares_owned).toFixed(3)}</p>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Price per Share</p>
+                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <p className="text-xs text-muted-foreground mb-1.5">Price per Share</p>
                           <p className="text-xl font-bold">
                             ${(Number(investment.current_value) / Number(investment.shares_owned)).toFixed(2)}
                           </p>
@@ -587,14 +780,14 @@ const Investments = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Current Value</p>
+                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <p className="text-xs text-muted-foreground mb-1.5">Current Value</p>
                           <p className="text-2xl font-bold">
                             ${Number(investment.current_value).toLocaleString()}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Monthly +</p>
+                        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                          <p className="text-xs text-muted-foreground mb-1.5">Monthly +</p>
                           <p className="text-2xl font-bold text-success">
                             ${Number(investment.monthly_contribution).toLocaleString()}
                           </p>
@@ -602,21 +795,22 @@ const Investments = () => {
                       </div>
                     )}
 
-                    <div className="pt-4 border-t border-border">
-                      <p className="text-lg font-semibold mb-1">Total Value</p>
-                      <p className="text-3xl font-bold text-primary">
+                    <div className="pt-4 border-t border-border/50">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Total Value</p>
+                      <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent transition-all duration-300 group-hover:scale-105">
                         ${Number(investment.current_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
 
-                    <div className="pt-4 border-t border-border">
-                      <p className="text-sm text-muted-foreground mb-2">
+                    <div className="pt-4 border-t border-border/50 p-4 rounded-lg bg-gradient-success/10">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
                         Projected in {investment.years_remaining} years @ {investment.annual_return_pct}% annual return
                       </p>
                       <p className="text-3xl font-bold bg-gradient-success bg-clip-text text-transparent">
                         ${futureValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </p>
-                      <p className="text-sm text-success mt-2">
+                      <p className="text-sm text-success mt-2 font-medium">
                         +${totalGain.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ({gainPercentage.toFixed(1)}% gain)
                       </p>
                     </div>
@@ -627,15 +821,15 @@ const Investments = () => {
           )}
         </div>
 
-        <Card className="bg-muted/30 border-border">
+        <Card className="bg-muted/20 border-border/30 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm">Disclaimer</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Important Disclaimer</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground/80 leading-relaxed">
               This information is educational and illustrative only and should not be considered financial or investment advice. 
               Past performance does not guarantee future results. Individual stock values shown are user-entered estimates and may not reflect real-time market prices.
-              Consult a licensed financial advisor before making investment decisions.
+              Risk analysis is algorithmic and may not capture all portfolio risks. Consult a licensed financial advisor before making investment decisions.
             </p>
           </CardContent>
         </Card>

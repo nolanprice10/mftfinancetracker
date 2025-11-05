@@ -16,112 +16,130 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 40 20% 96%;
-    --foreground: 150 10% 15%;
+    /* Rich, sophisticated color palette - old money meets modern */
+    --background: 36 25% 97%;
+    --foreground: 150 15% 12%;
 
-    --card: 40 30% 98%;
-    --card-foreground: 150 10% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 15% 12%;
 
-    --popover: 40 30% 98%;
-    --popover-foreground: 150 10% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 15% 12%;
 
-    --primary: 150 40% 25%;
-    --primary-foreground: 40 30% 98%;
-    --primary-hover: 150 40% 30%;
+    /* Deep forest green - old money sophistication */
+    --primary: 152 35% 22%;
+    --primary-foreground: 36 30% 98%;
+    --primary-hover: 152 35% 28%;
+    --primary-glow: 152 45% 35%;
 
-    --secondary: 45 80% 45%;
-    --secondary-foreground: 150 10% 15%;
+    /* Refined gold accent */
+    --secondary: 43 75% 58%;
+    --secondary-foreground: 150 15% 12%;
 
-    --success: 150 50% 35%;
-    --success-foreground: 40 30% 98%;
+    /* Wealth green */
+    --success: 150 48% 35%;
+    --success-foreground: 36 30% 98%;
 
-    --warning: 35 85% 50%;
-    --warning-foreground: 150 10% 15%;
+    /* Amber warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 150 15% 12%;
 
-    --muted: 40 15% 92%;
-    --muted-foreground: 150 5% 45%;
+    /* Sophisticated neutrals */
+    --muted: 36 15% 94%;
+    --muted-foreground: 150 8% 42%;
 
-    --accent: 20 45% 50%;
-    --accent-foreground: 40 30% 98%;
+    /* Burgundy accent */
+    --accent: 358 45% 38%;
+    --accent-foreground: 36 30% 98%;
 
-    --destructive: 0 60% 45%;
-    --destructive-foreground: 40 30% 98%;
+    --destructive: 0 65% 48%;
+    --destructive-foreground: 36 30% 98%;
 
-    --border: 40 15% 85%;
-    --input: 40 15% 88%;
-    --ring: 150 40% 25%;
+    --border: 36 12% 88%;
+    --input: 36 12% 92%;
+    --ring: 152 35% 22%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --chart-1: 150 40% 25%;
-    --chart-2: 45 80% 45%;
-    --chart-3: 20 45% 50%;
-    --chart-4: 200 40% 40%;
-    --chart-5: 0 60% 45%;
+    --chart-1: 152 35% 22%;
+    --chart-2: 43 75% 58%;
+    --chart-3: 358 45% 38%;
+    --chart-4: 195 45% 42%;
+    --chart-5: 0 65% 48%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(150 40% 25%) 0%, hsl(150 50% 35%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 50% 35%) 0%, hsl(150 40% 40%) 100%);
-    --gradient-card: linear-gradient(to bottom, hsl(40 30% 98%), hsl(40 25% 95%));
-    --gradient-gold: linear-gradient(135deg, hsl(45 80% 55%) 0%, hsl(35 75% 45%) 100%);
+    /* Luxurious gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(152 35% 22%) 0%, hsl(152 45% 28%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(150 48% 35%) 0%, hsl(150 52% 42%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%) 0%, hsl(36 20% 98%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 85% 65%) 0%, hsl(43 75% 48%) 100%);
+    --gradient-wealth: linear-gradient(135deg, hsl(152 35% 22%) 0%, hsl(152 45% 35%) 50%, hsl(43 75% 58%) 100%);
+    
+    /* Refined shadows with depth */
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 10px 20px -5px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+    --shadow-glow: 0 0 40px hsl(152 45% 35% / 0.12), 0 0 15px hsl(152 45% 35% / 0.08);
+    --shadow-elegant: 0 12px 24px -8px rgb(0 0 0 / 0.15), 0 4px 12px -4px rgb(0 0 0 / 0.08);
+    --shadow-luxe: 0 20px 40px -12px rgb(0 0 0 / 0.18), 0 8px 16px -4px rgb(0 0 0 / 0.1);
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    --shadow-glow: 0 0 25px hsl(150 40% 25% / 0.15);
-    --shadow-elegant: 0 8px 16px -4px rgb(0 0 0 / 0.12);
-
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Smooth, refined transitions */
+    --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-elegant: all 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .dark {
-    --background: 150 15% 8%;
-    --foreground: 40 30% 95%;
+    /* Rich dark mode - elegant and modern */
+    --background: 150 18% 8%;
+    --foreground: 36 25% 96%;
 
-    --card: 150 12% 12%;
-    --card-foreground: 40 30% 95%;
+    --card: 152 15% 11%;
+    --card-foreground: 36 25% 96%;
 
-    --popover: 150 12% 12%;
-    --popover-foreground: 40 30% 95%;
+    --popover: 152 15% 11%;
+    --popover-foreground: 36 25% 96%;
 
-    --primary: 150 40% 35%;
-    --primary-foreground: 40 30% 95%;
-    --primary-hover: 150 40% 40%;
+    --primary: 152 42% 38%;
+    --primary-foreground: 36 25% 96%;
+    --primary-hover: 152 42% 45%;
+    --primary-glow: 152 50% 48%;
 
-    --secondary: 45 80% 55%;
-    --secondary-foreground: 150 15% 8%;
+    --secondary: 43 85% 65%;
+    --secondary-foreground: 150 18% 8%;
 
-    --success: 150 50% 40%;
-    --success-foreground: 40 30% 95%;
+    --success: 150 52% 42%;
+    --success-foreground: 36 25% 96%;
 
-    --warning: 35 85% 55%;
-    --warning-foreground: 150 15% 8%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 150 18% 8%;
 
-    --muted: 150 10% 18%;
-    --muted-foreground: 40 15% 65%;
+    --muted: 150 12% 16%;
+    --muted-foreground: 36 15% 68%;
 
-    --accent: 20 50% 55%;
-    --accent-foreground: 40 30% 95%;
+    --accent: 358 48% 45%;
+    --accent-foreground: 36 25% 96%;
 
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 40 30% 95%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 36 25% 96%;
 
     --border: 150 10% 22%;
-    --input: 150 10% 22%;
-    --ring: 150 40% 35%;
+    --input: 150 10% 18%;
+    --ring: 152 42% 38%;
 
-    --chart-1: 150 40% 35%;
-    --chart-2: 45 80% 55%;
-    --chart-3: 20 50% 55%;
-    --chart-4: 200 40% 45%;
-    --chart-5: 0 60% 50%;
+    --chart-1: 152 42% 38%;
+    --chart-2: 43 85% 65%;
+    --chart-3: 358 48% 45%;
+    --chart-4: 195 48% 48%;
+    --chart-5: 0 68% 52%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(150 40% 35%) 0%, hsl(150 50% 40%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 50% 40%) 0%, hsl(150 40% 45%) 100%);
-    --gradient-card: linear-gradient(to bottom, hsl(150 12% 12%), hsl(150 12% 10%));
-    --gradient-gold: linear-gradient(135deg, hsl(45 80% 60%) 0%, hsl(35 75% 50%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(152 42% 38%) 0%, hsl(152 50% 45%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(150 52% 42%) 0%, hsl(150 55% 48%) 100%);
+    --gradient-card: linear-gradient(160deg, hsl(152 15% 11%) 0%, hsl(152 18% 9%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 88% 68%) 0%, hsl(43 80% 55%) 100%);
+    --gradient-wealth: linear-gradient(135deg, hsl(152 42% 38%) 0%, hsl(152 50% 45%) 50%, hsl(43 85% 65%) 100%);
 
-    --shadow-glow: 0 0 30px hsl(150 40% 35% / 0.25);
-    --shadow-elegant: 0 8px 16px -4px rgb(0 0 0 / 0.2);
+    --shadow-glow: 0 0 45px hsl(152 50% 45% / 0.2), 0 0 20px hsl(152 50% 45% / 0.12);
+    --shadow-elegant: 0 12px 24px -8px rgb(0 0 0 / 0.3), 0 4px 12px -4px rgb(0 0 0 / 0.2);
+    --shadow-luxe: 0 20px 40px -12px rgb(0 0 0 / 0.35), 0 8px 16px -4px rgb(0 0 0 / 0.25);
   }
 }
 
@@ -142,40 +160,72 @@ All colors MUST be HSL.
     @apply outline-none ring-2 ring-primary/20 ring-offset-2 ring-offset-background;
   }
 
-  /* Gentle hover animations for interactive elements */
+  /* Refined hover animations for interactive elements */
   button,
   a,
   [role="button"] {
-    @apply transition-all duration-200 ease-in-out;
+    @apply transition-all duration-300 ease-out;
   }
 
   button:hover:not(:disabled),
   a:hover,
   [role="button"]:hover {
-    @apply scale-[1.01];
+    @apply scale-[1.02] shadow-md;
   }
 
   button:active:not(:disabled),
   a:active,
   [role="button"]:active {
-    @apply scale-[0.99];
+    @apply scale-[0.98];
   }
 
-  /* Subtle input interactions */
+  /* Elegant input interactions */
   input:focus,
   textarea:focus,
   select:focus {
-    @apply translate-y-[-1px];
+    @apply translate-y-[-2px] shadow-sm;
   }
 
-  /* Card subtle hover effects */
+  /* Card refined hover effects */
   [class*="Card"]:hover,
   .card:hover {
-    @apply shadow-md;
+    @apply shadow-elegant;
   }
 
   /* Smooth transitions for all color changes */
   * {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  /* Luxurious fade-in animation */
+  @keyframes luxe-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-luxe-fade-in {
+    animation: luxe-fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  /* Stagger animation for children */
+  .stagger-children > * {
+    opacity: 0;
+    animation: luxe-fade-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+  .stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
 }
