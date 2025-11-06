@@ -33,7 +33,7 @@ export const transactionSchema = z.object({
 // Investment validation schema
 export const investmentSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  type: z.enum(['roth_ira', 'taxable_etf', 'index_fund', 'individual_stock', 'savings', 'other']),
+  type: z.enum(['roth_ira', 'taxable_etf', 'index_fund', 'individual_stock', 'crypto', 'savings', 'other']),
   current_value: z.number()
     .nonnegative("Current value cannot be negative")
     .max(999999999, "Current value is too large")
@@ -50,7 +50,7 @@ export const investmentSchema = z.object({
     .positive("Years remaining must be positive")
     .max(100, "Years remaining is too high")
     .refine(val => !isNaN(val), "Invalid years remaining"),
-  ticker_symbol: z.string().trim().max(10, "Ticker symbol too long").optional().nullable(),
+  ticker_symbol: z.string().trim().max(50, "Ticker symbol too long").optional().nullable(),
   shares_owned: z.number().nonnegative("Shares cannot be negative").max(999999999, "Shares too large").optional().nullable(),
   purchase_price_per_share: z.number().nonnegative("Price cannot be negative").max(999999999, "Price too large").optional().nullable()
 });

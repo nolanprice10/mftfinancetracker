@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
+import { PerformanceChart } from "@/components/PerformanceChart";
+import { useFormInput } from "@/hooks/useFormInput";
 
 interface Investment {
   id: string;
@@ -26,6 +28,12 @@ interface Investment {
   purchase_price_per_share?: number;
 }
 
+interface PriceData {
+  price: number;
+  change24h: number;
+  history: Array<{ date: string; price: number }>;
+}
+
 const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,22 +41,33 @@ const Investments = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    type: "index_fund",
-    current_value: "",
-    monthly_contribution: "",
-    annual_return_pct: "7",
-    years_remaining: "10",
-    ticker_symbol: "",
-    shares_owned: "",
-    purchase_price_per_share: "",
-  });
+  const [priceData, setPriceData] = useState<Record<string, PriceData>>({});
+  
+  // Use useFormInput for all text inputs to prevent keyboard dismissal
+  const nameInput = useFormInput("");
+  const tickerInput = useFormInput("");
+  const sharesInput = useFormInput("");
+  const pricePerShareInput = useFormInput("");
+  const currentValueInput = useFormInput("");
+  const monthlyContributionInput = useFormInput("");
+  const annualReturnInput = useFormInput("7");
+  const yearsRemainingInput = useFormInput("10");
+  
+  const [formType, setFormType] = useState("index_fund");
   const [fetchingPrice, setFetchingPrice] = useState(false);
 
   useEffect(() => {
     fetchInvestments();
   }, []);
+
+  useEffect(() => {
+    // Fetch price data for all investments with tickers
+    investments.forEach(inv => {
+      if (inv.ticker_symbol && (inv.type === "individual_stock" || inv.type === "crypto")) {
+        fetchPriceData(inv.ticker_symbol, inv.type);
+      }
+    });
+  }, [investments]);
 
   const fetchInvestments = async () => {
     try {
@@ -69,6 +88,27 @@ const Investments = () => {
     }
   };
 
+  const fetchPriceData = async (ticker: string, type: string) => {
+    try {
+      const response = await supabase.functions.invoke('fetch-stock-price', {
+        body: { ticker, type }
+      });
+
+      if (response.data?.success) {
+        setPriceData(prev => ({
+          ...prev,
+          [ticker]: {
+            price: response.data.price,
+            change24h: response.data.change24h,
+            history: response.data.history || []
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching price data:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,18 +116,19 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Validate input data
+      const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: formData.name,
-        type: formData.type,
-        current_value: parseFloat(formData.current_value),
-        monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
-        annual_return_pct: parseFloat(formData.annual_return_pct),
-        years_remaining: parseFloat(formData.years_remaining),
-        ticker_symbol: formData.type === "individual_stock" ? formData.ticker_symbol || null : null,
-        shares_owned: formData.type === "individual_stock" && formData.shares_owned ? parseFloat(formData.shares_owned) : null,
-        purchase_price_per_share: formData.type === "individual_stock" && formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null
+        name: nameInput.value,
+        type: formType,
+        current_value: parseFloat(currentValueInput.value),
+        monthly_contribution: parseFloat(monthlyContributionInput.value || "0"),
+        annual_return_pct: parseFloat(annualReturnInput.value),
+        years_remaining: parseFloat(yearsRemainingInput.value),
+        ticker_symbol: isCryptoOrStock ? tickerInput.value || null : null,
+        shares_owned: isCryptoOrStock && sharesInput.value ? parseFloat(sharesInput.value) : null,
+        purchase_price_per_share: isCryptoOrStock && pricePerShareInput.value ? parseFloat(pricePerShareInput.value) : null
       });
 
       if (!validationResult.success) {
@@ -127,18 +168,19 @@ const Investments = () => {
     if (!selectedInvestment) return;
 
     try {
-      // Validate input data
+      const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: formData.name,
-        type: formData.type,
-        current_value: parseFloat(formData.current_value),
-        monthly_contribution: parseFloat(formData.monthly_contribution || "0"),
-        annual_return_pct: parseFloat(formData.annual_return_pct),
-        years_remaining: parseFloat(formData.years_remaining),
-        ticker_symbol: formData.type === "individual_stock" ? formData.ticker_symbol || null : null,
-        shares_owned: formData.type === "individual_stock" && formData.shares_owned ? parseFloat(formData.shares_owned) : null,
-        purchase_price_per_share: formData.type === "individual_stock" && formData.purchase_price_per_share ? parseFloat(formData.purchase_price_per_share) : null
+        name: nameInput.value,
+        type: formType,
+        current_value: parseFloat(currentValueInput.value),
+        monthly_contribution: parseFloat(monthlyContributionInput.value || "0"),
+        annual_return_pct: parseFloat(annualReturnInput.value),
+        years_remaining: parseFloat(yearsRemainingInput.value),
+        ticker_symbol: isCryptoOrStock ? tickerInput.value || null : null,
+        shares_owned: isCryptoOrStock && sharesInput.value ? parseFloat(sharesInput.value) : null,
+        purchase_price_per_share: isCryptoOrStock && pricePerShareInput.value ? parseFloat(pricePerShareInput.value) : null
       });
 
       if (!validationResult.success) {
@@ -196,45 +238,45 @@ const Investments = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      type: "index_fund",
-      current_value: "",
-      monthly_contribution: "",
-      annual_return_pct: "7",
-      years_remaining: "10",
-      ticker_symbol: "",
-      shares_owned: "",
-      purchase_price_per_share: "",
-    });
+    nameInput.reset();
+    tickerInput.reset();
+    sharesInput.reset();
+    pricePerShareInput.reset();
+    currentValueInput.reset();
+    monthlyContributionInput.reset();
+    annualReturnInput.reset();
+    yearsRemainingInput.reset();
+    setFormType("index_fund");
   };
 
-  const fetchStockPrice = async (ticker: string) => {
+  const fetchPrice = async (ticker: string, type: string) => {
     if (!ticker) return;
     
     setFetchingPrice(true);
     try {
       const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker }
+        body: { ticker, type }
       });
 
       if (response.data?.success && response.data?.price) {
         const price = response.data.price;
-        const shares = parseFloat(formData.shares_owned) || 0;
+        const shares = parseFloat(sharesInput.value) || 0;
         
-        setFormData(prev => ({
-          ...prev,
-          purchase_price_per_share: price.toString(),
-          current_value: shares > 0 ? (price * shares).toString() : price.toString()
-        }));
+        // Update using the input's internal state setter
+        const priceStr = price.toString();
+        const valueStr = shares > 0 ? (price * shares).toString() : priceStr;
         
-        toast.success(`Current price for ${ticker}: $${price}`);
+        // Manually trigger updates
+        pricePerShareInput.onChange({ target: { value: priceStr } } as any);
+        currentValueInput.onChange({ target: { value: valueStr } } as any);
+        
+        toast.success(`Current price for ${ticker}: $${price} ${response.data.change24h !== undefined ? `(${response.data.change24h > 0 ? '+' : ''}${response.data.change24h.toFixed(2)}%)` : ''}`);
       } else {
         toast.error(`Could not fetch price for ${ticker}`);
       }
     } catch (error: any) {
-      console.error('Error fetching stock price:', error);
-      toast.error('Failed to fetch stock price');
+      console.error('Error fetching price:', error);
+      toast.error('Failed to fetch price');
     } finally {
       setFetchingPrice(false);
     }
@@ -242,17 +284,15 @@ const Investments = () => {
 
   const openEditDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
-    setFormData({
-      name: investment.name,
-      type: investment.type,
-      current_value: investment.current_value.toString(),
-      monthly_contribution: investment.monthly_contribution.toString(),
-      annual_return_pct: investment.annual_return_pct.toString(),
-      years_remaining: investment.years_remaining.toString(),
-      ticker_symbol: investment.ticker_symbol || "",
-      shares_owned: investment.shares_owned?.toString() || "",
-      purchase_price_per_share: investment.purchase_price_per_share?.toString() || "",
-    });
+    nameInput.onChange({ target: { value: investment.name } } as any);
+    setFormType(investment.type);
+    currentValueInput.onChange({ target: { value: investment.current_value.toString() } } as any);
+    monthlyContributionInput.onChange({ target: { value: investment.monthly_contribution.toString() } } as any);
+    annualReturnInput.onChange({ target: { value: investment.annual_return_pct.toString() } } as any);
+    yearsRemainingInput.onChange({ target: { value: investment.years_remaining.toString() } } as any);
+    tickerInput.onChange({ target: { value: investment.ticker_symbol || "" } } as any);
+    sharesInput.onChange({ target: { value: investment.shares_owned?.toString() || "" } } as any);
+    pricePerShareInput.onChange({ target: { value: investment.purchase_price_per_share?.toString() || "" } } as any);
     setEditDialogOpen(true);
   };
 
@@ -278,8 +318,9 @@ const Investments = () => {
     taxable_etf: "bg-secondary text-secondary-foreground",
     index_fund: "bg-success text-success-foreground",
     individual_stock: "bg-accent text-accent-foreground",
+    crypto: "bg-warning text-warning-foreground",
     savings: "bg-muted text-muted-foreground",
-    other: "bg-warning text-warning-foreground",
+    other: "bg-info text-info-foreground",
   };
 
   const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
@@ -302,9 +343,9 @@ const Investments = () => {
       return acc;
     }, {} as Record<string, number>);
 
-    // Risk scoring: higher risk = higher score
     const riskScores: Record<string, number> = {
       individual_stock: 85,
+      crypto: 95,
       taxable_etf: 55,
       index_fund: 45,
       roth_ira: 40,
@@ -316,11 +357,9 @@ const Investments = () => {
       return score + (riskScores[type] || 50) * (pct / 100);
     }, 0);
 
-    // Diversification score (more types = better diversification)
     const numTypes = Object.keys(allocations).length;
-    const diversificationScore = Math.min(100, (numTypes / 4) * 100);
+    const diversificationScore = Math.min(100, (numTypes / 5) * 100);
 
-    // Single investment concentration risk
     const largestAllocation = Math.max(...Object.values(percentages));
     const concentrationRisk = largestAllocation > 50 ? "High" : largestAllocation > 30 ? "Medium" : "Low";
 
@@ -332,34 +371,34 @@ const Investments = () => {
       riskLevel = "Conservative";
       riskColor = "text-success";
       recommendations = [
-        "Your portfolio is well-balanced for capital preservation",
-        "Consider adding growth investments for long-term gains",
-        "High-yield savings provide stability but lower returns",
+        "Well-balanced for capital preservation",
+        "Consider growth investments for long-term gains",
+        "Stability-focused with lower returns",
       ];
     } else if (portfolioRiskScore < 50) {
       riskLevel = "Moderate";
       riskColor = "text-primary";
       recommendations = [
-        "Balanced approach between growth and security",
-        "Good mix of risk and stability",
-        "Consider tax-advantaged accounts like Roth IRA",
+        "Balanced growth and security approach",
+        "Good risk/reward balance",
+        "Consider tax-advantaged accounts",
       ];
     } else if (portfolioRiskScore < 70) {
       riskLevel = "Aggressive";
       riskColor = "text-warning";
       recommendations = [
-        "Higher growth potential with increased volatility",
-        "Ensure emergency fund is separate from investments",
-        "Review individual stock positions for over-concentration",
+        "Higher growth with increased volatility",
+        "Ensure emergency fund is separate",
+        "Review concentration risk",
       ];
     } else {
       riskLevel = "Very Aggressive";
       riskColor = "text-destructive";
       recommendations = [
-        "Very high risk - significant volatility expected",
-        "Consider diversifying into index funds and bonds",
-        "Only suitable if you have long time horizon (10+ years)",
-        "Ensure you can withstand 30-50% portfolio declines",
+        "Very high risk - significant volatility",
+        "Consider diversifying into stable assets",
+        "Only suitable for 10+ year horizon",
+        "Prepare for 30-50% portfolio swings",
       ];
     }
 
@@ -377,204 +416,245 @@ const Investments = () => {
 
   const riskAnalysis = analyzePortfolioRisk();
 
-  const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Investment Name</Label>
-        <Input
-          placeholder="e.g., Roth IRA, AAPL Stock"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          autoComplete="off"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Type</Label>
-        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="roth_ira">Roth IRA</SelectItem>
-            <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
-            <SelectItem value="index_fund">Index Fund</SelectItem>
-            <SelectItem value="individual_stock">Individual Stock</SelectItem>
-            <SelectItem value="savings">High-Yield Savings</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+  const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
+    const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+    
+    return (
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Investment Name</Label>
+          <Input
+            placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
+            value={nameInput.value}
+            onChange={nameInput.onChange}
+            autoComplete="off"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Type</Label>
+          <Select value={formType} onValueChange={setFormType}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="roth_ira">Roth IRA</SelectItem>
+              <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
+              <SelectItem value="index_fund">Index Fund</SelectItem>
+              <SelectItem value="individual_stock">Individual Stock</SelectItem>
+              <SelectItem value="crypto">Cryptocurrency</SelectItem>
+              <SelectItem value="savings">High-Yield Savings</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      {formData.type === "individual_stock" ? (
-        <>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Label>Ticker Symbol</Label>
+        {isCryptoOrStock ? (
+          <>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
+                  <Input
+                    placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
+                    value={tickerInput.value}
+                    onChange={(e) => {
+                      const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+                      tickerInput.onChange({ target: { value } } as any);
+                    }}
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    onClick={() => fetchPrice(tickerInput.value, formType)}
+                    disabled={!tickerInput.value || fetchingPrice}
+                    variant="outline"
+                  >
+                    {fetchingPrice ? "Fetching..." : "Get Price"}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formType === "crypto" ? "Price from CoinGecko API" : "Price from Yahoo Finance"}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
                 <Input
-                  placeholder="e.g., AAPL, MSFT, GOOGL"
-                  value={formData.ticker_symbol}
+                  type="number"
+                  step="0.001"
+                  placeholder="10"
+                  value={sharesInput.value}
                   onChange={(e) => {
-                    const ticker = e.target.value.toUpperCase();
-                    setFormData({ ...formData, ticker_symbol: ticker });
-                  }}
-                  onBlur={() => {
-                    if (formData.ticker_symbol && formData.ticker_symbol.length > 0) {
-                      fetchStockPrice(formData.ticker_symbol);
+                    sharesInput.onChange(e);
+                    const shares = e.target.value;
+                    const price = parseFloat(pricePerShareInput.value) || 0;
+                    if (shares && price > 0) {
+                      currentValueInput.onChange({ target: { value: (parseFloat(shares) * price).toString() } } as any);
                     }
                   }}
                   autoComplete="off"
                   required
                 />
               </div>
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  onClick={() => fetchStockPrice(formData.ticker_symbol)}
-                  disabled={!formData.ticker_symbol || fetchingPrice}
-                  variant="outline"
-                >
-                  {fetchingPrice ? "Fetching..." : "Get Price"}
-                </Button>
+              <div className="space-y-2">
+                <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Auto-fetched"
+                  value={pricePerShareInput.value}
+                  onChange={(e) => {
+                    pricePerShareInput.onChange(e);
+                    const price = e.target.value;
+                    const shares = parseFloat(sharesInput.value) || 0;
+                    if (price && shares > 0) {
+                      currentValueInput.onChange({ target: { value: (parseFloat(price) * shares).toString() } } as any);
+                    }
+                  }}
+                  autoComplete="off"
+                  required
+                  disabled={fetchingPrice}
+                />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Price fetched from Yahoo Finance
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Shares Owned</Label>
-              <Input
-                type="number"
-                step="0.001"
-                placeholder="10"
-                value={formData.shares_owned}
-                onChange={(e) => {
-                  const shares = e.target.value;
-                  const price = parseFloat(formData.purchase_price_per_share) || 0;
-                  setFormData({ 
-                    ...formData, 
-                    shares_owned: shares,
-                    current_value: shares && price > 0 ? (parseFloat(shares) * price).toString() : formData.current_value
-                  });
-                }}
-                autoComplete="off"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Current Price/Share</Label>
+              <Label>Total Value</Label>
               <Input
                 type="number"
                 step="0.01"
-                placeholder="Auto-fetched"
-                value={formData.purchase_price_per_share}
-                onChange={(e) => {
-                  const price = e.target.value;
-                  const shares = parseFloat(formData.shares_owned) || 0;
-                  setFormData({ 
-                    ...formData, 
-                    purchase_price_per_share: price,
-                    current_value: price && shares > 0 ? (parseFloat(price) * shares).toString() : price
-                  });
-                }}
-                autoComplete="off"
-                required
-                disabled={fetchingPrice}
+                placeholder="Calculated automatically"
+                value={currentValueInput.value}
+                disabled
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Total Value</Label>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="Calculated automatically"
-              value={formData.current_value}
-              disabled
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Current Value</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="10000"
-                value={formData.current_value}
-                onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
-                autoComplete="off"
-                required
-              />
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Current Value</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="10000"
+                  value={currentValueInput.value}
+                  onChange={currentValueInput.onChange}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Contribution</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="500"
+                  value={monthlyContributionInput.value}
+                  onChange={monthlyContributionInput.onChange}
+                  autoComplete="off"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Monthly Contribution</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="500"
-                value={formData.monthly_contribution}
-                onChange={(e) => setFormData({ ...formData, monthly_contribution: e.target.value })}
-                autoComplete="off"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Expected Annual Return (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="7"
+                  value={annualReturnInput.value}
+                  onChange={annualReturnInput.onChange}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Years to Project</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  placeholder="10"
+                  value={yearsRemainingInput.value}
+                  onChange={yearsRemainingInput.onChange}
+                  autoComplete="off"
+                  required
+                />
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Expected Annual Return (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="7"
-                value={formData.annual_return_pct}
-                onChange={(e) => setFormData({ ...formData, annual_return_pct: e.target.value })}
-                autoComplete="off"
-                required
-              />
+          </>
+        )}
+
+        {!isCryptoOrStock && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Expected Annual Return (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="7"
+                  value={annualReturnInput.value}
+                  onChange={annualReturnInput.onChange}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Years to Project</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  placeholder="10"
+                  value={yearsRemainingInput.value}
+                  onChange={yearsRemainingInput.onChange}
+                  autoComplete="off"
+                  required
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Years to Project</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="10"
-                value={formData.years_remaining}
-                onChange={(e) => setFormData({ ...formData, years_remaining: e.target.value })}
-                autoComplete="off"
-                required
-              />
-            </div>
-          </div>
-        </>
-      )}
-      <Button type="submit" className="w-full">{buttonText}</Button>
-    </form>
-  );
+          </>
+        )}
+
+        <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
+          {buttonText}
+        </Button>
+      </form>
+    );
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="p-8 animate-luxe-fade-in">
+          <div className="text-center">Loading investments...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="space-y-8 animate-luxe-fade-in">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Investments</h1>
-            <p className="text-muted-foreground">Portfolio analysis and wealth projections</p>
-          </div>
+      <div className="p-8 space-y-6 animate-luxe-fade-in">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
+            Investment Portfolio
+          </h1>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="shadow-elegant hover:shadow-luxe transition-all">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button className="shadow-elegant hover:shadow-luxe">
+                <Plus className="w-4 h-4 mr-2" />
                 Add Investment
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add Investment</DialogTitle>
-                <DialogDescription>Track a new investment account</DialogDescription>
+                <DialogTitle>Add New Investment</DialogTitle>
+                <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
               </DialogHeader>
               <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
             </DialogContent>
@@ -582,112 +662,70 @@ const Investments = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
-          <Card className="bg-gradient-card shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
-            <CardHeader className="relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700"></div>
-              <CardTitle className="text-xl relative z-10">Current Portfolio Value</CardTitle>
-              <CardDescription className="relative z-10">Total wealth under management</CardDescription>
+          <Card className="shadow-luxe hover:shadow-glow transition-all duration-300 bg-gradient-card border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-success" />
+                Total Current Value
+              </CardTitle>
             </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-5xl font-bold text-primary transition-all duration-300 group-hover:scale-105">
-                ${totalCurrentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
+            <CardContent>
+              <div className="text-3xl font-bold">${totalCurrentValue.toFixed(2)}</div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-success shadow-luxe border-none overflow-hidden group hover:shadow-glow transition-all duration-500">
-            <CardHeader className="relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
-              <CardTitle className="text-xl text-success-foreground relative z-10 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+          <Card className="shadow-luxe hover:shadow-glow transition-all duration-300 bg-gradient-card border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
                 Projected Future Value
               </CardTitle>
-              <CardDescription className="text-success-foreground/80 relative z-10">Compound growth trajectory</CardDescription>
             </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="text-5xl font-bold text-success-foreground transition-all duration-300 group-hover:scale-105">
-                ${totalFutureValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
+            <CardContent>
+              <div className="text-3xl font-bold">${totalFutureValue.toFixed(2)}</div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Potential gain: ${(totalFutureValue - totalCurrentValue).toFixed(2)}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {riskAnalysis && (
-          <Card className="bg-gradient-card shadow-luxe border-none animate-luxe-fade-in overflow-hidden">
+          <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Shield className="h-6 w-6 text-primary" />
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
                 Portfolio Risk Analysis
               </CardTitle>
-              <CardDescription>Diversification and allocation assessment</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Risk Profile</span>
-                    <AlertTriangle className={`h-5 w-5 ${riskAnalysis.riskColor}`} />
-                  </div>
-                  <div className={`text-2xl font-bold ${riskAnalysis.riskColor}`}>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Risk Level</div>
+                  <div className={`text-xl font-bold ${riskAnalysis.riskColor}`}>
                     {riskAnalysis.riskLevel}
                   </div>
-                  <Progress value={riskAnalysis.riskScore} className="h-2" />
-                  <p className="text-xs text-muted-foreground">Risk Score: {riskAnalysis.riskScore.toFixed(0)}/100</p>
+                  <div className="text-xs text-muted-foreground">Score: {riskAnalysis.riskScore.toFixed(0)}/100</div>
                 </div>
-
-                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Diversification</span>
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className={`text-2xl font-bold ${riskAnalysis.diversificationScore > 75 ? 'text-success' : riskAnalysis.diversificationScore > 50 ? 'text-primary' : 'text-warning'}`}>
-                    {riskAnalysis.diversificationScore > 75 ? 'Excellent' : riskAnalysis.diversificationScore > 50 ? 'Good' : 'Limited'}
-                  </div>
-                  <Progress value={riskAnalysis.diversificationScore} className="h-2" />
-                  <p className="text-xs text-muted-foreground">{Object.keys(riskAnalysis.allocations).length} asset types</p>
+                <div>
+                  <div className="text-sm text-muted-foreground">Diversification</div>
+                  <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
+                  <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
                 </div>
-
-                <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Concentration</span>
-                    <Shield className={`h-5 w-5 ${riskAnalysis.concentrationRisk === 'Low' ? 'text-success' : riskAnalysis.concentrationRisk === 'Medium' ? 'text-warning' : 'text-destructive'}`} />
-                  </div>
-                  <div className={`text-2xl font-bold ${riskAnalysis.concentrationRisk === 'Low' ? 'text-success' : riskAnalysis.concentrationRisk === 'Medium' ? 'text-warning' : 'text-destructive'}`}>
-                    {riskAnalysis.concentrationRisk}
-                  </div>
-                  <Progress value={riskAnalysis.largestAllocation} className="h-2" />
-                  <p className="text-xs text-muted-foreground">Largest: {riskAnalysis.largestAllocation.toFixed(1)}%</p>
+                <div>
+                  <div className="text-sm text-muted-foreground">Concentration Risk</div>
+                  <div className="text-xl font-bold">{riskAnalysis.concentrationRisk}</div>
+                  <div className="text-xs text-muted-foreground">Largest: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
                 </div>
               </div>
 
-              <div className="space-y-3 p-5 rounded-lg bg-primary/5 border border-primary/20">
-                <h4 className="font-semibold text-sm text-primary flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Allocation Breakdown
-                </h4>
-                <div className="space-y-2">
-                  {Object.entries(riskAnalysis.allocations).map(([type, percentage]) => (
-                    <div key={type} className="flex items-center justify-between gap-3">
-                      <span className="text-sm capitalize">{type.replace(/_/g, ' ')}</span>
-                      <div className="flex items-center gap-2 flex-1 max-w-xs">
-                        <Progress value={percentage} className="h-2" />
-                        <span className="text-sm font-medium min-w-[3rem] text-right">{percentage.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2 p-5 rounded-lg bg-muted/20 border border-border/50">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  Recommendations
-                </h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  {riskAnalysis.recommendations.map((rec, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>{rec}</span>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Recommendations:</div>
+                <ul className="space-y-1">
+                  {riskAnalysis.recommendations.map((rec, index) => (
+                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      {rec}
                     </li>
                   ))}
                 </ul>
@@ -696,149 +734,129 @@ const Investments = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
-          {loading ? (
-            [1, 2].map((i) => (
-              <Card key={i} className="animate-pulse shadow-elegant">
-                <CardHeader className="space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {investments.map((investment) => {
+            const futureValue = calculateFutureValue(investment);
+            const gain = futureValue - Number(investment.current_value);
+            const hasChart = investment.ticker_symbol && priceData[investment.ticker_symbol]?.history;
+
+            return (
+              <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{investment.name}</CardTitle>
+                        {investment.type === "crypto" && <Bitcoin className="w-4 h-4 text-warning" />}
+                      </div>
+                      <CardDescription className="flex items-center gap-2 mt-1">
+                        <Badge className={investmentTypeColors[investment.type]}>
+                          {investment.type.replace(/_/g, ' ')}
+                        </Badge>
+                        {investment.ticker_symbol && (
+                          <span className="text-xs font-mono">{investment.ticker_symbol}</span>
+                        )}
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(investment)}
+                        className="hover:bg-primary/10"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedInvestment(investment);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-8 bg-muted rounded w-full"></div>
+                <CardContent className="space-y-4">
+                  {hasChart && (
+                    <PerformanceChart 
+                      data={priceData[investment.ticker_symbol!].history}
+                      title="30-Day Performance"
+                      ticker={investment.ticker_symbol!}
+                    />
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Current Value</div>
+                      <div className="text-xl font-bold">${Number(investment.current_value).toFixed(2)}</div>
+                      {investment.shares_owned && (
+                        <div className="text-xs text-muted-foreground">
+                          {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${investment.purchase_price_per_share?.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">Projected ({investment.years_remaining}y)</div>
+                      <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        +${gain.toFixed(2)} ({((gain / Number(investment.current_value)) * 100).toFixed(1)}%)
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Monthly Contribution</div>
+                      <div className="font-medium">${Number(investment.monthly_contribution).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Expected Return</div>
+                      <div className="font-medium">{Number(investment.annual_return_pct).toFixed(1)}% annually</div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
-            ))
-          ) : investments.length === 0 ? (
-            <Card className="col-span-full shadow-luxe border-border/50">
-              <CardContent className="text-center py-16">
-                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                  <TrendingUp className="h-8 w-8 text-primary" />
-                </div>
-                <p className="text-muted-foreground text-lg">No investments yet</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">Begin building your wealth portfolio</p>
-              </CardContent>
-            </Card>
-          ) : (
-            investments.map((investment) => {
-              const futureValue = calculateFutureValue(investment);
-              const totalGain = futureValue - Number(investment.current_value);
-              const gainPercentage = (totalGain / Number(investment.current_value)) * 100;
-
-              return (
-                <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card overflow-hidden group">
-                  <CardHeader className="relative">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
-                    <div className="flex items-start justify-between relative z-10">
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-2 transition-colors duration-300 group-hover:text-primary">
-                          {investment.name}
-                          {investment.ticker_symbol && (
-                            <span className="ml-2 text-sm text-muted-foreground font-normal">({investment.ticker_symbol})</span>
-                          )}
-                        </CardTitle>
-                        <Badge className={investmentTypeColors[investment.type] || "bg-primary"}>
-                          {investment.type.replace(/_/g, " ")}
-                        </Badge>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => openEditDialog(investment)}
-                          className="hover:bg-primary/10 transition-all"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedInvestment(investment);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="hover:bg-destructive/10 transition-all"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-5 relative z-10">
-                    {investment.type === "individual_stock" && investment.shares_owned ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-                          <p className="text-xs text-muted-foreground mb-1.5">Shares Owned</p>
-                          <p className="text-xl font-bold">{Number(investment.shares_owned).toFixed(3)}</p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-                          <p className="text-xs text-muted-foreground mb-1.5">Price per Share</p>
-                          <p className="text-xl font-bold">
-                            ${(Number(investment.current_value) / Number(investment.shares_owned)).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-                          <p className="text-xs text-muted-foreground mb-1.5">Current Value</p>
-                          <p className="text-2xl font-bold">
-                            ${Number(investment.current_value).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                          <p className="text-xs text-muted-foreground mb-1.5">Monthly +</p>
-                          <p className="text-2xl font-bold text-success">
-                            ${Number(investment.monthly_contribution).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="pt-4 border-t border-border/50">
-                      <p className="text-sm font-medium text-muted-foreground mb-2">Total Value</p>
-                      <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent transition-all duration-300 group-hover:scale-105">
-                        ${Number(investment.current_value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-
-                    <div className="pt-4 border-t border-border/50 p-4 rounded-lg bg-gradient-success/10">
-                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        Projected in {investment.years_remaining} years @ {investment.annual_return_pct}% annual return
-                      </p>
-                      <p className="text-3xl font-bold bg-gradient-success bg-clip-text text-transparent">
-                        ${futureValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </p>
-                      <p className="text-sm text-success mt-2 font-medium">
-                        +${totalGain.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ({gainPercentage.toFixed(1)}% gain)
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
+            );
+          })}
         </div>
 
-        <Card className="bg-muted/20 border-border/30 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Important Disclaimer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground/80 leading-relaxed">
-              This information is educational and illustrative only and should not be considered financial or investment advice. 
-              Past performance does not guarantee future results. Individual stock values shown are user-entered estimates and may not reflect real-time market prices.
-              Risk analysis is algorithmic and may not capture all portfolio risks. Consult a licensed financial advisor before making investment decisions.
-            </p>
-          </CardContent>
-        </Card>
+        {investments.length === 0 && (
+          <Card className="shadow-elegant border-border/50 bg-gradient-card">
+            <CardContent className="py-12 text-center">
+              <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Investments Yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Start tracking your stocks, crypto, ETFs, and retirement accounts
+              </p>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Your First Investment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add New Investment</DialogTitle>
+                    <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
+                  </DialogHeader>
+                  <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        )}
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Investment</DialogTitle>
-              <DialogDescription>Update investment details</DialogDescription>
+              <DialogDescription>Update your investment details</DialogDescription>
             </DialogHeader>
             <InvestmentForm onSubmit={handleEdit} buttonText="Update Investment" />
           </DialogContent>
@@ -847,14 +865,14 @@ const Investments = () => {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Investment</AlertDialogTitle>
+              <AlertDialogTitle>Delete Investment?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this investment? This action cannot be undone.
+                This will permanently delete "{selectedInvestment?.name}". This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>

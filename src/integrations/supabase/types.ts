@@ -374,6 +374,7 @@ export type Database = {
         | "savings"
         | "other"
         | "individual_stock"
+        | "crypto"
       recommendation_type: "spending" | "saving" | "investment" | "goal"
       transaction_type: "income" | "expense" | "transfer"
     }
@@ -511,6 +512,7 @@ export const Constants = {
         "savings",
         "other",
         "individual_stock",
+        "crypto",
       ],
       recommendation_type: ["spending", "saving", "investment", "goal"],
       transaction_type: ["income", "expense", "transfer"],
