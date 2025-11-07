@@ -99,6 +99,7 @@ export type Database = {
       }
       investments: {
         Row: {
+          annual_apy: number | null
           annual_return_pct: number | null
           created_at: string | null
           current_value: number | null
@@ -107,6 +108,7 @@ export type Database = {
           name: string
           purchase_price_per_share: number | null
           shares_owned: number | null
+          source_account_id: string | null
           ticker_symbol: string | null
           type: Database["public"]["Enums"]["investment_type"]
           updated_at: string | null
@@ -114,6 +116,7 @@ export type Database = {
           years_remaining: number | null
         }
         Insert: {
+          annual_apy?: number | null
           annual_return_pct?: number | null
           created_at?: string | null
           current_value?: number | null
@@ -122,6 +125,7 @@ export type Database = {
           name: string
           purchase_price_per_share?: number | null
           shares_owned?: number | null
+          source_account_id?: string | null
           ticker_symbol?: string | null
           type: Database["public"]["Enums"]["investment_type"]
           updated_at?: string | null
@@ -129,6 +133,7 @@ export type Database = {
           years_remaining?: number | null
         }
         Update: {
+          annual_apy?: number | null
           annual_return_pct?: number | null
           created_at?: string | null
           current_value?: number | null
@@ -137,13 +142,22 @@ export type Database = {
           name?: string
           purchase_price_per_share?: number | null
           shares_owned?: number | null
+          source_account_id?: string | null
           ticker_symbol?: string | null
           type?: Database["public"]["Enums"]["investment_type"]
           updated_at?: string | null
           user_id?: string
           years_remaining?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "investments_source_account_id_fkey"
+            columns: ["source_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onboarding_progress: {
         Row: {
@@ -174,6 +188,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          birthday: string | null
           created_at: string | null
           default_account_id: string | null
           email: string | null
@@ -182,6 +197,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          birthday?: string | null
           created_at?: string | null
           default_account_id?: string | null
           email?: string | null
@@ -190,6 +206,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          birthday?: string | null
           created_at?: string | null
           default_account_id?: string | null
           email?: string | null

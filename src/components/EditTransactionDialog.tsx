@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useFormInput } from "@/hooks/useFormInput";
 
 interface Transaction {
   id: string;
@@ -31,14 +32,24 @@ interface EditTransactionDialogProps {
 }
 
 export function EditTransactionDialog({ transaction, accounts, open, onOpenChange, onSuccess }: EditTransactionDialogProps) {
-  const [formData, setFormData] = useState({
-    amount: transaction?.amount.toString() || "",
-    type: transaction?.type || "expense",
-    category: transaction?.category || "",
-    date: transaction?.date || new Date().toISOString().split("T")[0],
-    notes: transaction?.notes || "",
-    account_id: transaction?.account_id || "",
-  });
+  const [type, setType] = useState(transaction?.type || "expense");
+  const [accountId, setAccountId] = useState(transaction?.account_id || "");
+  const [date, setDate] = useState(transaction?.date || new Date().toISOString().split("T")[0]);
+  
+  const amountInput = useFormInput(transaction?.amount.toString() || "");
+  const categoryInput = useFormInput(transaction?.category || "");
+  const notesInput = useFormInput(transaction?.notes || "");
+
+  useEffect(() => {
+    if (transaction) {
+      amountInput.reset();
+      categoryInput.reset();
+      notesInput.reset();
+      setType(transaction.type);
+      setAccountId(transaction.account_id);
+      setDate(transaction.date);
+    }
+  }, [transaction]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +59,12 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
       // Validate input data
       const { transactionSchema } = await import("@/lib/validation");
       const validationResult = transactionSchema.safeParse({
-        amount: parseFloat(formData.amount),
-        type: formData.type,
-        category: formData.category,
-        date: formData.date,
-        notes: formData.notes || null,
-        account_id: formData.account_id
+        amount: parseFloat(amountInput.value),
+        type: type,
+        category: categoryInput.value,
+        date: date,
+        notes: notesInput.value || null,
+        account_id: accountId
       });
 
       if (!validationResult.success) {
@@ -96,7 +107,7 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+            <Select value={type} onValueChange={setType}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -108,7 +119,7 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
           </div>
           <div className="space-y-2">
             <Label>Account</Label>
-            <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })}>
+            <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>
@@ -121,19 +132,19 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
           </div>
           <div className="space-y-2">
             <Label>Amount</Label>
-            <Input type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
+            <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
           </div>
           <div className="space-y-2">
             <Label>Category</Label>
-            <Input placeholder="e.g., Food, Rent, Salary" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} required />
+            <Input placeholder="e.g., Food, Rent, Salary" {...categoryInput} required />
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <Label>Notes (optional)</Label>
-            <Input placeholder="Add details..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+            <Input placeholder="Add details..." {...notesInput} />
           </div>
           <Button type="submit" className="w-full">Update Transaction</Button>
         </form>

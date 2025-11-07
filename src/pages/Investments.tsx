@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +26,15 @@ interface Investment {
   ticker_symbol?: string;
   shares_owned?: number;
   purchase_price_per_share?: number;
+  annual_apy?: number;
+  source_account_id?: string;
+}
+
+interface Account {
+  id: string;
+  name: string;
+  balance: number;
+  type: string;
 }
 
 interface PriceData {
@@ -36,12 +45,14 @@ interface PriceData {
 
 const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [priceData, setPriceData] = useState<Record<string, PriceData>>({});
+  const [refreshing, setRefreshing] = useState(false);
   
   // Use useFormInput for all text inputs to prevent keyboard dismissal
   const nameInput = useFormInput("");
@@ -52,12 +63,19 @@ const Investments = () => {
   const monthlyContributionInput = useFormInput("");
   const annualReturnInput = useFormInput("7");
   const yearsRemainingInput = useFormInput("10");
+  const apyInput = useFormInput("");
   
   const [formType, setFormType] = useState("index_fund");
+  const [sourceAccountId, setSourceAccountId] = useState("");
   const [fetchingPrice, setFetchingPrice] = useState(false);
 
   useEffect(() => {
     fetchInvestments();
+    // Auto-refresh prices every 60 seconds
+    const interval = setInterval(() => {
+      refreshPrices();
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -74,13 +92,14 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from("investments")
-        .select("*")
-        .eq("user_id", user.id);
+      const [investmentsRes, accountsRes] = await Promise.all([
+        supabase.from("investments").select("*").eq("user_id", user.id),
+        supabase.from("accounts").select("*").eq("user_id", user.id),
+      ]);
 
-      if (error) throw error;
-      setInvestments(data || []);
+      if (investmentsRes.error) throw investmentsRes.error;
+      setInvestments(investmentsRes.data || []);
+      if (accountsRes.data) setAccounts(accountsRes.data);
     } catch (error) {
       toast.error("Failed to load investments");
     } finally {
@@ -109,6 +128,16 @@ const Investments = () => {
     }
   };
 
+  const refreshPrices = async () => {
+    if (investments.length === 0) return;
+    setRefreshing(true);
+    const promises = investments
+      .filter(inv => inv.ticker_symbol && (inv.type === "individual_stock" || inv.type === "crypto"))
+      .map(inv => fetchPriceData(inv.ticker_symbol!, inv.type));
+    await Promise.all(promises);
+    setRefreshing(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -116,13 +145,36 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Validate source account
+      if (!sourceAccountId) {
+        toast.error("Please select a source account");
+        return;
+      }
+
+      const sourceAccount = accounts.find(a => a.id === sourceAccountId);
+      if (!sourceAccount) {
+        toast.error("Invalid source account");
+        return;
+      }
+
+      const investmentAmount = parseFloat(currentValueInput.value);
+      if (isNaN(investmentAmount) || investmentAmount <= 0) {
+        toast.error("Please enter a valid investment amount");
+        return;
+      }
+
+      if (sourceAccount.balance < investmentAmount) {
+        toast.error(`Insufficient funds. Account balance: $${sourceAccount.balance.toFixed(2)}`);
+        return;
+      }
+
       const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
       
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
         name: nameInput.value,
         type: formType,
-        current_value: parseFloat(currentValueInput.value),
+        current_value: investmentAmount,
         monthly_contribution: parseFloat(monthlyContributionInput.value || "0"),
         annual_return_pct: parseFloat(annualReturnInput.value),
         years_remaining: parseFloat(yearsRemainingInput.value),
@@ -147,12 +199,35 @@ const Investments = () => {
         years_remaining: validated.years_remaining,
         ticker_symbol: validated.ticker_symbol,
         shares_owned: validated.shares_owned,
-        purchase_price_per_share: validated.purchase_price_per_share
+        purchase_price_per_share: validated.purchase_price_per_share,
+        source_account_id: sourceAccountId,
+        annual_apy: formType === "savings" && apyInput.value ? parseFloat(apyInput.value) : 0
       };
 
-      const { error } = await supabase.from("investments").insert(investmentData);
+      // If high-yield savings, create an account
+      if (formType === "savings") {
+        const { error: accountError } = await supabase.from("accounts").insert({
+          user_id: user.id,
+          name: nameInput.value,
+          type: "savings",
+          balance: investmentAmount,
+          notes: `High-yield savings with ${apyInput.value || 0}% APY`
+        });
 
+        if (accountError) throw accountError;
+        toast.success(`Created savings account: ${nameInput.value}`);
+      }
+
+      const { error } = await supabase.from("investments").insert(investmentData);
       if (error) throw error;
+
+      // Deduct funds from source account
+      const { error: updateError } = await supabase
+        .from("accounts")
+        .update({ balance: sourceAccount.balance - investmentAmount })
+        .eq("id", sourceAccountId);
+
+      if (updateError) throw updateError;
 
       toast.success("Investment added successfully");
       setDialogOpen(false);
@@ -246,7 +321,9 @@ const Investments = () => {
     monthlyContributionInput.reset();
     annualReturnInput.reset();
     yearsRemainingInput.reset();
+    apyInput.reset();
     setFormType("index_fund");
+    setSourceAccountId("");
   };
 
   const fetchPrice = async (ticker: string, type: string) => {
@@ -422,6 +499,21 @@ const Investments = () => {
     return (
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
+          <Label>Source Account (funds will be deducted)</Label>
+          <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Select account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map(account => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name} (${account.balance.toFixed(2)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
           <Label>Investment Name</Label>
           <Input
             placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
@@ -448,6 +540,20 @@ const Investments = () => {
             </SelectContent>
           </Select>
         </div>
+        {formType === "savings" && (
+          <div className="space-y-2">
+            <Label>Annual APY (%)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="4.5"
+              value={apyInput.value}
+              onChange={apyInput.onChange}
+              autoComplete="off"
+              required
+            />
+          </div>
+        )}
 
         {isCryptoOrStock ? (
           <>
@@ -644,21 +750,26 @@ const Investments = () => {
           <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
             Investment Portfolio
           </h1>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-elegant hover:shadow-luxe">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Investment
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add New Investment</DialogTitle>
-                <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
-              </DialogHeader>
-              <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={refreshPrices} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="shadow-elegant hover:shadow-luxe">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Investment
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Investment</DialogTitle>
+                  <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
+                </DialogHeader>
+                <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">

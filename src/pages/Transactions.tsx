@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useFormInput } from "@/hooks/useFormInput";
 
 interface Transaction {
   id: string;
@@ -39,14 +40,13 @@ const Transactions = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteTransaction, setDeleteTransaction] = useState<Transaction | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    amount: "",
-    type: "expense",
-    category: "",
-    date: new Date().toISOString().split("T")[0],
-    notes: "",
-    account_id: "",
-  });
+  const [type, setType] = useState("expense");
+  const [category, setCategory] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  
+  const amountInput = useFormInput("");
+  const notesInput = useFormInput("");
 
   useEffect(() => {
     fetchData();
@@ -81,12 +81,12 @@ const Transactions = () => {
       // Validate input data
       const { transactionSchema } = await import("@/lib/validation");
       const validationResult = transactionSchema.safeParse({
-        amount: parseFloat(formData.amount),
-        type: formData.type,
-        category: formData.category,
-        date: formData.date,
-        notes: formData.notes || null,
-        account_id: formData.account_id
+        amount: parseFloat(amountInput.value),
+        type: type,
+        category: category,
+        date: date,
+        notes: notesInput.value || null,
+        account_id: accountId
       });
 
       if (!validationResult.success) {
@@ -111,14 +111,12 @@ const Transactions = () => {
 
       toast.success("Transaction added successfully");
       setDialogOpen(false);
-      setFormData({
-        amount: "",
-        type: "expense",
-        category: "",
-        date: new Date().toISOString().split("T")[0],
-        notes: "",
-        account_id: "",
-      });
+      amountInput.reset();
+      notesInput.reset();
+      setType("expense");
+      setCategory("");
+      setAccountId("");
+      setDate(new Date().toISOString().split("T")[0]);
       fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to add transaction");
@@ -192,7 +190,7 @@ const Transactions = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <Select value={type} onValueChange={setType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -204,7 +202,7 @@ const Transactions = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Account</Label>
-                  <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })}>
+                  <Select value={accountId} onValueChange={setAccountId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select account" />
                     </SelectTrigger>
@@ -217,16 +215,16 @@ const Transactions = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Amount</Label>
-                  <Input type="number" step="0.01" placeholder="0.00" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} required />
+                  <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })} required>
+                  <Select value={category} onValueChange={setCategory} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.type === "income" ? (
+                      {type === "income" ? (
                         <>
                           <SelectItem value="Salary">Salary</SelectItem>
                           <SelectItem value="Freelance">Freelance</SelectItem>
@@ -257,11 +255,11 @@ const Transactions = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
+                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Notes (optional)</Label>
-                  <Input placeholder="Add details..." value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
+                  <Input placeholder="Add details..." {...notesInput} />
                 </div>
                 <Button type="submit" className="w-full">Add Transaction</Button>
               </form>
