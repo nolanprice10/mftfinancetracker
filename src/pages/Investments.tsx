@@ -370,7 +370,7 @@ const Investments = () => {
   const handleTickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
     tickerInput.onChange({ target: { value } } as any);
-  }, [formType, tickerInput]);
+  }, [formType]);
 
   const fetchPrice = async (ticker: string, type: string) => {
     if (!ticker) return;
