@@ -493,6 +493,39 @@ const Investments = () => {
 
   const riskAnalysis = analyzePortfolioRisk();
 
+  // Suggested investments mapping based on allocation category
+  const getSuggestedTickers = (allocation: {stocks:number, bonds:number, cash:number} | null, risk?: string, age?: number) => {
+    // Default suggestions for stocks, bonds, cash (ETFs and funds)
+    const stockBuckets = {
+      aggressive: ['QQQ','VTI','ARKK'],
+      moderate: ['VTI','VOO','VOOG'],
+      conservative: ['VIG','SCHD','VTV']
+    };
+    const bondBuckets = {
+      aggressive: ['BND','AGG','LQD'],
+      moderate: ['BND','AGG','SCHZ'],
+      conservative: ['VGIT','IEF','SHY']
+    };
+    const cashBuckets = {
+      aggressive: ['BIL','SHV'],
+      moderate: ['SHY','BIL'],
+      conservative: ['BIL','SHY']
+    };
+
+    const level = (risk || 'Moderate').toLowerCase();
+    const stocks = stockBuckets[level] || stockBuckets['moderate'];
+    const bonds = bondBuckets[level] || bondBuckets['moderate'];
+    const cash = cashBuckets[level] || cashBuckets['moderate'];
+
+    return {
+      stocks: stocks.slice(0,3).map(t => ({ ticker: t, name: t })),
+      bonds: bonds.slice(0,3).map(t => ({ ticker: t, name: t })),
+      cash: cash.slice(0,2).map(t => ({ ticker: t, name: t }))
+    };
+  };
+
+
+
   const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
     const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
     
@@ -832,6 +865,44 @@ const Investments = () => {
 
               <div className="space-y-2">
                 <div className="text-sm font-medium">Recommendations:</div>
+
+              <div className="mt-4 p-3 border border-border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium">Suggested Investments</div>
+                  <div className="text-xs text-muted-foreground">Based on your age and risk tolerance</div>
+                </div>
+                {recommendedAllocation && (
+                  <div className="space-y-3">
+                    <div className="text-sm">Suggested allocation: <span className="font-medium">{recommendedAllocation.stocks}% stocks, {recommendedAllocation.bonds}% bonds, {recommendedAllocation.cash}% cash</span></div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                      {(() => {
+                        const picks = getSuggestedTickers(recommendedAllocation, userRiskTolerance, userAge);
+                        return [ 'stocks','bonds','cash' ].map((key) => (
+                          <div key={key} className="p-3 bg-card rounded-md shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-sm font-semibold">{key.toUpperCase()}</div>
+                              <div className="text-xs text-muted-foreground">{key === 'stocks' ? 'Growth' : key === 'bonds' ? 'Income' : 'Liquidity'}</div>
+                            </div>
+                            <div className="space-y-2">
+                              {picks[key].map((p:any) => (
+                                <div key={p.ticker} className="flex items-center justify-between">
+                                  <div className="text-sm">{p.ticker}</div>
+                                  <div className="w-28 h-12">
+                                    {/* PerformanceChart expects priceData prop for ticker */}
+                                    <PerformanceChart data={priceData[p.ticker]?.history || []} height={48} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+
                 <ul className="space-y-1">
                   {riskAnalysis.recommendations.map((rec, index) => (
                     <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
