@@ -71,10 +71,10 @@ const Investments = () => {
 
   useEffect(() => {
     fetchInvestments();
-    // Auto-refresh prices every 60 seconds
+    // Auto-refresh prices every 10 seconds for near real-time updates
     const interval = setInterval(() => {
       refreshPrices();
-    }, 60000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 

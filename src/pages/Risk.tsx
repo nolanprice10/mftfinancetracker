@@ -119,10 +119,38 @@ const Risk = () => {
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userAge, setUserAge] = useState<number | null>(null);
 
   useEffect(() => {
     fetchRiskProfile();
+    fetchUserAge();
   }, []);
+
+  const fetchUserAge = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("birthday")
+        .eq("id", user.id)
+        .single();
+
+      if (data?.birthday) {
+        const birthDate = new Date(data.birthday);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        setUserAge(age);
+      }
+    } catch (error) {
+      console.error("Error fetching user age:", error);
+    }
+  };
 
   const fetchRiskProfile = async () => {
     try {
@@ -448,7 +476,31 @@ const Risk = () => {
 
   if (step === "results" && riskProfile) {
     const RiskIcon = getRiskIcon(riskProfile.recommended_profile);
-    const recommendations = investmentRecommendations[riskProfile.recommended_profile as keyof typeof investmentRecommendations];
+    let recommendations = investmentRecommendations[riskProfile.recommended_profile as keyof typeof investmentRecommendations];
+    
+    // Filter recommendations based on age (must be 18+ for brokerage/savings accounts)
+    if (userAge !== null && userAge < 18) {
+      recommendations = recommendations.filter(rec => {
+        const isAdultOnly = rec.name.toLowerCase().includes("goldman sachs") || 
+                           rec.name.toLowerCase().includes("ally bank") ||
+                           rec.name.toLowerCase().includes("marcus") ||
+                           rec.ticker?.toLowerCase() === "shy" ||
+                           rec.ticker?.toLowerCase() === "vcit" ||
+                           rec.ticker?.toLowerCase() === "vig" ||
+                           rec.ticker?.toLowerCase() === "voo" ||
+                           rec.ticker?.toLowerCase() === "bnd" ||
+                           rec.ticker?.toLowerCase() === "vnq" ||
+                           rec.ticker?.toLowerCase() === "vxus" ||
+                           rec.ticker?.toLowerCase() === "qqq" ||
+                           rec.ticker?.toLowerCase() === "arkk" ||
+                           rec.ticker?.toLowerCase() === "vbk" ||
+                           rec.ticker?.toLowerCase() === "eem" ||
+                           rec.ticker?.toLowerCase() === "vti" ||
+                           rec.ticker?.toLowerCase() === "gld" ||
+                           rec.ticker?.toLowerCase() === "agg";
+        return !isAdultOnly;
+      });
+    }
 
     return (
       <Layout>
@@ -517,12 +569,44 @@ const Risk = () => {
             <CardHeader>
               <CardTitle>Recommended Investment Allocation</CardTitle>
               <CardDescription>
-                Diversified portfolio tailored to your {riskProfile.recommended_profile} risk profile
+                {userAge !== null && userAge < 18 ? (
+                  <span className="text-warning font-semibold">
+                    ⚠️ Age Restriction Notice: You must be 18+ to open brokerage and savings accounts. 
+                    Consider a custodial account (UGMA/UTMA) with a parent or guardian, or focus on building savings until you turn 18.
+                  </span>
+                ) : (
+                  `Diversified portfolio tailored to your ${riskProfile.recommended_profile} risk profile`
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recommendations.map((rec, index) => (
+              {recommendations.length === 0 && userAge !== null && userAge < 18 ? (
+                <div className="p-6 text-center space-y-4 border border-border rounded-lg">
+                  <AlertTriangle className="w-12 h-12 mx-auto text-warning" />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Investment Restrictions for Minors</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Most investment accounts require you to be at least 18 years old. However, you have options:
+                    </p>
+                    <div className="text-left space-y-3 max-w-2xl mx-auto">
+                      <div className="p-3 bg-muted/50 rounded">
+                        <strong>Custodial Accounts (UGMA/UTMA):</strong> A parent or guardian can open and manage an investment account 
+                        on your behalf until you turn 18. Fidelity, Schwab, and Vanguard all offer these.
+                      </div>
+                      <div className="p-3 bg-muted/50 rounded">
+                        <strong>High-Yield Savings (with Guardian):</strong> Some banks allow minors to open savings accounts with parental 
+                        consent, helping you earn interest while building good financial habits.
+                      </div>
+                      <div className="p-3 bg-muted/50 rounded">
+                        <strong>Focus on Learning:</strong> Use this time to learn about investing, follow the markets, and save money. 
+                        When you turn 18, you'll be ready to invest confidently.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recommendations.map((rec, index) => (
                   <div key={index} className="p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -542,9 +626,11 @@ const Risk = () => {
                     </div>
                     <Progress value={parseInt(rec.allocation)} className="h-2 mt-2" />
                   </div>
-                ))}
-              </div>
-              <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-3">
+                  ))}
+                </div>
+              )}
+              {recommendations.length > 0 && (
+                <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-3">
                 <div>
                   <h4 className="font-semibold mb-2">💡 How to Actually Invest</h4>
                   <p className="text-sm text-muted-foreground mb-2">
@@ -568,7 +654,8 @@ const Risk = () => {
                     performance does not guarantee future results. ETF expense ratios, holdings, and performance vary over time.
                   </p>
                 </div>
-              </div>
+                </div>
+              )}
               <Button onClick={retakeQuiz} variant="outline" className="w-full mt-4">
                 Retake Assessment
               </Button>
