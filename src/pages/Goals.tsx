@@ -449,15 +449,26 @@ const Goals = () => {
               const weeklyTarget = calculateWeeklyTarget(goal);
               const dailyTarget = calculateDailyTarget(goal);
               const linkedAccount = accounts.find(a => a.id === goal.account_id);
+              const isGoalComplete = progress >= 100;
 
               return (
-                <Card key={goal.id} className="shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 bg-gradient-card overflow-hidden group">
+                <Card key={goal.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 ${isGoalComplete ? 'bg-gradient-to-br from-success/20 to-primary/20 border-success' : 'bg-gradient-card'} overflow-hidden group`}>
                   <CardHeader className="relative">
+                    {isGoalComplete && (
+                      <div className="absolute top-2 right-2 animate-bounce">
+                        <div className="text-4xl">🎉</div>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{goal.name}</CardTitle>
+                        <CardTitle className={`text-xl mb-2 ${isGoalComplete ? 'text-success' : ''}`}>
+                          {goal.name} {isGoalComplete && '✓'}
+                        </CardTitle>
                         <CardDescription>
-                          Target: ${Number(goal.target_amount).toLocaleString()} by {new Date(goal.end_date).toLocaleDateString()}
+                          {isGoalComplete 
+                            ? `🎊 Goal Completed! Reached $${Number(goal.current_amount).toLocaleString()}`
+                            : `Target: $${Number(goal.target_amount).toLocaleString()} by ${new Date(goal.end_date).toLocaleDateString()}`
+                          }
                         </CardDescription>
                         {goal.account_id ? (
                           linkedAccount && (
@@ -489,38 +500,51 @@ const Goals = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-muted-foreground">Progress</span>
-                        <span className="text-sm font-medium">{progress.toFixed(1)}%</span>
+                    {isGoalComplete ? (
+                      <div className="space-y-4 text-center py-4">
+                        <div className="text-6xl animate-bounce">🎉</div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-success mb-2">Congratulations!</h3>
+                          <p className="text-muted-foreground">You've achieved this goal!</p>
+                          <p className="text-lg font-semibold mt-2">${Number(goal.current_amount).toLocaleString()} / ${Number(goal.target_amount).toLocaleString()}</p>
+                        </div>
                       </div>
-                      <Progress value={progress} className="h-3" />
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-lg font-bold text-success">
-                          ${Number(goal.current_amount).toLocaleString()}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          of ${Number(goal.target_amount).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-muted-foreground">Progress</span>
+                            <span className="text-sm font-medium">{progress.toFixed(1)}%</span>
+                          </div>
+                          <Progress value={progress} className="h-3" />
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-lg font-bold text-success">
+                              ${Number(goal.current_amount).toLocaleString()}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              of ${Number(goal.target_amount).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Daily</p>
-                        <p className="text-lg font-bold">${dailyTarget.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Weekly</p>
-                        <p className="text-lg font-bold">${weeklyTarget.toFixed(0)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Monthly</p>
-                        <p className="text-lg font-bold">${monthlyTarget.toFixed(0)}</p>
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Daily</p>
+                            <p className="text-lg font-bold">${dailyTarget.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Weekly</p>
+                            <p className="text-lg font-bold">${weeklyTarget.toFixed(0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Monthly</p>
+                            <p className="text-lg font-bold">${monthlyTarget.toFixed(0)}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
-                    {monthsRemaining > 0 && progress < 100 && (
+                    {!isGoalComplete && monthsRemaining > 0 && progress < 100 && (
                       <div className="bg-primary/10 rounded-lg p-3 text-sm">
                         <p className="font-semibold text-primary mb-1">💡 Reach your goal faster:</p>
                         <ul className="text-muted-foreground space-y-1 text-xs">

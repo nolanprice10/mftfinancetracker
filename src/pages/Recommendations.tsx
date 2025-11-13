@@ -19,12 +19,13 @@ const Recommendations = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [accountsRes, transactionsRes, goalsRes, investmentsRes, riskProfileRes] = await Promise.all([
+      const [accountsRes, transactionsRes, goalsRes, investmentsRes, riskProfileRes, profileRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", user.id),
         supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }),
         supabase.from("goals").select("*").eq("user_id", user.id),
         supabase.from("investments").select("*").eq("user_id", user.id),
         supabase.from("risk_profiles").select("*").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("birthday").eq("id", user.id).single(),
       ]);
 
       const accounts = accountsRes.data || [];
@@ -32,6 +33,21 @@ const Recommendations = () => {
       const goals = goalsRes.data || [];
       const investments = investmentsRes.data || [];
       const riskProfile = riskProfileRes.data;
+      const profile = profileRes.data;
+
+      // Calculate age from birthday
+      let age = null;
+      let yearsToRetirement = null;
+      if (profile?.birthday) {
+        const today = new Date();
+        const birthDate = new Date(profile.birthday);
+        age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        yearsToRetirement = Math.max(0, 65 - age);
+      }
 
       const generatedRecs: any[] = [];
       const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
@@ -101,29 +117,69 @@ const Recommendations = () => {
         });
       }
 
-      // Investment opportunity
+      // Investment opportunity with age-based recommendations
       const totalInvestmentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
       const totalMonthlyContribution = investments.reduce((sum, inv) => sum + Number(inv.monthly_contribution), 0);
       
       if (monthlyIncome > 0 && totalBalance > 2000 && totalMonthlyContribution < monthlyIncome * 0.15) {
         const recommendedContribution = Math.min(monthlyIncome * 0.15, 500);
-        const riskType = riskProfile?.recommended_profile || 'moderate';
-        const annualReturn = riskType === 'conservative' ? 0.06 : riskType === 'moderate' ? 0.08 : 0.10;
-        const futureValue10y = recommendedContribution * (((Math.pow(1 + annualReturn/12, 120) - 1) / (annualReturn/12)));
+        
+        // Age-based risk adjustment
+        let riskType = riskProfile?.recommended_profile || 'moderate';
+        let annualReturn = 0.08;
+        let stockAllocation = 70;
+        
+        if (age !== null) {
+          if (age < 30) {
+            riskType = 'aggressive';
+            annualReturn = 0.10;
+            stockAllocation = 90;
+          } else if (age >= 30 && age < 50) {
+            riskType = 'moderate';
+            annualReturn = 0.08;
+            stockAllocation = 70;
+          } else if (age >= 50) {
+            riskType = 'conservative';
+            annualReturn = 0.06;
+            stockAllocation = 40;
+          }
+        }
+        
+        const yearsToProject = yearsToRetirement || 10;
+        const futureValueRetirement = recommendedContribution * (((Math.pow(1 + annualReturn/12, yearsToProject * 12) - 1) / (annualReturn/12)));
+
+        const ageMessage = age 
+          ? `at ${age} years old with ${yearsToRetirement} years to retirement` 
+          : "based on your profile";
 
         generatedRecs.push({
           icon: TrendingUp,
           title: `Start Investing $${recommendedContribution.toFixed(0)}/Month`,
           category: "Wealth Building",
-          summary: `Grow to $${futureValue10y.toFixed(0)} in 10 years with ${(annualReturn * 100).toFixed(0)}% returns`,
+          summary: `Grow to $${futureValueRetirement.toFixed(0)} in ${yearsToProject} years ${ageMessage}`,
           actionItems: [
             { title: "Open brokerage account", description: "Fidelity, Vanguard, or Schwab - takes 15 minutes" },
             { title: "Enable auto-invest", description: `Set up $${recommendedContribution.toFixed(0)}/month automatic transfer` },
-            { title: `Buy ${riskType} portfolio`, description: riskType === 'moderate' ? "70% stocks (VOO/VTI), 30% bonds (BND)" : riskType === 'conservative' ? "40% stocks, 60% bonds" : "90% stocks, 10% bonds" },
-            { title: "Max tax-advantaged accounts", description: "Contribute to 401(k) match, then Roth IRA first" }
+            { title: `Buy ${riskType} portfolio for age ${age || 'N/A'}`, description: `${stockAllocation}% stocks, ${100 - stockAllocation}% bonds (${age && age < 30 ? 'VOO/VTI heavy' : age && age >= 50 ? 'BND heavy, capital preservation' : 'Balanced VOO/VTI and BND'})` },
+            { title: "Max tax-advantaged accounts", description: age && age < 50 ? "Roth IRA first ($7,000/year), then 401(k)" : "401(k) catch-up contributions if 50+ ($31,000/year limit)" }
           ],
           color: "text-success",
           bgColor: "bg-success/10"
+        });
+      }
+      
+      // Age-specific recommendations
+      if (age !== null && !profile?.birthday) {
+        generatedRecs.push({
+          icon: AlertCircle,
+          title: "Set Your Birthday",
+          category: "Profile Setup",
+          summary: "Get personalized age-based investment recommendations",
+          actionItems: [
+            { title: "Add birthday in Settings", description: "We'll tailor recommendations for your retirement timeline" }
+          ],
+          color: "text-primary",
+          bgColor: "bg-primary/10"
         });
       }
 

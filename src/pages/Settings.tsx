@@ -15,6 +15,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,13 +36,14 @@ const Settings = () => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, email")
+        .select("name, email, birthday")
         .eq("id", user.id)
         .single();
 
       if (profile) {
         setName(profile.name || "");
         setEmail(profile.email || "");
+        setBirthday(profile.birthday || "");
       }
     } catch (error) {
       toast.error("Failed to load user data");
@@ -58,7 +60,7 @@ const Settings = () => {
 
       const { error } = await supabase
         .from("profiles")
-        .update({ name })
+        .update({ name, birthday: birthday || null })
         .eq("id", user.id);
 
       if (error) throw error;
@@ -234,6 +236,17 @@ const Settings = () => {
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthday">Birthday</Label>
+                <Input
+                  id="birthday"
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  placeholder="Your birthday"
+                />
+                <p className="text-xs text-muted-foreground">Used for age-based investment recommendations</p>
               </div>
               <Button type="submit" disabled={loading}>
                 {loading ? "Updating..." : "Update Profile"}
