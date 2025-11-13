@@ -29,17 +29,6 @@ interface Account {
 }
 
 const Goals = () => {
-  const fireConfetti = async () => {
-    try {
-      const confettiMod = await import('canvas-confetti');
-      const confetti = confettiMod.default || confettiMod;
-      confetti({ particleCount: 120, spread: 160, origin: { y: 0.6 } });
-    } catch (err) {
-      // if canvas-confetti not installed, fallback to emoji toast
-      console.warn('canvas-confetti not available', err);
-    }
-  };
-
   const [goals, setGoals] = useState<Goal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);

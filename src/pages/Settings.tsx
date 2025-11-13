@@ -35,7 +35,7 @@ const Settings = () => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, email, risk_tolerance")
+        .select("name, email")
         .eq("id", user.id)
         .single();
 
