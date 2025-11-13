@@ -1,8 +1,8 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
-import { useFormInput } from "@/hooks/useFormInput";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Investment {
   id: string;
@@ -54,17 +54,20 @@ const Investments = () => {
   const [priceData, setPriceData] = useState<Record<string, PriceData>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
+  const [chartPeriods, setChartPeriods] = useState<Record<string, string>>({});
   
-  // Use useFormInput for all text inputs to prevent keyboard dismissal
-  const nameInput = useFormInput("");
-  const tickerInput = useFormInput("");
-  const sharesInput = useFormInput("");
-  const pricePerShareInput = useFormInput("");
-  const currentValueInput = useFormInput("");
-  const monthlyContributionInput = useFormInput("");
-  const annualReturnInput = useFormInput("7");
-  const yearsRemainingInput = useFormInput("10");
-  const apyInput = useFormInput("");
+  // Form state using controlled inputs to prevent keyboard dismissal
+  const [formData, setFormData] = useState({
+    name: "",
+    ticker: "",
+    shares: "",
+    pricePerShare: "",
+    currentValue: "",
+    monthlyContribution: "",
+    annualReturn: "7",
+    yearsRemaining: "10",
+    apy: ""
+  });
   
   const [formType, setFormType] = useState("index_fund");
   const [sourceAccountId, setSourceAccountId] = useState("");
@@ -73,24 +76,24 @@ const Investments = () => {
   useEffect(() => {
     fetchInvestments();
     fetchUserAge();
-    // Auto-refresh prices every 10 seconds for near real-time updates
+    // Auto-refresh prices every 5 seconds for real-time updates
     const interval = setInterval(() => {
       refreshPrices();
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   // Auto-calculate current value when shares or price changes
   useEffect(() => {
-    const shares = parseFloat(sharesInput.value);
-    const price = parseFloat(pricePerShareInput.value);
+    const shares = parseFloat(formData.shares);
+    const price = parseFloat(formData.pricePerShare);
     if (!isNaN(shares) && !isNaN(price) && shares > 0 && price > 0) {
-      const total = (shares * price).toString();
-      if (currentValueInput.value !== total) {
-        currentValueInput.onChange({ target: { value: total } } as any);
+      const total = (shares * price).toFixed(2);
+      if (formData.currentValue !== total) {
+        setFormData(prev => ({ ...prev, currentValue: total }));
       }
     }
-  }, [sharesInput.value, pricePerShareInput.value]);
+  }, [formData.shares, formData.pricePerShare]);
 
   useEffect(() => {
     // Fetch price data for all investments with tickers
@@ -178,6 +181,34 @@ const Investments = () => {
     setRefreshing(false);
   };
 
+  // Handle input changes without losing focus
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const fetchPrice = async (ticker: string, type: string) => {
+    if (!ticker) return;
+    
+    setFetchingPrice(true);
+    try {
+      const response = await supabase.functions.invoke('fetch-stock-price', {
+        body: { ticker, type }
+      });
+
+      if (response.data?.success && response.data?.price) {
+        handleInputChange('pricePerShare', response.data.price.toString());
+        toast.success(`Fetched price: $${response.data.price.toFixed(2)}`);
+      } else {
+        toast.error('Failed to fetch price - check ticker symbol');
+      }
+    } catch (error: any) {
+      console.error('Error fetching price:', error);
+      toast.error('Failed to fetch price');
+    } finally {
+      setFetchingPrice(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -185,7 +216,6 @@ const Investments = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Validate source account
       if (!sourceAccountId) {
         toast.error("Please select a source account");
         return;
@@ -197,7 +227,7 @@ const Investments = () => {
         return;
       }
 
-      const investmentAmount = parseFloat(currentValueInput.value);
+      const investmentAmount = parseFloat(formData.currentValue);
       if (isNaN(investmentAmount) || investmentAmount <= 0) {
         toast.error("Please enter a valid investment amount");
         return;
@@ -212,15 +242,15 @@ const Investments = () => {
       
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: nameInput.value,
+        name: formData.name,
         type: formType,
         current_value: investmentAmount,
-        monthly_contribution: parseFloat(monthlyContributionInput.value || "0"),
-        annual_return_pct: parseFloat(annualReturnInput.value),
-        years_remaining: parseFloat(yearsRemainingInput.value),
-        ticker_symbol: isCryptoOrStock ? tickerInput.value || null : null,
-        shares_owned: isCryptoOrStock && sharesInput.value ? parseFloat(sharesInput.value) : null,
-        purchase_price_per_share: isCryptoOrStock && pricePerShareInput.value ? parseFloat(pricePerShareInput.value) : null
+        monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
+        annual_return_pct: parseFloat(formData.annualReturn),
+        years_remaining: parseFloat(formData.yearsRemaining),
+        ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
+        shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
+        purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
       if (!validationResult.success) {
@@ -241,21 +271,21 @@ const Investments = () => {
         shares_owned: validated.shares_owned,
         purchase_price_per_share: validated.purchase_price_per_share,
         source_account_id: sourceAccountId,
-        annual_apy: formType === "savings" && apyInput.value ? parseFloat(apyInput.value) : 0
+        annual_apy: formType === "savings" && formData.apy ? parseFloat(formData.apy) : 0
       };
 
       // If high-yield savings, create an account
       if (formType === "savings") {
         const { error: accountError } = await supabase.from("accounts").insert({
           user_id: user.id,
-          name: nameInput.value,
+          name: formData.name,
           type: "savings",
           balance: investmentAmount,
-          notes: `High-yield savings with ${apyInput.value || 0}% APY`
+          notes: `High-yield savings with ${formData.apy || 0}% APY`
         });
 
         if (accountError) throw accountError;
-        toast.success(`Created savings account: ${nameInput.value}`);
+        toast.success(`Created savings account: ${formData.name}`);
       }
 
       const { error } = await supabase.from("investments").insert(investmentData);
@@ -287,15 +317,15 @@ const Investments = () => {
       
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: nameInput.value,
+        name: formData.name,
         type: formType,
-        current_value: parseFloat(currentValueInput.value),
-        monthly_contribution: parseFloat(monthlyContributionInput.value || "0"),
-        annual_return_pct: parseFloat(annualReturnInput.value),
-        years_remaining: parseFloat(yearsRemainingInput.value),
-        ticker_symbol: isCryptoOrStock ? tickerInput.value || null : null,
-        shares_owned: isCryptoOrStock && sharesInput.value ? parseFloat(sharesInput.value) : null,
-        purchase_price_per_share: isCryptoOrStock && pricePerShareInput.value ? parseFloat(pricePerShareInput.value) : null
+        current_value: parseFloat(formData.currentValue),
+        monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
+        annual_return_pct: parseFloat(formData.annualReturn),
+        years_remaining: parseFloat(formData.yearsRemaining),
+        ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
+        shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
+        purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
       if (!validationResult.success) {
@@ -304,28 +334,22 @@ const Investments = () => {
       }
 
       const validated = validationResult.data;
-      const investmentData: any = {
+      const { error } = await supabase.from("investments").update({
         name: validated.name,
-        type: validated.type as any,
+        type: validated.type,
         current_value: validated.current_value,
         monthly_contribution: validated.monthly_contribution || 0,
         annual_return_pct: validated.annual_return_pct,
         years_remaining: validated.years_remaining,
         ticker_symbol: validated.ticker_symbol,
         shares_owned: validated.shares_owned,
-        purchase_price_per_share: validated.purchase_price_per_share
-      };
-
-      const { error } = await supabase
-        .from("investments")
-        .update(investmentData)
-        .eq("id", selectedInvestment.id);
+        purchase_price_per_share: validated.purchase_price_per_share,
+      }).eq("id", selectedInvestment.id);
 
       if (error) throw error;
-
       toast.success("Investment updated successfully");
       setEditDialogOpen(false);
-      setSelectedInvestment(null);
+      resetForm();
       fetchInvestments();
     } catch (error: any) {
       toast.error(error.message || "Failed to update investment");
@@ -336,16 +360,10 @@ const Investments = () => {
     if (!selectedInvestment) return;
 
     try {
-      const { error } = await supabase
-        .from("investments")
-        .delete()
-        .eq("id", selectedInvestment.id);
-
+      const { error } = await supabase.from("investments").delete().eq("id", selectedInvestment.id);
       if (error) throw error;
-
       toast.success("Investment deleted successfully");
       setDeleteDialogOpen(false);
-      setSelectedInvestment(null);
       fetchInvestments();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete investment");
@@ -353,69 +371,35 @@ const Investments = () => {
   };
 
   const resetForm = () => {
-    nameInput.reset();
-    tickerInput.reset();
-    sharesInput.reset();
-    pricePerShareInput.reset();
-    currentValueInput.reset();
-    monthlyContributionInput.reset();
-    annualReturnInput.reset();
-    yearsRemainingInput.reset();
-    apyInput.reset();
+    setFormData({
+      name: "",
+      ticker: "",
+      shares: "",
+      pricePerShare: "",
+      currentValue: "",
+      monthlyContribution: "",
+      annualReturn: "7",
+      yearsRemaining: "10",
+      apy: ""
+    });
     setFormType("index_fund");
     setSourceAccountId("");
   };
 
-  // Memoized handlers to prevent keyboard dismissal
-  const handleTickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
-    tickerInput.onChange({ target: { value } } as any);
-  }, [formType]);
-
-  const fetchPrice = async (ticker: string, type: string) => {
-    if (!ticker) return;
-    
-    setFetchingPrice(true);
-    try {
-      const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker, type }
-      });
-
-      if (response.data?.success && response.data?.price) {
-        const price = response.data.price;
-        const shares = parseFloat(sharesInput.value) || 0;
-        
-        // Update using the input's internal state setter
-        const priceStr = price.toString();
-        const valueStr = shares > 0 ? (price * shares).toString() : priceStr;
-        
-        // Manually trigger updates
-        pricePerShareInput.onChange({ target: { value: priceStr } } as any);
-        currentValueInput.onChange({ target: { value: valueStr } } as any);
-        
-        toast.success(`Current price for ${ticker}: $${price} ${response.data.change24h !== undefined ? `(${response.data.change24h > 0 ? '+' : ''}${response.data.change24h.toFixed(2)}%)` : ''}`);
-      } else {
-        toast.error(`Could not fetch price for ${ticker}`);
-      }
-    } catch (error: any) {
-      console.error('Error fetching price:', error);
-      toast.error('Failed to fetch price');
-    } finally {
-      setFetchingPrice(false);
-    }
-  };
-
   const openEditDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
-    nameInput.onChange({ target: { value: investment.name } } as any);
+    setFormData({
+      name: investment.name,
+      ticker: investment.ticker_symbol || "",
+      shares: investment.shares_owned?.toString() || "",
+      pricePerShare: investment.purchase_price_per_share?.toString() || "",
+      currentValue: investment.current_value.toString(),
+      monthlyContribution: investment.monthly_contribution.toString(),
+      annualReturn: investment.annual_return_pct.toString(),
+      yearsRemaining: investment.years_remaining.toString(),
+      apy: investment.annual_apy?.toString() || ""
+    });
     setFormType(investment.type);
-    currentValueInput.onChange({ target: { value: investment.current_value.toString() } } as any);
-    monthlyContributionInput.onChange({ target: { value: investment.monthly_contribution.toString() } } as any);
-    annualReturnInput.onChange({ target: { value: investment.annual_return_pct.toString() } } as any);
-    yearsRemainingInput.onChange({ target: { value: investment.years_remaining.toString() } } as any);
-    tickerInput.onChange({ target: { value: investment.ticker_symbol || "" } } as any);
-    sharesInput.onChange({ target: { value: investment.shares_owned?.toString() || "" } } as any);
-    pricePerShareInput.onChange({ target: { value: investment.purchase_price_per_share?.toString() || "" } } as any);
     setEditDialogOpen(true);
   };
 
@@ -446,8 +430,23 @@ const Investments = () => {
     other: "bg-info text-info-foreground",
   };
 
-  const totalCurrentValue = investments.reduce((sum, inv) => sum + Number(inv.current_value), 0);
-  const totalFutureValue = investments.reduce((sum, inv) => sum + calculateFutureValue(inv), 0);
+  // Calculate live current value for stocks/crypto
+  const getLiveValue = (inv: Investment): number => {
+    if ((inv.type === "individual_stock" || inv.type === "crypto") && inv.ticker_symbol && inv.shares_owned) {
+      const currentPrice = priceData[inv.ticker_symbol]?.price;
+      if (currentPrice) {
+        return inv.shares_owned * currentPrice;
+      }
+    }
+    return Number(inv.current_value);
+  };
+
+  const totalCurrentValue = investments.reduce((sum, inv) => sum + getLiveValue(inv), 0);
+  const totalFutureValue = investments.reduce((sum, inv) => {
+    const liveValue = getLiveValue(inv);
+    const invWithLiveValue = { ...inv, current_value: liveValue };
+    return sum + calculateFutureValue(invWithLiveValue);
+  }, 0);
 
   // Portfolio Risk Analysis
   const analyzePortfolioRisk = () => {
@@ -456,7 +455,7 @@ const Investments = () => {
     const totalValue = totalCurrentValue;
     const allocations = investments.reduce((acc, inv) => {
       const type = inv.type;
-      const value = Number(inv.current_value);
+      const value = getLiveValue(inv);
       acc[type] = (acc[type] || 0) + value;
       return acc;
     }, {} as Record<string, number>);
@@ -563,8 +562,8 @@ const Investments = () => {
           <Label>Investment Name</Label>
           <Input
             placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
-            value={nameInput.value}
-            onChange={nameInput.onChange}
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
             autoComplete="off"
             required
           />
@@ -593,8 +592,8 @@ const Investments = () => {
               type="number"
               step="0.01"
               placeholder="4.5"
-              value={apyInput.value}
-              onChange={apyInput.onChange}
+              value={formData.apy}
+              onChange={(e) => handleInputChange('apy', e.target.value)}
               autoComplete="off"
               required
             />
@@ -609,8 +608,11 @@ const Investments = () => {
                   <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
                   <Input
                     placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
-                    value={tickerInput.value}
-                    onChange={handleTickerChange}
+                    value={formData.ticker}
+                    onChange={(e) => {
+                      const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+                      handleInputChange('ticker', value);
+                    }}
                     autoComplete="off"
                     required
                   />
@@ -618,8 +620,8 @@ const Investments = () => {
                 <div className="flex items-end">
                   <Button
                     type="button"
-                    onClick={() => fetchPrice(tickerInput.value, formType)}
-                    disabled={!tickerInput.value || fetchingPrice}
+                    onClick={() => fetchPrice(formData.ticker, formType)}
+                    disabled={!formData.ticker || fetchingPrice}
                     variant="outline"
                   >
                     {fetchingPrice ? "Fetching..." : "Get Price"}
@@ -637,8 +639,8 @@ const Investments = () => {
                   type="number"
                   step="0.001"
                   placeholder="10"
-                  value={sharesInput.value}
-                  onChange={sharesInput.onChange}
+                  value={formData.shares}
+                  onChange={(e) => handleInputChange('shares', e.target.value)}
                   autoComplete="off"
                   required
                 />
@@ -649,8 +651,8 @@ const Investments = () => {
                   type="number"
                   step="0.01"
                   placeholder="Auto-fetched"
-                  value={pricePerShareInput.value}
-                  onChange={pricePerShareInput.onChange}
+                  value={formData.pricePerShare}
+                  onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
                   autoComplete="off"
                   required
                   disabled={fetchingPrice}
@@ -663,8 +665,45 @@ const Investments = () => {
                 type="number"
                 step="0.01"
                 placeholder="Calculated automatically"
-                value={currentValueInput.value}
+                value={formData.currentValue}
                 disabled
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Monthly Contribution</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.monthlyContribution}
+                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Expected Annual Return (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="7"
+                  value={formData.annualReturn}
+                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Years to Project</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="10"
+                value={formData.yearsRemaining}
+                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
+                autoComplete="off"
+                required
               />
             </div>
           </>
@@ -676,9 +715,9 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="10000"
-                  value={currentValueInput.value}
-                  onChange={currentValueInput.onChange}
+                  placeholder="1000"
+                  value={formData.currentValue}
+                  onChange={(e) => handleInputChange('currentValue', e.target.value)}
                   autoComplete="off"
                   required
                 />
@@ -688,9 +727,9 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="500"
-                  value={monthlyContributionInput.value}
-                  onChange={monthlyContributionInput.onChange}
+                  placeholder="100"
+                  value={formData.monthlyContribution}
+                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
                   autoComplete="off"
                 />
               </div>
@@ -702,8 +741,8 @@ const Investments = () => {
                   type="number"
                   step="0.1"
                   placeholder="7"
-                  value={annualReturnInput.value}
-                  onChange={annualReturnInput.onChange}
+                  value={formData.annualReturn}
+                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
                   required
                 />
@@ -714,39 +753,8 @@ const Investments = () => {
                   type="number"
                   step="0.5"
                   placeholder="10"
-                  value={yearsRemainingInput.value}
-                  onChange={yearsRemainingInput.onChange}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {!isCryptoOrStock && (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Expected Annual Return (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="7"
-                  value={annualReturnInput.value}
-                  onChange={annualReturnInput.onChange}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Years to Project</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  placeholder="10"
-                  value={yearsRemainingInput.value}
-                  onChange={yearsRemainingInput.onChange}
+                  value={formData.yearsRemaining}
+                  onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                   autoComplete="off"
                   required
                 />
@@ -899,15 +907,11 @@ const Investments = () => {
                   <div className="text-xs text-muted-foreground">Largest: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Recommendations:</div>
-                <ul className="space-y-1">
-                  {riskAnalysis.recommendations.map((rec, index) => (
-                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      {rec}
-                    </li>
+              <div className="border-t pt-3">
+                <div className="text-sm font-medium mb-2">Recommendations:</div>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  {riskAnalysis.recommendations.map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
                   ))}
                 </ul>
               </div>
@@ -915,11 +919,14 @@ const Investments = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Your Investments</h2>
           {investments.map((investment) => {
             const futureValue = calculateFutureValue(investment);
-            const gain = futureValue - Number(investment.current_value);
-            const hasChart = investment.ticker_symbol && priceData[investment.ticker_symbol]?.history;
+            const liveValue = getLiveValue(investment);
+            const gain = futureValue - liveValue;
+            const hasChart = investment.ticker_symbol && priceData[investment.ticker_symbol]?.history?.length > 0;
+            const currentPeriod = chartPeriods[investment.id] || "1M";
 
             return (
               <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card">
@@ -964,20 +971,33 @@ const Investments = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {hasChart && (
-                    <PerformanceChart 
-                      data={priceData[investment.ticker_symbol!].history}
-                      title="30-Day Performance"
-                      ticker={investment.ticker_symbol!}
-                    />
+                    <div className="space-y-2">
+                      <div className="flex justify-end">
+                        <Tabs value={currentPeriod} onValueChange={(value) => setChartPeriods(prev => ({ ...prev, [investment.id]: value }))}>
+                          <TabsList className="h-8">
+                            <TabsTrigger value="1D" className="text-xs px-2 py-1">1D</TabsTrigger>
+                            <TabsTrigger value="1W" className="text-xs px-2 py-1">1W</TabsTrigger>
+                            <TabsTrigger value="1M" className="text-xs px-2 py-1">1M</TabsTrigger>
+                            <TabsTrigger value="3M" className="text-xs px-2 py-1">3M</TabsTrigger>
+                            <TabsTrigger value="1Y" className="text-xs px-2 py-1">1Y</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                      <PerformanceChart 
+                        data={priceData[investment.ticker_symbol!].history}
+                        title={`${currentPeriod} Performance`}
+                        ticker={investment.ticker_symbol!}
+                      />
+                    </div>
                   )}
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground">Current Value</div>
-                      <div className="text-xl font-bold">${Number(investment.current_value).toFixed(2)}</div>
+                      <div className="text-xl font-bold">${liveValue.toFixed(2)}</div>
                       {investment.shares_owned && (
                         <div className="text-xs text-muted-foreground">
-                          {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${investment.purchase_price_per_share?.toFixed(2)}
+                          {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${priceData[investment.ticker_symbol!]?.price?.toFixed(2) || investment.purchase_price_per_share?.toFixed(2)}
                         </div>
                       )}
                     </div>
@@ -985,7 +1005,7 @@ const Investments = () => {
                       <div className="text-sm text-muted-foreground">Projected ({investment.years_remaining}y)</div>
                       <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
                       <div className="text-xs text-muted-foreground">
-                        +${gain.toFixed(2)} ({((gain / Number(investment.current_value)) * 100).toFixed(1)}%)
+                        +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}%)
                       </div>
                     </div>
                   </div>
