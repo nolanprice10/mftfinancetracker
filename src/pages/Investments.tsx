@@ -1,8 +1,8 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Plus, TrendingUp, Edit, Trash2, AlertTriangle, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ const Investments = () => {
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [priceData, setPriceData] = useState<Record<string, PriceData>>({});
   const [refreshing, setRefreshing] = useState(false);
+  const [userAge, setUserAge] = useState<number | null>(null);
   
   // Use useFormInput for all text inputs to prevent keyboard dismissal
   const nameInput = useFormInput("");
@@ -71,12 +72,25 @@ const Investments = () => {
 
   useEffect(() => {
     fetchInvestments();
+    fetchUserAge();
     // Auto-refresh prices every 10 seconds for near real-time updates
     const interval = setInterval(() => {
       refreshPrices();
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-calculate current value when shares or price changes
+  useEffect(() => {
+    const shares = parseFloat(sharesInput.value);
+    const price = parseFloat(pricePerShareInput.value);
+    if (!isNaN(shares) && !isNaN(price) && shares > 0 && price > 0) {
+      const total = (shares * price).toString();
+      if (currentValueInput.value !== total) {
+        currentValueInput.onChange({ target: { value: total } } as any);
+      }
+    }
+  }, [sharesInput.value, pricePerShareInput.value]);
 
   useEffect(() => {
     // Fetch price data for all investments with tickers
@@ -86,6 +100,32 @@ const Investments = () => {
       }
     });
   }, [investments]);
+
+  const fetchUserAge = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("birthday")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.birthday) {
+        const birthDate = new Date(profile.birthday);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        setUserAge(age);
+      }
+    } catch (error) {
+      console.error("Error fetching user age:", error);
+    }
+  };
 
   const fetchInvestments = async () => {
     try {
@@ -326,6 +366,12 @@ const Investments = () => {
     setSourceAccountId("");
   };
 
+  // Memoized handlers to prevent keyboard dismissal
+  const handleTickerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+    tickerInput.onChange({ target: { value } } as any);
+  }, [formType, tickerInput]);
+
   const fetchPrice = async (ticker: string, type: string) => {
     if (!ticker) return;
     
@@ -564,10 +610,7 @@ const Investments = () => {
                   <Input
                     placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
                     value={tickerInput.value}
-                    onChange={(e) => {
-                      const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
-                      tickerInput.onChange({ target: { value } } as any);
-                    }}
+                    onChange={handleTickerChange}
                     autoComplete="off"
                     required
                   />
@@ -595,14 +638,7 @@ const Investments = () => {
                   step="0.001"
                   placeholder="10"
                   value={sharesInput.value}
-                  onChange={(e) => {
-                    sharesInput.onChange(e);
-                    const shares = e.target.value;
-                    const price = parseFloat(pricePerShareInput.value) || 0;
-                    if (shares && price > 0) {
-                      currentValueInput.onChange({ target: { value: (parseFloat(shares) * price).toString() } } as any);
-                    }
-                  }}
+                  onChange={sharesInput.onChange}
                   autoComplete="off"
                   required
                 />
@@ -614,14 +650,7 @@ const Investments = () => {
                   step="0.01"
                   placeholder="Auto-fetched"
                   value={pricePerShareInput.value}
-                  onChange={(e) => {
-                    pricePerShareInput.onChange(e);
-                    const price = e.target.value;
-                    const shares = parseFloat(sharesInput.value) || 0;
-                    if (price && shares > 0) {
-                      currentValueInput.onChange({ target: { value: (parseFloat(price) * shares).toString() } } as any);
-                    }
-                  }}
+                  onChange={pricePerShareInput.onChange}
                   autoComplete="off"
                   required
                   disabled={fetchingPrice}
@@ -746,6 +775,47 @@ const Investments = () => {
   return (
     <Layout>
       <div className="p-8 space-y-6 animate-luxe-fade-in">
+        {userAge !== null && userAge < 18 && (
+          <Card className="shadow-elegant border-primary/30 bg-gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <BookOpen className="w-5 h-5" />
+                Getting Started with Investing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                As someone under 18, you'll need a parent or guardian to help you get started. Here's what you should know:
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <strong className="text-foreground">Custodial Accounts (UGMA/UTMA):</strong>
+                  <p className="text-muted-foreground">An adult manages the account until you're 18-21. Available at Fidelity, Schwab, and Vanguard.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">Learn First:</strong>
+                  <p className="text-muted-foreground">Study basics like compound interest, diversification, and index funds. Recommended: "The Simple Path to Wealth" by JL Collins.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">Start Small:</strong>
+                  <p className="text-muted-foreground">Paper trading apps like Webull Paper Trading or Investopedia Simulator let you practice without real money.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">Age-Appropriate Options:</strong>
+                  <p className="text-muted-foreground">Consider savings bonds (available at any age) or helping your parents choose investments you can learn from.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">What to Avoid:</strong>
+                  <p className="text-muted-foreground">Stay away from crypto, day trading, and high-risk individual stocks until you have more experience. Focus on learning and building good habits.</p>
+                </div>
+              </div>
+              <p className="text-primary font-medium mt-4">
+                Use this tracker to plan and learn—when you turn 18, you'll be ready to invest confidently!
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
             Investment Portfolio
