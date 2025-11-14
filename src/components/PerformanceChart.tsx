@@ -1,5 +1,6 @@
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { CandlestickChart } from "./CandlestickChart";
 
 interface ChartDataPoint {
   date: string;
@@ -41,13 +42,46 @@ export const PerformanceChart = ({ data, title, ticker, period = "1M", chartType
 
   const displayData = filteredData.length > 0 ? filteredData : data;
 
+  // For candlestick, generate OHLC data
+  if (chartType === "candlestick") {
+    const candlestickData = displayData.map((d, i) => {
+      const prevPrice = i > 0 ? displayData[i - 1].price : d.price;
+      const nextPrice = i < displayData.length - 1 ? displayData[i + 1].price : d.price;
+      const volatility = d.price * 0.015; // 1.5% volatility
+      
+      return {
+        date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        open: prevPrice,
+        high: Math.max(prevPrice, d.price, nextPrice) + volatility,
+        low: Math.min(prevPrice, d.price, nextPrice) - volatility,
+        close: d.price
+      };
+    });
+
+    const priceChange = displayData.length > 1 ? ((displayData[displayData.length - 1].price - displayData[0].price) / displayData[0].price) * 100 : 0;
+    const isPositive = priceChange >= 0;
+
+    return (
+      <Card className="shadow-elegant border-border/50 bg-gradient-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center justify-between">
+            <span>{title}</span>
+            <span className={`text-sm ${isPositive ? 'text-success' : 'text-destructive'}`}>
+              {isPositive ? '↑' : '↓'} {Math.abs(priceChange).toFixed(2)}%
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <CandlestickChart data={candlestickData} ticker={ticker} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Format data for line/area charts
   const formattedData = displayData.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    price: point.price,
-    open: point.open || point.price,
-    high: point.high || point.price,
-    low: point.low || point.price,
-    close: point.close || point.price
+    price: point.price
   }));
 
   const minPrice = Math.min(...displayData.map(d => d.price));
@@ -89,102 +123,54 @@ export const PerformanceChart = ({ data, title, ticker, period = "1M", chartType
             borderRadius: '8px',
             fontSize: '12px'
           }}
-          formatter={(value: any) => {
-            if (Array.isArray(value)) {
-              return [`$${value[0]?.toFixed(2) || 0} - $${value[1]?.toFixed(2) || 0}`, ticker];
-            }
-            return [`$${typeof value === 'number' ? value.toFixed(2) : '0.00'}`, ticker];
-          }}
+          formatter={(value: any) => [`$${typeof value === 'number' ? value.toFixed(2) : '0.00'}`, ticker]}
           labelStyle={{ color: 'hsl(var(--foreground))' }}
         />
       )
     };
 
-    switch (chartType) {
-      case "area":
-        return (
-          <AreaChart {...commonProps}>
-            <defs>
-              <linearGradient id={`gradient-${ticker}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-            {commonAxisProps.xAxis}
-            {commonAxisProps.yAxis}
-            {commonAxisProps.tooltip}
-            <Area 
-              type="monotone" 
-              dataKey="price" 
-              stroke={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} 
-              fill={`url(#gradient-${ticker})`}
-              strokeWidth={2}
-              animationDuration={1000}
-            />
-          </AreaChart>
-        );
-      
-      case "candlestick":
-        // Generate OHLC data from price data
-        const candleData = formattedData.map((d, i) => {
-          const prevPrice = i > 0 ? formattedData[i - 1].price : d.price;
-          const nextPrice = i < formattedData.length - 1 ? formattedData[i + 1].price : d.price;
-          const volatility = d.price * 0.02; // 2% volatility simulation
-          
-          return {
-            ...d,
-            open: prevPrice,
-            close: d.price,
-            high: Math.max(prevPrice, d.price, nextPrice) + volatility,
-            low: Math.min(prevPrice, d.price, nextPrice) - volatility
-          };
-        });
-        
-        return (
-          <BarChart {...commonProps} data={candleData}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-            {commonAxisProps.xAxis}
-            {commonAxisProps.yAxis}
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                fontSize: '12px'
-              }}
-              formatter={(value: any, name: string) => {
-                if (name === 'high') return [`$${value.toFixed(2)}`, 'High'];
-                if (name === 'low') return [`$${value.toFixed(2)}`, 'Low'];
-                if (name === 'open') return [`$${value.toFixed(2)}`, 'Open'];
-                if (name === 'close') return [`$${value.toFixed(2)}`, 'Close'];
-                return [`$${value.toFixed(2)}`, ticker];
-              }}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
-            />
-            <Bar dataKey="close" fill={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} radius={[2, 2, 2, 2]} />
-          </BarChart>
-        );
-      
-      case "line":
-      default:
-        return (
-          <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-            {commonAxisProps.xAxis}
-            {commonAxisProps.yAxis}
-            {commonAxisProps.tooltip}
-            <Line 
-              type="monotone" 
-              dataKey="price" 
-              stroke={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} 
-              strokeWidth={2}
-              dot={false}
-              animationDuration={1000}
-            />
-          </LineChart>
-        );
+    if (chartType === "area") {
+      return (
+        <AreaChart {...commonProps}>
+          <defs>
+            <linearGradient id={`gradient-${ticker}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} stopOpacity={0.3}/>
+              <stop offset="95%" stopColor={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+          {commonAxisProps.xAxis}
+          {commonAxisProps.yAxis}
+          {commonAxisProps.tooltip}
+          <Area 
+            type="monotone" 
+            dataKey="price" 
+            stroke={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} 
+            fill={`url(#gradient-${ticker})`}
+            strokeWidth={2}
+            animationDuration={1000}
+          />
+        </AreaChart>
+      );
     }
+
+    // Default: line chart
+    return (
+      <LineChart {...commonProps}>
+        <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+        {commonAxisProps.xAxis}
+        {commonAxisProps.yAxis}
+        {commonAxisProps.tooltip}
+        <Line 
+          type="monotone" 
+          dataKey="price" 
+          stroke={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} 
+          strokeWidth={2}
+          dot={false}
+          animationDuration={1000}
+        />
+      </LineChart>
+    );
   };
 
   return (
