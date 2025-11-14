@@ -14,9 +14,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { NumberStepper } from "@/components/NumberStepper";
-import { ValueProjectionChart } from "@/components/ValueProjectionChart";
-import { PortfolioValueChart } from "@/components/PortfolioValueChart";
 
 interface Investment {
   id: string;
@@ -58,7 +55,6 @@ const Investments = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
   const [chartPeriods, setChartPeriods] = useState<Record<string, string>>({});
-  const [chartTypes, setChartTypes] = useState<Record<string, string>>({});
   
   // Form state using controlled inputs to prevent keyboard dismissal
   const [formData, setFormData] = useState({
@@ -564,21 +560,13 @@ const Investments = () => {
         </div>
         <div className="space-y-2">
           <Label>Investment Name</Label>
-          <Select value={formData.name} onValueChange={(value) => handleInputChange('name', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select or enter name" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Roth IRA Account">Roth IRA Account</SelectItem>
-              <SelectItem value="401k Retirement">401k Retirement</SelectItem>
-              <SelectItem value="S&P 500 ETF">S&P 500 ETF</SelectItem>
-              <SelectItem value="Total Stock Market">Total Stock Market</SelectItem>
-              <SelectItem value="Tech Growth Fund">Tech Growth Fund</SelectItem>
-              <SelectItem value="High Yield Savings">High Yield Savings</SelectItem>
-              <SelectItem value="Bitcoin Investment">Bitcoin Investment</SelectItem>
-              <SelectItem value="Custom Investment">Custom Investment</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input
+            placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            autoComplete="off"
+            required
+          />
         </div>
         <div className="space-y-2">
           <Label>Type</Label>
@@ -598,92 +586,77 @@ const Investments = () => {
           </Select>
         </div>
         {formType === "savings" && (
-          <NumberStepper
-            value={formData.apy}
-            onChange={(value) => handleInputChange('apy', value)}
-            step={0.1}
-            min={0}
-            max={10}
-            label="Annual APY (%)"
-          />
+          <div className="space-y-2">
+            <Label>Annual APY (%)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="4.5"
+              value={formData.apy}
+              onChange={(e) => handleInputChange('apy', e.target.value)}
+              autoComplete="off"
+              required
+            />
+          </div>
         )}
 
         {isCryptoOrStock ? (
           <>
             <div className="space-y-2">
-              <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
               <div className="flex gap-2">
-                <Select 
-                  value={formData.ticker} 
-                  onValueChange={(value) => {
-                    handleInputChange('ticker', value);
-                    fetchPrice(value, formType);
-                  }}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={formType === "crypto" ? "Select crypto" : "Select stock"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formType === "crypto" ? (
-                      <>
-                        <SelectItem value="bitcoin">Bitcoin (BTC)</SelectItem>
-                        <SelectItem value="ethereum">Ethereum (ETH)</SelectItem>
-                        <SelectItem value="cardano">Cardano (ADA)</SelectItem>
-                        <SelectItem value="solana">Solana (SOL)</SelectItem>
-                        <SelectItem value="ripple">Ripple (XRP)</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="AAPL">Apple (AAPL)</SelectItem>
-                        <SelectItem value="MSFT">Microsoft (MSFT)</SelectItem>
-                        <SelectItem value="GOOGL">Google (GOOGL)</SelectItem>
-                        <SelectItem value="AMZN">Amazon (AMZN)</SelectItem>
-                        <SelectItem value="TSLA">Tesla (TSLA)</SelectItem>
-                        <SelectItem value="NVDA">NVIDIA (NVDA)</SelectItem>
-                        <SelectItem value="META">Meta (META)</SelectItem>
-                        <SelectItem value="VOO">Vanguard S&P 500 (VOO)</SelectItem>
-                        <SelectItem value="VTI">Vanguard Total Market (VTI)</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  onClick={() => fetchPrice(formData.ticker, formType)}
-                  disabled={!formData.ticker || fetchingPrice}
-                  variant="outline"
-                >
-                  {fetchingPrice ? "..." : "↻"}
-                </Button>
+                <div className="flex-1">
+                  <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
+                  <Input
+                    placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
+                    value={formData.ticker}
+                    onChange={(e) => {
+                      const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+                      handleInputChange('ticker', value);
+                    }}
+                    autoComplete="off"
+                    required
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    onClick={() => fetchPrice(formData.ticker, formType)}
+                    disabled={!formData.ticker || fetchingPrice}
+                    variant="outline"
+                  >
+                    {fetchingPrice ? "Fetching..." : "Get Price"}
+                  </Button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 {formType === "crypto" ? "Price from CoinGecko API" : "Price from Yahoo Finance"}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NumberStepper
-                value={formData.shares}
-                onChange={(value) => handleInputChange('shares', value)}
-                step={formType === "crypto" ? 0.001 : 1}
-                min={0}
-                label={formType === "crypto" ? "Amount Owned" : "Shares Owned"}
-              />
               <div className="space-y-2">
-                <Label>Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
-                <div className="flex gap-2 items-center">
-                  <div className="flex-1 h-10 flex items-center justify-center font-semibold text-lg border rounded-md bg-muted">
-                    ${parseFloat(formData.pricePerShare || "0").toFixed(2)}
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => fetchPrice(formData.ticker, formType)}
-                    disabled={!formData.ticker || fetchingPrice}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {fetchingPrice ? "..." : "Fetch"}
-                  </Button>
-                </div>
+                <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  placeholder="10"
+                  value={formData.shares}
+                  onChange={(e) => handleInputChange('shares', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Auto-fetched"
+                  value={formData.pricePerShare}
+                  onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
+                  autoComplete="off"
+                  required
+                  disabled={fetchingPrice}
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -697,66 +670,95 @@ const Investments = () => {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NumberStepper
-                value={formData.monthlyContribution}
-                onChange={(value) => handleInputChange('monthlyContribution', value)}
-                step={50}
-                min={0}
-                label="Monthly Contribution ($)"
-              />
-              <NumberStepper
-                value={formData.annualReturn}
-                onChange={(value) => handleInputChange('annualReturn', value)}
-                step={0.5}
-                min={0}
-                max={100}
-                label="Annual Return (%)"
+              <div className="space-y-2">
+                <Label>Monthly Contribution</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={formData.monthlyContribution}
+                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Expected Annual Return (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="7"
+                  value={formData.annualReturn}
+                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Years to Project</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="10"
+                value={formData.yearsRemaining}
+                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
+                autoComplete="off"
+                required
               />
             </div>
-            <NumberStepper
-              value={formData.yearsRemaining}
-              onChange={(value) => handleInputChange('yearsRemaining', value)}
-              step={1}
-              min={1}
-              max={50}
-              label="Years to Project"
-            />
           </>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4">
-              <NumberStepper
-                value={formData.currentValue}
-                onChange={(value) => handleInputChange('currentValue', value)}
-                step={100}
-                min={0}
-                label="Current Value ($)"
-              />
-              <NumberStepper
-                value={formData.monthlyContribution}
-                onChange={(value) => handleInputChange('monthlyContribution', value)}
-                step={50}
-                min={0}
-                label="Monthly Contribution ($)"
-              />
+              <div className="space-y-2">
+                <Label>Current Value</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="1000"
+                  value={formData.currentValue}
+                  onChange={(e) => handleInputChange('currentValue', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Contribution</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="100"
+                  value={formData.monthlyContribution}
+                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NumberStepper
-                value={formData.annualReturn}
-                onChange={(value) => handleInputChange('annualReturn', value)}
-                step={0.5}
-                min={0}
-                max={100}
-                label="Annual Return (%)"
-              />
-              <NumberStepper
-                value={formData.yearsRemaining}
-                onChange={(value) => handleInputChange('yearsRemaining', value)}
-                step={1}
-                min={1}
-                max={50}
-                label="Years to Project"
-              />
+              <div className="space-y-2">
+                <Label>Expected Annual Return (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="7"
+                  value={formData.annualReturn}
+                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Years to Project</Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  placeholder="10"
+                  value={formData.yearsRemaining}
+                  onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
             </div>
           </>
         )}
@@ -877,10 +879,6 @@ const Investments = () => {
           </Card>
         </div>
 
-        {totalCurrentValue > 0 && (
-          <PortfolioValueChart currentTotalValue={totalCurrentValue} />
-        )}
-
         {riskAnalysis && (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardHeader>
@@ -974,14 +972,7 @@ const Investments = () => {
                 <CardContent className="space-y-4">
                   {hasChart && (
                     <div className="space-y-2">
-                      <div className="flex justify-between gap-2">
-                        <Tabs value={chartTypes[investment.id] || "line"} onValueChange={(value) => setChartTypes(prev => ({ ...prev, [investment.id]: value }))}>
-                          <TabsList className="h-8">
-                            <TabsTrigger value="line" className="text-xs px-2 py-1">Line</TabsTrigger>
-                            <TabsTrigger value="area" className="text-xs px-2 py-1">Area</TabsTrigger>
-                            <TabsTrigger value="candlestick" className="text-xs px-2 py-1">Candle</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
+                      <div className="flex justify-end">
                         <Tabs value={currentPeriod} onValueChange={(value) => setChartPeriods(prev => ({ ...prev, [investment.id]: value }))}>
                           <TabsList className="h-8">
                             <TabsTrigger value="1D" className="text-xs px-2 py-1">1D</TabsTrigger>
@@ -996,18 +987,9 @@ const Investments = () => {
                         data={priceData[investment.ticker_symbol!].history}
                         title={`${currentPeriod} Performance`}
                         ticker={investment.ticker_symbol!}
-                        period={currentPeriod}
-                        chartType={(chartTypes[investment.id] || "line") as "line" | "area" | "candlestick"}
                       />
                     </div>
                   )}
-                  
-                  <ValueProjectionChart
-                    currentValue={liveValue}
-                    monthlyContribution={investment.monthly_contribution || 0}
-                    annualReturn={investment.annual_return_pct || 7}
-                    years={investment.years_remaining || 10}
-                  />
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
