@@ -55,6 +55,7 @@ const Investments = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
   const [chartPeriods, setChartPeriods] = useState<Record<string, string>>({});
+  const [chartTypes, setChartTypes] = useState<Record<string, string>>({});
   
   // Form state using controlled inputs to prevent keyboard dismissal
   const [formData, setFormData] = useState({
@@ -638,6 +639,7 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.001"
+                  inputMode="decimal"
                   placeholder="10"
                   value={formData.shares}
                   onChange={(e) => handleInputChange('shares', e.target.value)}
@@ -650,6 +652,7 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   placeholder="Auto-fetched"
                   value={formData.pricePerShare}
                   onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
@@ -675,6 +678,7 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   placeholder="0"
                   value={formData.monthlyContribution}
                   onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
@@ -686,6 +690,7 @@ const Investments = () => {
                 <Input
                   type="number"
                   step="0.1"
+                  inputMode="decimal"
                   placeholder="7"
                   value={formData.annualReturn}
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
@@ -972,7 +977,14 @@ const Investments = () => {
                 <CardContent className="space-y-4">
                   {hasChart && (
                     <div className="space-y-2">
-                      <div className="flex justify-end">
+                      <div className="flex justify-between gap-2">
+                        <Tabs value={chartTypes[investment.id] || "line"} onValueChange={(value) => setChartTypes(prev => ({ ...prev, [investment.id]: value }))}>
+                          <TabsList className="h-8">
+                            <TabsTrigger value="line" className="text-xs px-2 py-1">Line</TabsTrigger>
+                            <TabsTrigger value="area" className="text-xs px-2 py-1">Area</TabsTrigger>
+                            <TabsTrigger value="candlestick" className="text-xs px-2 py-1">Candle</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
                         <Tabs value={currentPeriod} onValueChange={(value) => setChartPeriods(prev => ({ ...prev, [investment.id]: value }))}>
                           <TabsList className="h-8">
                             <TabsTrigger value="1D" className="text-xs px-2 py-1">1D</TabsTrigger>
@@ -987,6 +999,8 @@ const Investments = () => {
                         data={priceData[investment.ticker_symbol!].history}
                         title={`${currentPeriod} Performance`}
                         ticker={investment.ticker_symbol!}
+                        period={currentPeriod}
+                        chartType={(chartTypes[investment.id] || "line") as "line" | "area" | "candlestick"}
                       />
                     </div>
                   )}
