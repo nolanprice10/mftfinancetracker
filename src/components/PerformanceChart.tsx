@@ -89,7 +89,12 @@ export const PerformanceChart = ({ data, title, ticker, period = "1M", chartType
             borderRadius: '8px',
             fontSize: '12px'
           }}
-          formatter={(value: any) => [`$${value.toFixed(2)}`, ticker]}
+          formatter={(value: any) => {
+            if (Array.isArray(value)) {
+              return [`$${value[0]?.toFixed(2) || 0} - $${value[1]?.toFixed(2) || 0}`, ticker];
+            }
+            return [`$${typeof value === 'number' ? value.toFixed(2) : '0.00'}`, ticker];
+          }}
           labelStyle={{ color: 'hsl(var(--foreground))' }}
         />
       )
