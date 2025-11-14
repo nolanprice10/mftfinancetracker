@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NumberStepper } from "@/components/NumberStepper";
+import { ValueProjectionChart } from "@/components/ValueProjectionChart";
 
 interface Investment {
   id: string;
@@ -634,32 +636,29 @@ const Investments = () => {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <NumberStepper
+                value={formData.shares}
+                onChange={(value) => handleInputChange('shares', value)}
+                step={formType === "crypto" ? 0.001 : 1}
+                min={0}
+                label={formType === "crypto" ? "Amount Owned" : "Shares Owned"}
+              />
               <div className="space-y-2">
-                <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
-                <Input
-                  type="number"
-                  step="0.001"
-                  inputMode="decimal"
-                  placeholder="10"
-                  value={formData.shares}
-                  onChange={(e) => handleInputChange('shares', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  placeholder="Auto-fetched"
-                  value={formData.pricePerShare}
-                  onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
-                  autoComplete="off"
-                  required
-                  disabled={fetchingPrice}
-                />
+                <Label>Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1 h-10 flex items-center justify-center font-semibold text-lg border rounded-md bg-muted">
+                    ${parseFloat(formData.pricePerShare || "0").toFixed(2)}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => fetchPrice(formData.ticker, formType)}
+                    disabled={!formData.ticker || fetchingPrice}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {fetchingPrice ? "..." : "Fetch"}
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -673,44 +672,30 @@ const Investments = () => {
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Monthly Contribution</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={formData.monthlyContribution}
-                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Expected Annual Return (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  placeholder="7"
-                  value={formData.annualReturn}
-                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Years to Project</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="10"
-                value={formData.yearsRemaining}
-                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
-                autoComplete="off"
-                required
+              <NumberStepper
+                value={formData.monthlyContribution}
+                onChange={(value) => handleInputChange('monthlyContribution', value)}
+                step={50}
+                min={0}
+                label="Monthly Contribution ($)"
+              />
+              <NumberStepper
+                value={formData.annualReturn}
+                onChange={(value) => handleInputChange('annualReturn', value)}
+                step={0.5}
+                min={0}
+                max={100}
+                label="Annual Return (%)"
               />
             </div>
+            <NumberStepper
+              value={formData.yearsRemaining}
+              onChange={(value) => handleInputChange('yearsRemaining', value)}
+              step={1}
+              min={1}
+              max={50}
+              label="Years to Project"
+            />
           </>
         ) : (
           <>
@@ -1004,6 +989,13 @@ const Investments = () => {
                       />
                     </div>
                   )}
+                  
+                  <ValueProjectionChart
+                    currentValue={liveValue}
+                    monthlyContribution={investment.monthly_contribution || 0}
+                    annualReturn={investment.annual_return_pct || 7}
+                    years={investment.years_remaining || 10}
+                  />
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
