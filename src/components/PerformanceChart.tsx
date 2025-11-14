@@ -126,20 +126,43 @@ export const PerformanceChart = ({ data, title, ticker, period = "1M", chartType
         );
       
       case "candlestick":
-        const candleData = formattedData.map(d => ({
-          ...d,
-          range: [d.low, d.high],
-          body: [Math.min(d.open, d.close), Math.max(d.open, d.close)],
-          isPositive: d.close >= d.open
-        }));
+        // Generate OHLC data from price data
+        const candleData = formattedData.map((d, i) => {
+          const prevPrice = i > 0 ? formattedData[i - 1].price : d.price;
+          const nextPrice = i < formattedData.length - 1 ? formattedData[i + 1].price : d.price;
+          const volatility = d.price * 0.02; // 2% volatility simulation
+          
+          return {
+            ...d,
+            open: prevPrice,
+            close: d.price,
+            high: Math.max(prevPrice, d.price, nextPrice) + volatility,
+            low: Math.min(prevPrice, d.price, nextPrice) - volatility
+          };
+        });
         
         return (
           <BarChart {...commonProps} data={candleData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
             {commonAxisProps.xAxis}
             {commonAxisProps.yAxis}
-            {commonAxisProps.tooltip}
-            <Bar dataKey="body" fill={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px',
+                fontSize: '12px'
+              }}
+              formatter={(value: any, name: string) => {
+                if (name === 'high') return [`$${value.toFixed(2)}`, 'High'];
+                if (name === 'low') return [`$${value.toFixed(2)}`, 'Low'];
+                if (name === 'open') return [`$${value.toFixed(2)}`, 'Open'];
+                if (name === 'close') return [`$${value.toFixed(2)}`, 'Close'];
+                return [`$${value.toFixed(2)}`, ticker];
+              }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
+            />
+            <Bar dataKey="close" fill={isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))'} radius={[2, 2, 2, 2]} />
           </BarChart>
         );
       
