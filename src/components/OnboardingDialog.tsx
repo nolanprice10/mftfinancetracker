@@ -80,7 +80,12 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent 
+        forceMount
+        disableFocusTrap
+        disableOutsidePointerEvents={false}
+        className="sm:max-w-md"
+      >
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
             <div className="p-4 rounded-full bg-gradient-primary">

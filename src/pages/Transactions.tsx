@@ -182,7 +182,11 @@ const Transactions = () => {
                 Add Transaction
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent
+              forceMount
+              disableFocusTrap
+              disableOutsidePointerEvents={false}
+            >
               <DialogHeader>
                 <DialogTitle>Add Transaction</DialogTitle>
                 <DialogDescription>Record a new income or expense</DialogDescription>

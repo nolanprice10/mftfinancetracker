@@ -269,7 +269,11 @@ const Accounts = () => {
                 Add Account
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent
+              forceMount
+              disableFocusTrap
+              disableOutsidePointerEvents={false}
+            >
               <DialogHeader>
                 <DialogTitle>Add Account</DialogTitle>
                 <DialogDescription>Create a new financial account</DialogDescription>
@@ -396,7 +400,11 @@ const Accounts = () => {
         </div>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
+          <DialogContent
+            forceMount
+            disableFocusTrap
+            disableOutsidePointerEvents={false}
+          >
             <DialogHeader>
               <DialogTitle>Edit Account</DialogTitle>
               <DialogDescription>Update account details</DialogDescription>

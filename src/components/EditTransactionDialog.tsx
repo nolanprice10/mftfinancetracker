@@ -99,7 +99,11 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        forceMount
+        disableFocusTrap
+        disableOutsidePointerEvents={false}
+      >
         <DialogHeader>
           <DialogTitle>Edit Transaction</DialogTitle>
           <DialogDescription>Update transaction details</DialogDescription>
