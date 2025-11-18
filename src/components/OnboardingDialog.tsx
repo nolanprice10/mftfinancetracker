@@ -60,29 +60,25 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
     handleComplete();
   };
 
-  const handleComplete = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        onOpenChange(false);
-        return;
-      }
-
-      const { error } = await supabase.from("onboarding_progress").upsert({
-        user_id: user.id,
-        completed: true,
-        steps_completed: onboardingSteps.map(s => s.id),
-      });
-
-      if (error) {
+  const handleComplete = () => {
+    // Close immediately
+    onOpenChange(false);
+    
+    // Save progress in background without blocking
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from("onboarding_progress").upsert({
+            user_id: user.id,
+            completed: true,
+            steps_completed: onboardingSteps.map(s => s.id),
+          });
+        }
+      } catch (error) {
         console.error("Failed to save onboarding progress:", error);
       }
-    } catch (error) {
-      console.error("Failed to save onboarding progress:", error);
-    } finally {
-      // Always close the dialog regardless of save success
-      onOpenChange(false);
-    }
+    })();
   };
 
   return (
