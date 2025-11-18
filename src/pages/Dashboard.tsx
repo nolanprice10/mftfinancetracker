@@ -49,17 +49,19 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("onboarding_progress")
         .select("completed")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (!data || !data.completed) {
+      // Only show onboarding if no record exists or completed is false
+      if (error || !data || data.completed !== true) {
         setShowOnboarding(true);
       }
     } catch (error) {
-      // If no record exists, show onboarding
+      // If any error occurs, show onboarding for new users
+      console.error("Error checking onboarding status:", error);
       setShowOnboarding(true);
     }
   };
