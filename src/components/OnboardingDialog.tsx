@@ -68,15 +68,19 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
         return;
       }
 
-      const { error } = await supabase.from("onboarding_progress").upsert({
-        user_id: user.id,
-        completed: true,
-        steps_completed: onboardingSteps.map(s => s.id),
-      });
-
-      if (error) {
-        console.error("Failed to save onboarding progress:", error);
-      }
+      // Use upsert with onConflict to handle existing records
+      await supabase.from("onboarding_progress").upsert(
+        {
+          user_id: user.id,
+          completed: true,
+          steps_completed: onboardingSteps.map(s => s.id),
+          updated_at: new Date().toISOString(),
+        },
+        { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        }
+      );
     } catch (error) {
       console.error("Failed to save onboarding progress:", error);
     } finally {
