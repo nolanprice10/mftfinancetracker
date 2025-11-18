@@ -48,7 +48,11 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
   const step = onboardingSteps[currentStep];
   const StepIcon = step.icon;
 
-  const handleNext = () => {
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Next button clicked, current step:", currentStep);
+    
     if (currentStep < onboardingSteps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -56,11 +60,15 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Skip button clicked");
     handleComplete();
   };
 
   const handleComplete = () => {
+    console.log("Completing onboarding, closing dialog");
     // Close immediately
     onOpenChange(false);
     
@@ -74,6 +82,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
             completed: true,
             steps_completed: onboardingSteps.map(s => s.id),
           });
+          console.log("Onboarding progress saved");
         }
       } catch (error) {
         console.error("Failed to save onboarding progress:", error);
@@ -83,12 +92,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        forceMount
-        disableFocusTrap
-        disableOutsidePointerEvents={false}
-        className="sm:max-w-md"
-      >
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
             <div className="p-4 rounded-full bg-gradient-primary">
@@ -124,10 +128,10 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
           </div>
 
           <div className="flex gap-3">
-            <Button variant="outline" onClick={handleSkip} className="flex-1">
+            <Button variant="outline" onClick={handleSkip} className="flex-1" type="button">
               Skip Tour
             </Button>
-            <Button onClick={handleNext} className="flex-1">
+            <Button onClick={handleNext} className="flex-1" type="button">
               {currentStep === onboardingSteps.length - 1 ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
