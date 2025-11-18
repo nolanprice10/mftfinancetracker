@@ -839,7 +839,12 @@ const Investments = () => {
                   Add Investment
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogContent 
+                forceMount
+                disableFocusTrap
+                disableOutsidePointerEvents={false}
+                className="max-h-[90vh] overflow-y-auto"
+              >
                 <DialogHeader>
                   <DialogTitle>Add New Investment</DialogTitle>
                   <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
@@ -1041,7 +1046,12 @@ const Investments = () => {
                     Add Your First Investment
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogContent 
+                  forceMount
+                  disableFocusTrap
+                  disableOutsidePointerEvents={false}
+                  className="max-h-[90vh] overflow-y-auto"
+                >
                   <DialogHeader>
                     <DialogTitle>Add New Investment</DialogTitle>
                     <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
@@ -1054,7 +1064,12 @@ const Investments = () => {
         )}
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent 
+            forceMount
+            disableFocusTrap
+            disableOutsidePointerEvents={false}
+            className="max-h-[90vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle>Edit Investment</DialogTitle>
               <DialogDescription>Update your investment details</DialogDescription>

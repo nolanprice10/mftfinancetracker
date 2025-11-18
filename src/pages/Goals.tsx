@@ -407,7 +407,11 @@ const Goals = () => {
                 Create Goal
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent
+              forceMount
+              disableFocusTrap
+              disableOutsidePointerEvents={false}
+            >
               <DialogHeader>
                 <DialogTitle>Create Goal</DialogTitle>
                 <DialogDescription>Set a new financial goal</DialogDescription>
@@ -569,7 +573,11 @@ const Goals = () => {
         </div>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
+          <DialogContent
+            forceMount
+            disableFocusTrap
+            disableOutsidePointerEvents={false}
+          >
             <DialogHeader>
               <DialogTitle>Edit Goal</DialogTitle>
               <DialogDescription>Update goal details</DialogDescription>
