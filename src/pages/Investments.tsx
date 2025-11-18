@@ -600,8 +600,12 @@ const Investments = () => {
           </div>
         )}
 
-        {isCryptoOrStock ? (
-          <>
+        <div
+          aria-hidden={!isCryptoOrStock}
+          style={{ display: isCryptoOrStock ? "block" : "none" }}
+          data-form-section="stock"
+        >
+          <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -614,7 +618,7 @@ const Investments = () => {
                       handleInputChange('ticker', value);
                     }}
                     autoComplete="off"
-                    required
+                    required={isCryptoOrStock}
                   />
                 </div>
                 <div className="flex items-end">
@@ -642,7 +646,7 @@ const Investments = () => {
                   value={formData.shares}
                   onChange={(e) => handleInputChange('shares', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -654,7 +658,7 @@ const Investments = () => {
                   value={formData.pricePerShare}
                   onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={isCryptoOrStock}
                   disabled={fetchingPrice}
                 />
               </div>
@@ -690,7 +694,7 @@ const Investments = () => {
                   value={formData.annualReturn}
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={isCryptoOrStock}
                 />
               </div>
             </div>
@@ -703,12 +707,18 @@ const Investments = () => {
                 value={formData.yearsRemaining}
                 onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                 autoComplete="off"
-                required
+                required={isCryptoOrStock}
               />
             </div>
-          </>
-        ) : (
-          <>
+          </div>
+        </div>
+
+        <div
+          aria-hidden={isCryptoOrStock}
+          style={{ display: isCryptoOrStock ? "none" : "block" }}
+          data-form-section="other"
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Current Value</Label>
@@ -719,7 +729,7 @@ const Investments = () => {
                   value={formData.currentValue}
                   onChange={(e) => handleInputChange('currentValue', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={!isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -744,7 +754,7 @@ const Investments = () => {
                   value={formData.annualReturn}
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={!isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -756,12 +766,12 @@ const Investments = () => {
                   value={formData.yearsRemaining}
                   onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                   autoComplete="off"
-                  required
+                  required={!isCryptoOrStock}
                 />
               </div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
 
         <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
           {buttonText}
@@ -840,6 +850,7 @@ const Investments = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent 
+                forceMount
                 disableFocusTrap
                 disableOutsidePointerEvents={false}
                 className="max-h-[90vh] overflow-y-auto"
@@ -1046,6 +1057,7 @@ const Investments = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent 
+                  forceMount
                   disableFocusTrap
                   disableOutsidePointerEvents={false}
                   className="max-h-[90vh] overflow-y-auto"
@@ -1063,6 +1075,7 @@ const Investments = () => {
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent 
+            forceMount
             disableFocusTrap
             disableOutsidePointerEvents={false}
             className="max-h-[90vh] overflow-y-auto"
