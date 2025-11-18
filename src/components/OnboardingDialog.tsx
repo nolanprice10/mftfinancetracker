@@ -63,17 +63,24 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
   const handleComplete = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        onOpenChange(false);
+        return;
+      }
 
-      await supabase.from("onboarding_progress").upsert({
+      const { error } = await supabase.from("onboarding_progress").upsert({
         user_id: user.id,
         completed: true,
         steps_completed: onboardingSteps.map(s => s.id),
       });
 
-      onOpenChange(false);
+      if (error) {
+        console.error("Failed to save onboarding progress:", error);
+      }
     } catch (error) {
       console.error("Failed to save onboarding progress:", error);
+    } finally {
+      // Always close the dialog regardless of save success
       onOpenChange(false);
     }
   };
