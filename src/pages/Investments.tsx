@@ -253,7 +253,10 @@ const Investments = () => {
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
+      console.log("Validation result:", validationResult);
+
       if (!validationResult.success) {
+        console.error("Validation failed:", validationResult.error.errors);
         toast.error(validationResult.error.errors[0].message);
         return;
       }
@@ -288,8 +291,9 @@ const Investments = () => {
         toast.success(`Created savings account: ${formData.name}`);
       }
 
-      const { error } = await supabase.from("investments").insert(investmentData);
-      if (error) throw error;
+      const res = await supabase.from("investments").insert(investmentData);
+      console.log("Insert result:", res);
+      if (res.error) throw res.error;
 
       // Deduct funds from source account
       const { error: updateError } = await supabase
@@ -304,7 +308,9 @@ const Investments = () => {
       resetForm();
       fetchInvestments();
     } catch (error: any) {
-      toast.error(error.message || "Failed to add investment");
+      console.error("Add investment error:", error);
+      const message = error?.message || JSON.stringify(error) || "Failed to add investment";
+      toast.error(message);
     }
   };
 
@@ -328,13 +334,16 @@ const Investments = () => {
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
+      console.log("Validation result:", validationResult);
+
       if (!validationResult.success) {
+        console.error("Validation failed:", validationResult.error.errors);
         toast.error(validationResult.error.errors[0].message);
         return;
       }
 
       const validated = validationResult.data;
-      const { error } = await supabase.from("investments").update({
+      const res = await supabase.from("investments").update({
         name: validated.name,
         type: validated.type,
         current_value: validated.current_value,
@@ -346,13 +355,16 @@ const Investments = () => {
         purchase_price_per_share: validated.purchase_price_per_share,
       }).eq("id", selectedInvestment.id);
 
-      if (error) throw error;
+      console.log("Update result:", res);
+      if (res.error) throw res.error;
       toast.success("Investment updated successfully");
       setEditDialogOpen(false);
       resetForm();
       fetchInvestments();
     } catch (error: any) {
-      toast.error(error.message || "Failed to update investment");
+      console.error("Update investment error:", error);
+      const message = error?.message || JSON.stringify(error) || "Failed to update investment";
+      toast.error(message);
     }
   };
 
@@ -619,13 +631,14 @@ const Investments = () => {
                     }}
                     autoComplete="off"
                     required={isCryptoOrStock}
+                    disabled={!isCryptoOrStock}
                   />
                 </div>
                 <div className="flex items-end">
                   <Button
                     type="button"
                     onClick={() => fetchPrice(formData.ticker, formType)}
-                    disabled={!formData.ticker || fetchingPrice}
+                    disabled={!isCryptoOrStock || !formData.ticker || fetchingPrice}
                     variant="outline"
                   >
                     {fetchingPrice ? "Fetching..." : "Get Price"}
@@ -647,6 +660,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('shares', e.target.value)}
                   autoComplete="off"
                   required={isCryptoOrStock}
+                  disabled={!isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -659,7 +673,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
                   autoComplete="off"
                   required={isCryptoOrStock}
-                  disabled={fetchingPrice}
+                  disabled={!isCryptoOrStock || fetchingPrice}
                 />
               </div>
             </div>
@@ -683,6 +697,7 @@ const Investments = () => {
                   value={formData.monthlyContribution}
                   onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
                   autoComplete="off"
+                  disabled={!isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -695,6 +710,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
                   required={isCryptoOrStock}
+                  disabled={!isCryptoOrStock}
                 />
               </div>
             </div>
@@ -708,6 +724,7 @@ const Investments = () => {
                 onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                 autoComplete="off"
                 required={isCryptoOrStock}
+                disabled={!isCryptoOrStock}
               />
             </div>
           </div>
@@ -730,6 +747,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('currentValue', e.target.value)}
                   autoComplete="off"
                   required={!isCryptoOrStock}
+                  disabled={isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -741,6 +759,7 @@ const Investments = () => {
                   value={formData.monthlyContribution}
                   onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
                   autoComplete="off"
+                  disabled={isCryptoOrStock}
                 />
               </div>
             </div>
@@ -755,6 +774,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
                   required={!isCryptoOrStock}
+                  disabled={isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -767,6 +787,7 @@ const Investments = () => {
                   onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                   autoComplete="off"
                   required={!isCryptoOrStock}
+                  disabled={isCryptoOrStock}
                 />
               </div>
             </div>
