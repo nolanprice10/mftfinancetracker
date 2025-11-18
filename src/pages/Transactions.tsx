@@ -183,7 +183,6 @@ const Transactions = () => {
               </Button>
             </DialogTrigger>
             <DialogContent
-              forceMount
               disableFocusTrap
               disableOutsidePointerEvents={false}
             >

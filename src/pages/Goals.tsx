@@ -408,7 +408,6 @@ const Goals = () => {
               </Button>
             </DialogTrigger>
             <DialogContent
-              forceMount
               disableFocusTrap
               disableOutsidePointerEvents={false}
             >
@@ -574,7 +573,6 @@ const Goals = () => {
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent
-            forceMount
             disableFocusTrap
             disableOutsidePointerEvents={false}
           >

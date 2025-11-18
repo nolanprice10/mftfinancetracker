@@ -840,7 +840,6 @@ const Investments = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent 
-                forceMount
                 disableFocusTrap
                 disableOutsidePointerEvents={false}
                 className="max-h-[90vh] overflow-y-auto"
@@ -1047,7 +1046,6 @@ const Investments = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent 
-                  forceMount
                   disableFocusTrap
                   disableOutsidePointerEvents={false}
                   className="max-h-[90vh] overflow-y-auto"
@@ -1065,7 +1063,6 @@ const Investments = () => {
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent 
-            forceMount
             disableFocusTrap
             disableOutsidePointerEvents={false}
             className="max-h-[90vh] overflow-y-auto"
