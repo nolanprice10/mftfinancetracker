@@ -270,7 +270,6 @@ const Accounts = () => {
               </Button>
             </DialogTrigger>
             <DialogContent
-              forceMount
               disableFocusTrap
               disableOutsidePointerEvents={false}
             >
@@ -401,7 +400,6 @@ const Accounts = () => {
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent
-            forceMount
             disableFocusTrap
             disableOutsidePointerEvents={false}
           >
