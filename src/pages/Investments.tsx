@@ -253,10 +253,7 @@ const Investments = () => {
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
-      console.log("Validation result:", validationResult);
-
       if (!validationResult.success) {
-        console.error("Validation failed:", validationResult.error.errors);
         toast.error(validationResult.error.errors[0].message);
         return;
       }
@@ -291,9 +288,8 @@ const Investments = () => {
         toast.success(`Created savings account: ${formData.name}`);
       }
 
-      const res = await supabase.from("investments").insert(investmentData);
-      console.log("Insert result:", res);
-      if (res.error) throw res.error;
+      const { error } = await supabase.from("investments").insert(investmentData);
+      if (error) throw error;
 
       // Deduct funds from source account
       const { error: updateError } = await supabase
@@ -308,9 +304,7 @@ const Investments = () => {
       resetForm();
       fetchInvestments();
     } catch (error: any) {
-      console.error("Add investment error:", error);
-      const message = error?.message || JSON.stringify(error) || "Failed to add investment";
-      toast.error(message);
+      toast.error(error.message || "Failed to add investment");
     }
   };
 
@@ -334,16 +328,13 @@ const Investments = () => {
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
 
-      console.log("Validation result:", validationResult);
-
       if (!validationResult.success) {
-        console.error("Validation failed:", validationResult.error.errors);
         toast.error(validationResult.error.errors[0].message);
         return;
       }
 
       const validated = validationResult.data;
-      const res = await supabase.from("investments").update({
+      const { error } = await supabase.from("investments").update({
         name: validated.name,
         type: validated.type,
         current_value: validated.current_value,
@@ -355,16 +346,13 @@ const Investments = () => {
         purchase_price_per_share: validated.purchase_price_per_share,
       }).eq("id", selectedInvestment.id);
 
-      console.log("Update result:", res);
-      if (res.error) throw res.error;
+      if (error) throw error;
       toast.success("Investment updated successfully");
       setEditDialogOpen(false);
       resetForm();
       fetchInvestments();
     } catch (error: any) {
-      console.error("Update investment error:", error);
-      const message = error?.message || JSON.stringify(error) || "Failed to update investment";
-      toast.error(message);
+      toast.error(error.message || "Failed to update investment");
     }
   };
 
@@ -612,12 +600,8 @@ const Investments = () => {
           </div>
         )}
 
-        <div
-          aria-hidden={!isCryptoOrStock}
-          style={{ display: isCryptoOrStock ? "block" : "none" }}
-          data-form-section="stock"
-        >
-          <div className="space-y-4">
+        {isCryptoOrStock ? (
+          <>
             <div className="space-y-2">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -630,15 +614,14 @@ const Investments = () => {
                       handleInputChange('ticker', value);
                     }}
                     autoComplete="off"
-                    required={isCryptoOrStock}
-                    disabled={!isCryptoOrStock}
+                    required
                   />
                 </div>
                 <div className="flex items-end">
                   <Button
                     type="button"
                     onClick={() => fetchPrice(formData.ticker, formType)}
-                    disabled={!isCryptoOrStock || !formData.ticker || fetchingPrice}
+                    disabled={!formData.ticker || fetchingPrice}
                     variant="outline"
                   >
                     {fetchingPrice ? "Fetching..." : "Get Price"}
@@ -659,8 +642,7 @@ const Investments = () => {
                   value={formData.shares}
                   onChange={(e) => handleInputChange('shares', e.target.value)}
                   autoComplete="off"
-                  required={isCryptoOrStock}
-                  disabled={!isCryptoOrStock}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -672,8 +654,8 @@ const Investments = () => {
                   value={formData.pricePerShare}
                   onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
                   autoComplete="off"
-                  required={isCryptoOrStock}
-                  disabled={!isCryptoOrStock || fetchingPrice}
+                  required
+                  disabled={fetchingPrice}
                 />
               </div>
             </div>
@@ -697,7 +679,6 @@ const Investments = () => {
                   value={formData.monthlyContribution}
                   onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
                   autoComplete="off"
-                  disabled={!isCryptoOrStock}
                 />
               </div>
               <div className="space-y-2">
@@ -709,8 +690,7 @@ const Investments = () => {
                   value={formData.annualReturn}
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
-                  required={isCryptoOrStock}
-                  disabled={!isCryptoOrStock}
+                  required
                 />
               </div>
             </div>
@@ -723,19 +703,12 @@ const Investments = () => {
                 value={formData.yearsRemaining}
                 onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                 autoComplete="off"
-                required={isCryptoOrStock}
-                disabled={!isCryptoOrStock}
+                required
               />
             </div>
-          </div>
-        </div>
-
-        <div
-          aria-hidden={isCryptoOrStock}
-          style={{ display: isCryptoOrStock ? "none" : "block" }}
-          data-form-section="other"
-        >
-          <div className="space-y-4">
+          </>
+        ) : (
+          <>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Current Value</Label>
@@ -746,8 +719,7 @@ const Investments = () => {
                   value={formData.currentValue}
                   onChange={(e) => handleInputChange('currentValue', e.target.value)}
                   autoComplete="off"
-                  required={!isCryptoOrStock}
-                  disabled={isCryptoOrStock}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -759,7 +731,6 @@ const Investments = () => {
                   value={formData.monthlyContribution}
                   onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
                   autoComplete="off"
-                  disabled={isCryptoOrStock}
                 />
               </div>
             </div>
@@ -773,8 +744,7 @@ const Investments = () => {
                   value={formData.annualReturn}
                   onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                   autoComplete="off"
-                  required={!isCryptoOrStock}
-                  disabled={isCryptoOrStock}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -786,13 +756,12 @@ const Investments = () => {
                   value={formData.yearsRemaining}
                   onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                   autoComplete="off"
-                  required={!isCryptoOrStock}
-                  disabled={isCryptoOrStock}
+                  required
                 />
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
           {buttonText}
@@ -871,7 +840,6 @@ const Investments = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent 
-                forceMount
                 disableFocusTrap
                 disableOutsidePointerEvents={false}
                 className="max-h-[90vh] overflow-y-auto"
@@ -1078,7 +1046,6 @@ const Investments = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent 
-                  forceMount
                   disableFocusTrap
                   disableOutsidePointerEvents={false}
                   className="max-h-[90vh] overflow-y-auto"
@@ -1096,7 +1063,6 @@ const Investments = () => {
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent 
-            forceMount
             disableFocusTrap
             disableOutsidePointerEvents={false}
             className="max-h-[90vh] overflow-y-auto"
