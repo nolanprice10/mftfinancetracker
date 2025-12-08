@@ -33,7 +33,7 @@ export const transactionSchema = z.object({
 // Investment validation schema
 export const investmentSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  type: z.enum(['roth_ira', 'taxable_etf', 'index_fund', 'individual_stock', 'crypto', 'savings', 'other']),
+  type: z.enum(['roth_ira', 'taxable_etf', 'index_fund', 'individual_stock', 'crypto', 'other']),
   current_value: z.number()
     .nonnegative("Current value cannot be negative")
     .max(999999999, "Current value is too large")
@@ -61,7 +61,7 @@ export const accountSchema = z.object({
   balance: z.number()
     .max(999999999, "Balance is too large")
     .refine(val => !isNaN(val), "Invalid balance"),
-  type: z.enum(['checking', 'savings', 'brokerage', 'retirement', 'cash']),
+  type: z.enum(['checking', 'savings', 'brokerage', 'retirement', 'cash', 'high_yield_savings']),
   notes: z.string().max(500, "Notes must be less than 500 characters").optional().nullable()
 });
 

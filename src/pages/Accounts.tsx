@@ -33,6 +33,7 @@ const Accounts = () => {
     balance: "",
     type: "checking",
     notes: "",
+    apy: "",
   });
 
   useEffect(() => {
@@ -80,19 +81,24 @@ const Accounts = () => {
       }
 
       const validated = validationResult.data;
+      // Persist APY in notes for high-yield accounts (no DB migration)
+      const notesWithApy = formData.type === 'high_yield_savings' && formData.apy
+        ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
+        : (formData.notes || null);
+
       const { error } = await supabase.from("accounts").insert({
         user_id: user.id,
         name: validated.name,
         balance: validated.balance,
         type: validated.type as any,
-        notes: validated.notes,
+        notes: notesWithApy,
       } as any);
 
       if (error) throw error;
 
       toast.success("Account created successfully");
       setDialogOpen(false);
-      setFormData({ name: "", balance: "", type: "checking", notes: "" });
+      setFormData({ name: "", balance: "", type: "checking", notes: "", apy: "" });
       fetchAccounts();
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
@@ -119,13 +125,17 @@ const Accounts = () => {
       }
 
       const validated = validationResult.data;
+      const notesWithApy = formData.type === 'high_yield_savings' && formData.apy
+        ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
+        : (formData.notes || null);
+
       const { error } = await supabase
         .from("accounts")
         .update({
           name: validated.name,
           balance: validated.balance,
           type: validated.type as any,
-          notes: validated.notes,
+          notes: notesWithApy,
         } as any)
         .eq("id", selectedAccount.id);
 
@@ -161,12 +171,18 @@ const Accounts = () => {
   };
 
   const openEditDialog = (account: Account) => {
+    // Extract APY marker from notes if present
+    const apyMatch = account.notes ? account.notes.match(/APY:\s*:?\s*([0-9.]+)/i) : null;
+    const apy = apyMatch ? apyMatch[1] : "";
+    const notesStripped = account.notes ? (apyMatch ? account.notes.replace(apyMatch[0], '').trim() : account.notes) : "";
+
     setSelectedAccount(account);
     setFormData({
       name: account.name,
       balance: account.balance.toString(),
       type: account.type,
-      notes: account.notes || "",
+      notes: notesStripped || "",
+      apy,
     });
     setEditDialogOpen(true);
   };
@@ -174,10 +190,25 @@ const Accounts = () => {
   const accountTypeColors: Record<string, string> = {
     checking: "bg-primary",
     savings: "bg-success",
+    high_yield_savings: "bg-emerald",
     brokerage: "bg-accent",
     retirement: "bg-secondary",
     cash: "bg-warning",
   };
+  const accountTypeLabels: Record<string, string> = {
+    checking: 'Checking',
+    savings: 'Savings',
+    high_yield_savings: 'High-Yield Savings',
+    brokerage: 'Brokerage',
+    retirement: 'Retirement',
+    cash: 'Cash'
+  }
+
+  const extractApyFromNotes = (notes: string | null) => {
+    if (!notes) return null;
+    const m = notes.match(/APY:\s*:?\s*([0-9.]+)/i);
+    return m ? m[1] : null;
+  }
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
@@ -186,15 +217,17 @@ const Accounts = () => {
     const [localName, setLocalName] = useState(formData.name);
     const [localBalance, setLocalBalance] = useState(formData.balance);
     const [localNotes, setLocalNotes] = useState(formData.notes);
+    const [localApy, setLocalApy] = useState(formData.apy);
 
     useEffect(() => {
       setLocalName(formData.name);
       setLocalBalance(formData.balance);
       setLocalNotes(formData.notes);
-    }, [formData.name, formData.balance, formData.notes]);
+      setLocalApy(formData.apy || "");
+    }, [formData.name, formData.balance, formData.notes, formData.apy]);
 
     const handleLocalSubmit = (e: React.FormEvent) => {
-      setFormData({ ...formData, name: localName, balance: localBalance, notes: localNotes });
+      setFormData({ ...formData, name: localName, balance: localBalance, notes: localNotes, apy: localApy });
       onSubmit(e);
     };
 
@@ -220,12 +253,27 @@ const Accounts = () => {
             <SelectContent>
               <SelectItem value="checking">Checking</SelectItem>
               <SelectItem value="savings">Savings</SelectItem>
+              <SelectItem value="high_yield_savings">High-Yield Savings</SelectItem>
               <SelectItem value="brokerage">Brokerage</SelectItem>
               <SelectItem value="retirement">Retirement</SelectItem>
               <SelectItem value="cash">Cash</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {formData.type === 'high_yield_savings' && (
+          <div className="space-y-2">
+            <Label>APY (annual %)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="e.g., 3.5"
+              value={localApy}
+              onChange={(e) => setLocalApy(e.target.value)}
+              onBlur={(e) => setFormData({ ...formData, apy: e.target.value })}
+              autoComplete="off"
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label>Balance</Label>
           <Input
@@ -241,14 +289,16 @@ const Accounts = () => {
         </div>
         <div className="space-y-2">
           <Label>Notes (optional)</Label>
-          <Input
-            placeholder="Add details..."
-            value={localNotes}
-            onChange={(e) => setLocalNotes(e.target.value)}
-            onBlur={(e) => setFormData({ ...formData, notes: e.target.value })}
-            autoComplete="off"
-          />
+            <Input
+              placeholder="Add details..."
+              value={localNotes}
+              onChange={(e) => setLocalNotes(e.target.value)}
+              onBlur={(e) => setFormData({ ...formData, notes: e.target.value })}
+              autoComplete="off"
+            />
         </div>
+
+        
         <Button type="submit" className="w-full">{buttonText}</Button>
       </form>
     );
@@ -363,9 +413,14 @@ const Accounts = () => {
                   <div className="flex items-start justify-between relative z-10">
                     <div className="flex-1">
                       <CardTitle className="text-xl mb-2 transition-colors duration-300 group-hover:text-primary">{account.name}</CardTitle>
-                      <Badge className={accountTypeColors[account.type] || "bg-primary"}>
-                        {account.type}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={accountTypeColors[account.type] || "bg-primary"}>
+                          {accountTypeLabels[account.type] || account.type}
+                        </Badge>
+                        {extractApyFromNotes(account.notes) && (
+                          <Badge className="bg-emerald/10 text-emerald-700">APY {extractApyFromNotes(account.notes)}%</Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-1">
                       <Button size="sm" variant="ghost" onClick={() => openEditDialog(account)} className="hover:bg-primary/10 transition-all">

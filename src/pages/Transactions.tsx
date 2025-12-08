@@ -404,13 +404,18 @@ const Transactions = () => {
           </CardContent>
         </Card>
 
-        <EditTransactionDialog
-          transaction={editTransaction}
-          accounts={accounts}
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          onSuccess={fetchData}
-        />
+        {editTransaction && (
+          <EditTransactionDialog
+            transaction={editTransaction}
+            accounts={accounts}
+            open={editDialogOpen}
+            onOpenChange={(open) => {
+              setEditDialogOpen(open);
+              if (!open) setEditTransaction(null);
+            }}
+            onSuccess={fetchData}
+          />
+        )}
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>

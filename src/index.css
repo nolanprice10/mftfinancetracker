@@ -241,3 +241,45 @@ All colors MUST be HSL.
   .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
   .stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
 }
+
+/* Typographic scale and responsive text-fitting utilities */
+@layer base {
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  /* Responsive headings that scale gracefully */
+  h1 { font-size: clamp(1.5rem, 1.8rem + 1.2vw, 2.75rem); line-height: 1.05; letter-spacing: -0.01em; }
+  h2 { font-size: clamp(1.25rem, 1.4rem + 0.9vw, 2rem); line-height: 1.08; }
+  h3 { font-size: clamp(1.125rem, 1.25rem + 0.6vw, 1.5rem); line-height: 1.1; }
+  h4 { font-size: clamp(1rem, 1.05rem + 0.4vw, 1.125rem); }
+
+  /* Provide a refined lead/eyebrow style */
+  .lead { font-size: 1.05rem; color: hsl(var(--muted-foreground)); }
+
+  /* Card title tuning */
+  .card-title {
+    font-size: clamp(1.125rem, 1.2rem + 0.6vw, 1.75rem);
+    line-height: 1.03;
+    letter-spacing: -0.01em;
+    font-family: 'Playfair Display', serif;
+  }
+
+  /* Truncation utilities */
+  .truncate-1 { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .truncate-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Tight form text for small labels */
+  .text-tight { letter-spacing: -0.01em; }
+
+  /* Ensure buttons and controls don't wrap their label text unexpectedly */
+  button { white-space: nowrap; }
+}

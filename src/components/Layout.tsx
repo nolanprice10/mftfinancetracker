@@ -73,11 +73,16 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-primary rounded-lg">
-              <Wallet className="h-5 w-5 text-white" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center border border-border shadow-glow">
+              <div className="w-8 h-8 rounded-full bg-gradient-wealth flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-white" />
+              </div>
             </div>
-            <span className="font-bold text-lg">MyFinanceTracker</span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="font-serif text-base tracking-wide leading-tight truncate-1">MyFinanceTracker</span>
+              <span className="text-xs text-muted-foreground truncate-1">Curated wealth management</span>
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -98,14 +103,14 @@ const Layout = ({ children }: LayoutProps) => {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-w-0 ${
                     isActive
                       ? "bg-gradient-primary text-white shadow-md"
                       : "hover:bg-muted"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
+                    <span className="font-medium truncate-1">{item.label}</span>
                 </Link>
               );
             })}
@@ -125,12 +130,15 @@ const Layout = ({ children }: LayoutProps) => {
       <aside className="hidden lg:fixed lg:flex lg:flex-col lg:w-64 lg:h-screen bg-card/95 backdrop-blur-sm border-r border-border/50 shadow-elegant">
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-wealth rounded-xl shadow-glow transition-all duration-300 hover:scale-110">
-              <Wallet className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center border border-border shadow-glow">
+              <div className="w-9 h-9 rounded-full bg-gradient-wealth flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-white" />
+              </div>
             </div>
-            <span className="font-bold text-xl bg-gradient-wealth bg-clip-text text-transparent">
-              MyFinanceTracker
-            </span>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="font-serif text-xl tracking-wider leading-tight truncate-1">MyFinanceTracker</span>
+              <span className="text-xs text-muted-foreground truncate-1">Curated wealth management</span>
+            </div>
           </div>
         </div>
         
@@ -142,14 +150,14 @@ const Layout = ({ children }: LayoutProps) => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 min-w-0 ${
                   isActive
                     ? "bg-gradient-wealth text-white shadow-elegant"
                     : "hover:bg-muted/50 hover:translate-x-1"
                 }`}
               >
                 <Icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium truncate-1">{item.label}</span>
               </Link>
             );
           })}

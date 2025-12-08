@@ -2,7 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,217 @@ interface PriceData {
   history: Array<{ date: string; price: number }>;
 }
 
+interface InvestmentFormProps {
+  formData: any;
+  formType: string;
+  setFormType: (v: string) => void;
+  sourceAccountId: string;
+  setSourceAccountId: (v: string) => void;
+  accounts: Account[];
+  handleInputChange: (field: keyof any, value: string) => void;
+  fetchPrice: (ticker: string, type: string) => void;
+  fetchingPrice: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  buttonText: string;
+}
+
+const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
+  formData,
+  formType,
+  setFormType,
+  sourceAccountId,
+  setSourceAccountId,
+  accounts,
+  handleInputChange,
+  fetchPrice,
+  fetchingPrice,
+  onSubmit,
+  buttonText,
+}) => {
+  const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Source Account (funds will be deducted)</Label>
+        <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
+          <SelectTrigger>
+            <SelectValue placeholder="Select account" />
+          </SelectTrigger>
+          <SelectContent>
+            {accounts.map(account => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name} (${account.balance.toFixed(2)})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Investment Name</Label>
+        <Input
+          placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
+          value={formData.name}
+          onChange={(e) => handleInputChange('name', e.target.value)}
+          autoComplete="off"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Type</Label>
+        <Select value={formType} onValueChange={setFormType}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="roth_ira">Roth IRA</SelectItem>
+            <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
+            <SelectItem value="index_fund">Index Fund</SelectItem>
+            <SelectItem value="individual_stock">Individual Stock</SelectItem>
+            <SelectItem value="crypto">Cryptocurrency</SelectItem>
+            
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {/* No savings investment type — APY handled via Accounts, not Investments */}
+
+      {isCryptoOrStock ? (
+        <>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
+                <Input
+                  placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
+                  value={formData.ticker}
+                  onChange={(e) => {
+                    const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+                    handleInputChange('ticker', value);
+                  }}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  onClick={() => fetchPrice(formData.ticker, formType)}
+                  disabled={!formData.ticker || fetchingPrice}
+                  variant="outline"
+                >
+                  {fetchingPrice ? "Fetching..." : "Get Price"}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formType === "crypto" ? "Price from CoinGecko API" : "Price from Yahoo Finance"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="10"
+                value={formData.shares}
+                onChange={(e) => handleInputChange('shares', e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Auto-fetched"
+                value={formData.pricePerShare}
+                onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
+                autoComplete="off"
+                required
+                disabled={fetchingPrice}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Total Value</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Calculated automatically"
+              value={formData.currentValue}
+              disabled
+            />
+          </div>
+          {/* Years to project not shown for individual stocks or crypto */}
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Current Value</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="1000"
+                value={formData.currentValue}
+                onChange={(e) => handleInputChange('currentValue', e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Monthly Contribution</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="100"
+                value={formData.monthlyContribution}
+                onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Expected Annual Return (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="7"
+                value={formData.annualReturn}
+                onChange={(e) => handleInputChange('annualReturn', e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Years to Project</Label>
+              <Input
+                type="number"
+                step="0.5"
+                placeholder="10"
+                value={formData.yearsRemaining}
+                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
+        {buttonText}
+      </Button>
+    </form>
+  );
+};
+
+const InvestmentForm = React.memo(InvestmentFormComponent);
+
 const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -51,10 +262,14 @@ const Investments = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
-  const [priceData, setPriceData] = useState<Record<string, PriceData>>({});
+  // priceData structure: { [TICKER_UPPER]: { latest: PriceData, [periodKey]: PriceData } }
+  const [priceData, setPriceData] = useState<Record<string, Record<string, PriceData>>>({});
+  // loading flags per ticker (keyed by uppercased ticker)
+  const [priceLoading, setPriceLoading] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
-  const [chartPeriods, setChartPeriods] = useState<Record<string, string>>({});
+  // Use single, consistent chart period for all tickers to ensure reliable data
+  const FIXED_PERIOD = "1M";
   
   // Form state using controlled inputs to prevent keyboard dismissal
   const [formData, setFormData] = useState({
@@ -66,7 +281,6 @@ const Investments = () => {
     monthlyContribution: "",
     annualReturn: "7",
     yearsRemaining: "10",
-    apy: ""
   });
   
   const [formType, setFormType] = useState("index_fund");
@@ -96,10 +310,10 @@ const Investments = () => {
   }, [formData.shares, formData.pricePerShare]);
 
   useEffect(() => {
-    // Fetch price data for all investments with tickers
+    // Fetch price data for all investments with tickers using a fixed 1M daily period
     investments.forEach(inv => {
       if (inv.ticker_symbol && (inv.type === "individual_stock" || inv.type === "crypto")) {
-        fetchPriceData(inv.ticker_symbol, inv.type);
+        fetchPriceData(inv.ticker_symbol, inv.type, FIXED_PERIOD);
       }
     });
   }, [investments]);
@@ -150,24 +364,45 @@ const Investments = () => {
     }
   };
 
-  const fetchPriceData = async (ticker: string, type: string) => {
+  const fetchPriceData = async (ticker: string, type: string, period: string = "1M") => {
+    const tickerKey = ticker.toUpperCase();
+    setPriceLoading(prev => ({ ...(prev), [tickerKey]: true }));
     try {
+      // Map period key to Yahoo range/interval values
+      const mapping: Record<string, { range: string; interval: string }> = {
+        "1D": { range: "1d", interval: "5m" },
+        "1W": { range: "5d", interval: "15m" },
+        "1M": { range: "1mo", interval: "1d" },
+        "3M": { range: "3mo", interval: "1d" },
+        "1Y": { range: "1y", interval: "1d" },
+      };
+
+      const { range, interval } = mapping[period] || mapping["1M"];
+
       const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker, type }
+        body: { ticker: tickerKey, type, range, interval }
       });
 
       if (response.data?.success) {
+        const entry: PriceData = {
+          price: response.data.price,
+          change24h: response.data.change24h,
+          history: response.data.history || []
+        };
+
         setPriceData(prev => ({
           ...prev,
-          [ticker]: {
-            price: response.data.price,
-            change24h: response.data.change24h,
-            history: response.data.history || []
+          [tickerKey]: {
+            ...(prev[tickerKey] || {}),
+            latest: entry,
+            [period]: entry,
           }
         }));
       }
     } catch (error) {
       console.error('Error fetching price data:', error);
+    } finally {
+      setPriceLoading(prev => ({ ...(prev), [tickerKey]: false }));
     }
   };
 
@@ -176,7 +411,9 @@ const Investments = () => {
     setRefreshing(true);
     const promises = investments
       .filter(inv => inv.ticker_symbol && (inv.type === "individual_stock" || inv.type === "crypto"))
-      .map(inv => fetchPriceData(inv.ticker_symbol!, inv.type));
+      .map(inv => {
+        return fetchPriceData(inv.ticker_symbol!, inv.type, FIXED_PERIOD);
+      });
     await Promise.all(promises);
     setRefreshing(false);
   };
@@ -186,17 +423,34 @@ const Investments = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const fetchPrice = async (ticker: string, type: string) => {
+  const fetchPrice = async (ticker: string, type: string, period: string = "1M") => {
     if (!ticker) return;
-    
+    const tickerKey = ticker.toUpperCase();
+    setPriceLoading(prev => ({ ...(prev), [tickerKey]: true }));
     setFetchingPrice(true);
     try {
+      const mapping: Record<string, { range: string; interval: string }> = {
+        "1D": { range: "1d", interval: "5m" },
+        "1W": { range: "5d", interval: "15m" },
+        "1M": { range: "1mo", interval: "1d" },
+        "3M": { range: "3mo", interval: "1d" },
+        "1Y": { range: "1y", interval: "1d" },
+      };
+      const { range, interval } = mapping[period] || mapping["1M"];
+
       const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker, type }
+        body: { ticker, type, range, interval }
       });
 
       if (response.data?.success && response.data?.price) {
         handleInputChange('pricePerShare', response.data.price.toString());
+        // store price under latest and period
+        const entry: PriceData = {
+          price: response.data.price,
+          change24h: response.data.change24h,
+          history: response.data.history || []
+        };
+        setPriceData(prev => ({ ...(prev), [tickerKey]: { ...(prev[tickerKey] || {}), latest: entry, [period]: entry } }));
         toast.success(`Fetched price: $${response.data.price.toFixed(2)}`);
       } else {
         toast.error('Failed to fetch price - check ticker symbol');
@@ -206,22 +460,17 @@ const Investments = () => {
       toast.error('Failed to fetch price');
     } finally {
       setFetchingPrice(false);
+      setPriceLoading(prev => ({ ...(prev), [tickerKey]: false }));
     }
   };
+      const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
 
-      if (!sourceAccountId) {
-        toast.error("Please select a source account");
-        return;
-      }
-
-      const sourceAccount = accounts.find(a => a.id === sourceAccountId);
+          const sourceAccount = accounts.find(a => a.id === sourceAccountId);
       if (!sourceAccount) {
         toast.error("Invalid source account");
         return;
@@ -271,22 +520,10 @@ const Investments = () => {
         shares_owned: validated.shares_owned,
         purchase_price_per_share: validated.purchase_price_per_share,
         source_account_id: sourceAccountId,
-        annual_apy: formType === "savings" && formData.apy ? parseFloat(formData.apy) : 0
+        // no annual_apy stored from investments — savings are managed as Accounts
       };
 
-      // If high-yield savings, create an account
-      if (formType === "savings") {
-        const { error: accountError } = await supabase.from("accounts").insert({
-          user_id: user.id,
-          name: formData.name,
-          type: "savings",
-          balance: investmentAmount,
-          notes: `High-yield savings with ${formData.apy || 0}% APY`
-        });
-
-        if (accountError) throw accountError;
-        toast.success(`Created savings account: ${formData.name}`);
-      }
+      // Savings are not handled as investments here — accounts manage savings separately.
 
       const { error } = await supabase.from("investments").insert(investmentData);
       if (error) throw error;
@@ -380,7 +617,6 @@ const Investments = () => {
       monthlyContribution: "",
       annualReturn: "7",
       yearsRemaining: "10",
-      apy: ""
     });
     setFormType("index_fund");
     setSourceAccountId("");
@@ -397,9 +633,8 @@ const Investments = () => {
       monthlyContribution: investment.monthly_contribution.toString(),
       annualReturn: investment.annual_return_pct.toString(),
       yearsRemaining: investment.years_remaining.toString(),
-      apy: investment.annual_apy?.toString() || ""
     });
-    setFormType(investment.type);
+    setFormType(investment.type === 'savings' ? 'other' : investment.type);
     setEditDialogOpen(true);
   };
 
@@ -433,7 +668,9 @@ const Investments = () => {
   // Calculate live current value for stocks/crypto
   const getLiveValue = (inv: Investment): number => {
     if ((inv.type === "individual_stock" || inv.type === "crypto") && inv.ticker_symbol && inv.shares_owned) {
-      const currentPrice = priceData[inv.ticker_symbol]?.price;
+      const tickerKey = inv.ticker_symbol.toUpperCase();
+      const tickerEntry = priceData[tickerKey];
+      const currentPrice = tickerEntry?.latest?.price || tickerEntry?.["1M"]?.price;
       if (currentPrice) {
         return inv.shares_owned * currentPrice;
       }
@@ -538,237 +775,13 @@ const Investments = () => {
 
   const riskAnalysis = analyzePortfolioRisk();
 
-  const InvestmentForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
-    const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
-    
-    return (
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label>Source Account (funds will be deducted)</Label>
-          <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(account => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name} (${account.balance.toFixed(2)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Investment Name</Label>
-          <Input
-            placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            autoComplete="off"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Type</Label>
-          <Select value={formType} onValueChange={setFormType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="roth_ira">Roth IRA</SelectItem>
-              <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
-              <SelectItem value="index_fund">Index Fund</SelectItem>
-              <SelectItem value="individual_stock">Individual Stock</SelectItem>
-              <SelectItem value="crypto">Cryptocurrency</SelectItem>
-              <SelectItem value="savings">High-Yield Savings</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {formType === "savings" && (
-          <div className="space-y-2">
-            <Label>Annual APY (%)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="4.5"
-              value={formData.apy}
-              onChange={(e) => handleInputChange('apy', e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
-        )}
+  
 
-        {isCryptoOrStock ? (
-          <>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
-                  <Input
-                    placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
-                    value={formData.ticker}
-                    onChange={(e) => {
-                      const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
-                      handleInputChange('ticker', value);
-                    }}
-                    autoComplete="off"
-                    required
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    onClick={() => fetchPrice(formData.ticker, formType)}
-                    disabled={!formData.ticker || fetchingPrice}
-                    variant="outline"
-                  >
-                    {fetchingPrice ? "Fetching..." : "Get Price"}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {formType === "crypto" ? "Price from CoinGecko API" : "Price from Yahoo Finance"}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
-                <Input
-                  type="number"
-                  step="0.001"
-                  placeholder="10"
-                  value={formData.shares}
-                  onChange={(e) => handleInputChange('shares', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Auto-fetched"
-                  value={formData.pricePerShare}
-                  onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
-                  autoComplete="off"
-                  required
-                  disabled={fetchingPrice}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Total Value</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Calculated automatically"
-                value={formData.currentValue}
-                disabled
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Monthly Contribution</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0"
-                  value={formData.monthlyContribution}
-                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Expected Annual Return (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="7"
-                  value={formData.annualReturn}
-                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Years to Project</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="10"
-                value={formData.yearsRemaining}
-                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
-                autoComplete="off"
-                required
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Current Value</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="1000"
-                  value={formData.currentValue}
-                  onChange={(e) => handleInputChange('currentValue', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Monthly Contribution</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="100"
-                  value={formData.monthlyContribution}
-                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Expected Annual Return (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="7"
-                  value={formData.annualReturn}
-                  onChange={(e) => handleInputChange('annualReturn', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Years to Project</Label>
-                <Input
-                  type="number"
-                  step="0.5"
-                  placeholder="10"
-                  value={formData.yearsRemaining}
-                  onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
-          {buttonText}
-        </Button>
-      </form>
-    );
-  };
+  // NOTE: InvestmentForm previously lived inside the Investments component and
+  // captured outer state, which caused frequent parent re-renders to re-create
+  // the form and — on some mobile browsers — dismiss the on-screen keyboard.
+  // To reduce re-renders and preserve input focus, we keep the inline form
+  // implementation but will memoize it below when used in JSX.
 
   if (loading) {
     return (
@@ -848,7 +861,19 @@ const Investments = () => {
                   <DialogTitle>Add New Investment</DialogTitle>
                   <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
                 </DialogHeader>
-                <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
+                <InvestmentForm
+                  formData={formData}
+                  formType={formType}
+                  setFormType={setFormType}
+                  sourceAccountId={sourceAccountId}
+                  setSourceAccountId={setSourceAccountId}
+                  accounts={accounts}
+                  handleInputChange={handleInputChange}
+                  fetchPrice={fetchPrice}
+                  fetchingPrice={fetchingPrice}
+                  onSubmit={handleSubmit}
+                  buttonText="Add Investment"
+                />
               </DialogContent>
             </Dialog>
           </div>
@@ -929,8 +954,9 @@ const Investments = () => {
             const futureValue = calculateFutureValue(investment);
             const liveValue = getLiveValue(investment);
             const gain = futureValue - liveValue;
-            const hasChart = investment.ticker_symbol && priceData[investment.ticker_symbol]?.history?.length > 0;
-            const currentPeriod = chartPeriods[investment.id] || "1M";
+            const currentPeriod = FIXED_PERIOD;
+            const tickerKey = investment.ticker_symbol?.toUpperCase();
+            const hasChart = !!(investment.ticker_symbol && priceData[tickerKey]?.[currentPeriod]?.history?.length > 0);
 
             return (
               <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card">
@@ -974,56 +1000,54 @@ const Investments = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {hasChart && (
-                    <div className="space-y-2">
-                      <div className="flex justify-end">
-                        <Tabs value={currentPeriod} onValueChange={(value) => setChartPeriods(prev => ({ ...prev, [investment.id]: value }))}>
-                          <TabsList className="h-8">
-                            <TabsTrigger value="1D" className="text-xs px-2 py-1">1D</TabsTrigger>
-                            <TabsTrigger value="1W" className="text-xs px-2 py-1">1W</TabsTrigger>
-                            <TabsTrigger value="1M" className="text-xs px-2 py-1">1M</TabsTrigger>
-                            <TabsTrigger value="3M" className="text-xs px-2 py-1">3M</TabsTrigger>
-                            <TabsTrigger value="1Y" className="text-xs px-2 py-1">1Y</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </div>
-                      <PerformanceChart 
-                        data={priceData[investment.ticker_symbol!].history}
-                        title={`${currentPeriod} Performance`}
-                        ticker={investment.ticker_symbol!}
-                      />
+                  <div className="space-y-2">
+                    <div className="flex justify-end">
+                      <div className="text-xs px-2 py-1 rounded-md bg-muted/10">1M</div>
                     </div>
-                  )}
+                    <PerformanceChart 
+                      data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
+                      title={`${FIXED_PERIOD} Performance`}
+                      ticker={investment.ticker_symbol!}
+                      isLoading={!!priceLoading[tickerKey!]}
+                    />
+                  </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Current Value</div>
-                      <div className="text-xl font-bold">${liveValue.toFixed(2)}</div>
-                      {investment.shares_owned && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Current Value</div>
+                        <div className="text-xl font-bold">${liveValue.toFixed(2)}</div>
+                        {investment.shares_owned && (
+                          <div className="text-xs text-muted-foreground">
+                            {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${priceData[tickerKey!]?.latest?.price?.toFixed(2) || investment.purchase_price_per_share?.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Projected ({investment.years_remaining}y)</div>
+                        <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${priceData[investment.ticker_symbol!]?.price?.toFixed(2) || investment.purchase_price_per_share?.toFixed(2)}
+                          +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}%)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Only show monthly contribution for types that support ongoing contributions */}
+                      {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
+                        <div>
+                          <div className="text-muted-foreground">Monthly Contribution</div>
+                          <div className="font-medium">${Number(investment.monthly_contribution).toFixed(2)}</div>
+                        </div>
+                      )}
+
+                      {/* Show expected annual return for non-stock/crypto types */}
+                      {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
+                        <div>
+                          <div className="text-muted-foreground">Expected Return</div>
+                          <div className="font-medium">{Number(investment.annual_return_pct).toFixed(1)}% annually</div>
                         </div>
                       )}
                     </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Projected ({investment.years_remaining}y)</div>
-                      <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}%)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="text-muted-foreground">Monthly Contribution</div>
-                      <div className="font-medium">${Number(investment.monthly_contribution).toFixed(2)}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Expected Return</div>
-                      <div className="font-medium">{Number(investment.annual_return_pct).toFixed(1)}% annually</div>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             );
@@ -1054,7 +1078,19 @@ const Investments = () => {
                     <DialogTitle>Add New Investment</DialogTitle>
                     <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
                   </DialogHeader>
-                  <InvestmentForm onSubmit={handleSubmit} buttonText="Add Investment" />
+                  <InvestmentForm
+                    formData={formData}
+                    formType={formType}
+                    setFormType={setFormType}
+                    sourceAccountId={sourceAccountId}
+                    setSourceAccountId={setSourceAccountId}
+                    accounts={accounts}
+                    handleInputChange={handleInputChange}
+                    fetchPrice={fetchPrice}
+                    fetchingPrice={fetchingPrice}
+                    onSubmit={handleSubmit}
+                    buttonText="Add Investment"
+                  />
                 </DialogContent>
               </Dialog>
             </CardContent>
@@ -1071,7 +1107,19 @@ const Investments = () => {
               <DialogTitle>Edit Investment</DialogTitle>
               <DialogDescription>Update your investment details</DialogDescription>
             </DialogHeader>
-            <InvestmentForm onSubmit={handleEdit} buttonText="Update Investment" />
+            <InvestmentForm
+              formData={formData}
+              formType={formType}
+              setFormType={setFormType}
+              sourceAccountId={sourceAccountId}
+              setSourceAccountId={setSourceAccountId}
+              accounts={accounts}
+              handleInputChange={handleInputChange}
+              fetchPrice={fetchPrice}
+              fetchingPrice={fetchingPrice}
+              onSubmit={handleEdit}
+              buttonText="Update Investment"
+            />
           </DialogContent>
         </Dialog>
 
