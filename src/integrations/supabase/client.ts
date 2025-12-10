@@ -5,7 +5,20 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Debug logging for production
+if (import.meta.env.MODE === 'production') {
+  console.log('🔧 Environment mode:', import.meta.env.MODE);
+  console.log('🔧 Base URL:', import.meta.env.BASE_URL);
+  console.log('🔧 Supabase URL configured:', !!SUPABASE_URL);
+  console.log('🔧 Supabase key configured:', !!SUPABASE_PUBLISHABLE_KEY);
+}
+
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  const error = `Missing Supabase environment variables:
+    - VITE_SUPABASE_URL: ${SUPABASE_URL ? '✓ Set' : '✗ Missing'}
+    - VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY ? '✓ Set' : '✗ Missing'}
+  `;
+  console.error(error);
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
