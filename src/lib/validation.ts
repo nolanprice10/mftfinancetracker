@@ -61,7 +61,7 @@ export const accountSchema = z.object({
   balance: z.number()
     .max(999999999, "Balance is too large")
     .refine(val => !isNaN(val), "Invalid balance"),
-  type: z.enum(['checking', 'savings', 'brokerage', 'retirement', 'cash', 'high_yield_savings']),
+  type: z.enum(['checking', 'savings', 'brokerage', 'retirement', 'cash']),
   notes: z.string().max(500, "Notes must be less than 500 characters").optional().nullable()
 });
 
