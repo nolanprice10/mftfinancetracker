@@ -64,7 +64,10 @@ const Accounts = () => {
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("You must be logged in to create an account");
+        return;
+      }
 
       // Validate input data
       const { accountSchema } = await import("@/lib/validation");
@@ -82,7 +85,7 @@ const Accounts = () => {
 
       const validated = validationResult.data;
       // Persist APY in notes for savings accounts with APY (no DB migration)
-      const notesWithApy = formData.apy
+      const notesWithApy = formData.apy && formData.apy.trim() !== ''
         ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
         : (formData.notes || null);
 
@@ -125,7 +128,7 @@ const Accounts = () => {
       }
 
       const validated = validationResult.data;
-      const notesWithApy = formData.apy
+      const notesWithApy = formData.apy && formData.apy.trim() !== ''
         ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
         : (formData.notes || null);
 

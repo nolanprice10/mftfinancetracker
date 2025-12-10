@@ -290,21 +290,23 @@ const Investments = () => {
   useEffect(() => {
     fetchInvestments();
     fetchUserAge();
-    // Auto-refresh prices every 5 seconds for real-time updates
+    // Auto-refresh prices every 60 seconds for real-time updates (reduced from 5s for API rate limits)
     const interval = setInterval(() => {
       refreshPrices();
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-calculate current value when shares or price changes
+  // Auto-calculate current value when shares or price changes with high precision
   useEffect(() => {
     const shares = parseFloat(formData.shares);
     const price = parseFloat(formData.pricePerShare);
     if (!isNaN(shares) && !isNaN(price) && shares > 0 && price > 0) {
-      const total = (shares * price).toFixed(2);
-      if (formData.currentValue !== total) {
-        setFormData(prev => ({ ...prev, currentValue: total }));
+      // Use high precision calculation
+      const total = (shares * price).toFixed(6);
+      const roundedTotal = parseFloat(total).toFixed(2);
+      if (formData.currentValue !== roundedTotal) {
+        setFormData(prev => ({ ...prev, currentValue: roundedTotal }));
       }
     }
   }, [formData.shares, formData.pricePerShare]);
@@ -638,21 +640,116 @@ const Investments = () => {
     setEditDialogOpen(true);
   };
 
+  // Calculate future value using LIVE market data and historical performance
   const calculateFutureValue = (investment: Investment) => {
-    const PV = Number(investment.current_value);
+    const liveValue = getLiveValue(investment);
+    const PV = liveValue; // Use live market value, not stale stored value
     const pmt = Number(investment.monthly_contribution);
-    const annualReturnPct = Number(investment.annual_return_pct);
     const years = Number(investment.years_remaining);
 
-    const r = (annualReturnPct / 100) / 12;
-    const n = Math.round(years * 12);
+    // Validate inputs
+    if (isNaN(PV) || isNaN(pmt) || isNaN(years) || years <= 0) {
+      return PV || 0;
+    }
 
+    // Calculate market-based expected return using historical data where available
+    let annualReturnPct = Number(investment.annual_return_pct);
+    
+    // For stocks/crypto with ticker symbols, use actual historical performance
+    if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
+      const tickerKey = investment.ticker_symbol.toUpperCase();
+      const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
+      
+      if (history && history.length >= 20) {
+        // Calculate annualized return from 30-day price history
+        const startPrice = history[0].price;
+        const endPrice = history[history.length - 1].price;
+        const days = history.length;
+        
+        if (startPrice > 0 && endPrice > 0 && days > 0) {
+          // Annualize the period return: ((endPrice/startPrice)^(365/days) - 1) * 100
+          const periodReturn = endPrice / startPrice;
+          const annualizedReturn = (Math.pow(periodReturn, 365 / days) - 1) * 100;
+          
+          // Use historical return if reasonable (between -50% and +200%)
+          if (annualizedReturn > -50 && annualizedReturn < 200) {
+            annualReturnPct = annualizedReturn;
+          }
+        }
+      }
+    }
+    
+    // Enhanced expected returns based on asset type (used as fallback)
+    const marketBasedReturns: Record<string, number> = {
+      individual_stock: 11, // S&P 500 historical avg
+      crypto: 15, // High volatility, high return
+      index_fund: 10, // Broad market
+      taxable_etf: 9, // Sector-dependent
+      roth_ira: 10, // Depends on holdings
+      savings: 4.5, // Current high-yield savings
+      other: 8
+    };
+    
+    // Use market-based return if user didn't specify or specified 0
+    if (isNaN(annualReturnPct) || annualReturnPct === 0) {
+      annualReturnPct = marketBasedReturns[investment.type] || 8;
+    }
+
+    const r = (annualReturnPct / 100) / 12; // Monthly rate
+    const n = Math.round(years * 12); // Total months
+
+    // Handle zero return rate (no growth)
     if (r === 0) {
       return PV + pmt * n;
     }
 
+    // Future Value formula: FV = PV(1+r)^n + PMT * [((1+r)^n - 1) / r]
     const factor = Math.pow(1 + r, n);
-    return PV * factor + pmt * ((factor - 1) / r);
+    const futureValue = PV * factor + pmt * ((factor - 1) / r);
+    
+    // Round to 2 decimal places for currency
+    return Math.round(futureValue * 100) / 100;
+  };
+  
+  // Get the effective annual return being used for an investment
+  const getEffectiveReturn = (investment: Investment): number => {
+    let annualReturnPct = Number(investment.annual_return_pct);
+    
+    if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
+      const tickerKey = investment.ticker_symbol.toUpperCase();
+      const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
+      
+      if (history && history.length >= 20) {
+        const startPrice = history[0].price;
+        const endPrice = history[history.length - 1].price;
+        const days = history.length;
+        
+        if (startPrice > 0 && endPrice > 0 && days > 0) {
+          const periodReturn = endPrice / startPrice;
+          const annualizedReturn = (Math.pow(periodReturn, 365 / days) - 1) * 100;
+          
+          if (annualizedReturn > -50 && annualizedReturn < 200) {
+            return annualizedReturn;
+          }
+        }
+      }
+    }
+    
+    const marketBasedReturns: Record<string, number> = {
+      individual_stock: 11,
+      crypto: 15,
+      index_fund: 10,
+      taxable_etf: 9,
+      roth_ira: 10,
+      savings: 4.5,
+      other: 8
+    };
+    
+    if (isNaN(annualReturnPct) || annualReturnPct === 0) {
+      return marketBasedReturns[investment.type] || 8;
+    }
+    
+    return annualReturnPct;
   };
 
   const investmentTypeColors: Record<string, string> = {
@@ -665,31 +762,43 @@ const Investments = () => {
     other: "bg-info text-info-foreground",
   };
 
-  // Calculate live current value for stocks/crypto
+  // Calculate live current value for stocks/crypto with high precision
   const getLiveValue = (inv: Investment): number => {
     if ((inv.type === "individual_stock" || inv.type === "crypto") && inv.ticker_symbol && inv.shares_owned) {
       const tickerKey = inv.ticker_symbol.toUpperCase();
       const tickerEntry = priceData[tickerKey];
       const currentPrice = tickerEntry?.latest?.price || tickerEntry?.["1M"]?.price;
-      if (currentPrice) {
-        return inv.shares_owned * currentPrice;
+      if (currentPrice && !isNaN(currentPrice) && currentPrice > 0) {
+        // Use high precision multiplication then round to 2 decimals
+        const liveValue = inv.shares_owned * currentPrice;
+        return Math.round(liveValue * 100) / 100;
       }
     }
-    return Number(inv.current_value);
+    // Fallback to stored current_value, ensuring it's a valid number
+    const storedValue = Number(inv.current_value);
+    return isNaN(storedValue) ? 0 : storedValue;
   };
 
-  const totalCurrentValue = investments.reduce((sum, inv) => sum + getLiveValue(inv), 0);
+  const totalCurrentValue = investments.reduce((sum, inv) => {
+    const value = getLiveValue(inv);
+    return Math.round((sum + value) * 100) / 100;
+  }, 0);
+  
   const totalFutureValue = investments.reduce((sum, inv) => {
     const liveValue = getLiveValue(inv);
     const invWithLiveValue = { ...inv, current_value: liveValue };
-    return sum + calculateFutureValue(invWithLiveValue);
+    const futureValue = calculateFutureValue(invWithLiveValue);
+    return Math.round((sum + futureValue) * 100) / 100;
   }, 0);
 
-  // Portfolio Risk Analysis
+  // Advanced Portfolio Risk Analysis - constantly updated with live values
   const analyzePortfolioRisk = () => {
     if (investments.length === 0) return null;
 
     const totalValue = totalCurrentValue;
+    if (totalValue === 0) return null;
+
+    // Calculate allocations with live values
     const allocations = investments.reduce((acc, inv) => {
       const type = inv.type;
       const value = getLiveValue(inv);
@@ -698,78 +807,199 @@ const Investments = () => {
     }, {} as Record<string, number>);
 
     const percentages = Object.entries(allocations).reduce((acc, [type, value]) => {
-      acc[type] = (value / totalValue) * 100;
+      acc[type] = Math.round((value / totalValue) * 10000) / 100; // High precision
       return acc;
     }, {} as Record<string, number>);
 
-    const riskScores: Record<string, number> = {
-      individual_stock: 85,
-      crypto: 95,
-      taxable_etf: 55,
-      index_fund: 45,
-      roth_ira: 40,
-      savings: 10,
-      other: 50,
+    // Enhanced volatility scores based on historical data and asset class characteristics
+    // These reflect annual volatility (standard deviation) percentages
+    const volatilityScores: Record<string, { volatility: number; description: string }> = {
+      crypto: { volatility: 80, description: "Extreme volatility (60-100% annual swings)" },
+      individual_stock: { volatility: 35, description: "High volatility (20-50% annual swings)" },
+      taxable_etf: { volatility: 18, description: "Moderate volatility (sector-dependent)" },
+      index_fund: { volatility: 15, description: "Moderate volatility (15-20% annual swings)" },
+      roth_ira: { volatility: 15, description: "Moderate (depends on holdings)" },
+      other: { volatility: 20, description: "Variable volatility" },
+      savings: { volatility: 0, description: "No volatility (stable value)" },
     };
 
-    const portfolioRiskScore = Object.entries(percentages).reduce((score, [type, pct]) => {
-      return score + (riskScores[type] || 50) * (pct / 100);
+    // Calculate portfolio-weighted volatility (standard deviation)
+    const portfolioVolatility = Object.entries(percentages).reduce((vol, [type, pct]) => {
+      const assetVol = volatilityScores[type]?.volatility || 20;
+      return vol + (assetVol * (pct / 100));
     }, 0);
 
+    // Correlation adjustments for diversification benefit
+    // Uncorrelated assets reduce overall portfolio risk
+    const correlationMatrix: Record<string, Record<string, number>> = {
+      crypto: { crypto: 1.0, individual_stock: 0.3, index_fund: 0.2, taxable_etf: 0.25, roth_ira: 0.2, savings: 0, other: 0.3 },
+      individual_stock: { crypto: 0.3, individual_stock: 1.0, index_fund: 0.85, taxable_etf: 0.8, roth_ira: 0.85, savings: 0, other: 0.5 },
+      index_fund: { crypto: 0.2, individual_stock: 0.85, index_fund: 1.0, taxable_etf: 0.9, roth_ira: 0.95, savings: 0, other: 0.6 },
+      taxable_etf: { crypto: 0.25, individual_stock: 0.8, index_fund: 0.9, taxable_etf: 1.0, roth_ira: 0.9, savings: 0, other: 0.6 },
+      roth_ira: { crypto: 0.2, individual_stock: 0.85, index_fund: 0.95, taxable_etf: 0.9, roth_ira: 1.0, savings: 0, other: 0.6 },
+      savings: { crypto: 0, individual_stock: 0, index_fund: 0, taxable_etf: 0, roth_ira: 0, savings: 1.0, other: 0 },
+      other: { crypto: 0.3, individual_stock: 0.5, index_fund: 0.6, taxable_etf: 0.6, roth_ira: 0.6, savings: 0, other: 1.0 }
+    };
+
+    // Calculate diversification benefit using correlation
+    let totalDiversificationBenefit = 0;
+    let pairCount = 0;
+    const types = Object.keys(percentages);
+    
+    for (let i = 0; i < types.length; i++) {
+      for (let j = i + 1; j < types.length; j++) {
+        const type1 = types[i];
+        const type2 = types[j];
+        const weight1 = percentages[type1] / 100;
+        const weight2 = percentages[type2] / 100;
+        const correlation = correlationMatrix[type1]?.[type2] || 0.5;
+        
+        // Lower correlation = better diversification
+        totalDiversificationBenefit += (1 - correlation) * weight1 * weight2;
+        pairCount++;
+      }
+    }
+
+    // Diversification score: considers both number of holdings and correlation
     const numTypes = Object.keys(allocations).length;
-    const diversificationScore = Math.min(100, (numTypes / 5) * 100);
+    const typesDiversification = Math.min(100, (numTypes / 6) * 100); // Max at 6 different types
+    const correlationBenefit = pairCount > 0 ? (totalDiversificationBenefit / pairCount) * 100 : 0;
+    const diversificationScore = Math.round((typesDiversification * 0.6 + correlationBenefit * 0.4) * 100) / 100;
 
-    const largestAllocation = Math.max(...Object.values(percentages));
-    const concentrationRisk = largestAllocation > 50 ? "High" : largestAllocation > 30 ? "Medium" : "Low";
+    // Concentration risk analysis
+    const sortedAllocations = Object.entries(percentages).sort(([,a], [,b]) => b - a);
+    const largestAllocation = sortedAllocations[0]?.[1] || 0;
+    const top3Allocation = sortedAllocations.slice(0, 3).reduce((sum, [,pct]) => sum + pct, 0);
+    
+    let concentrationRisk: string;
+    let concentrationColor: string;
+    if (largestAllocation > 60 || top3Allocation > 85) {
+      concentrationRisk = "Critical";
+      concentrationColor = "text-destructive";
+    } else if (largestAllocation > 40 || top3Allocation > 70) {
+      concentrationRisk = "High";
+      concentrationColor = "text-warning";
+    } else if (largestAllocation > 25 || top3Allocation > 50) {
+      concentrationRisk = "Medium";
+      concentrationColor = "text-primary";
+    } else {
+      concentrationRisk = "Low";
+      concentrationColor = "text-success";
+    }
 
-    let riskLevel: "Conservative" | "Moderate" | "Aggressive" | "Very Aggressive";
+    // Calculate Sharpe Ratio approximation (risk-adjusted return)
+    const riskFreeRate = 4.5; // Current T-bill rate
+    const expectedReturns: Record<string, number> = {
+      crypto: 15, // High return, high risk
+      individual_stock: 11,
+      index_fund: 10,
+      taxable_etf: 9,
+      roth_ira: 10,
+      savings: 4.5,
+      other: 8
+    };
+    
+    const portfolioExpectedReturn = Object.entries(percentages).reduce((ret, [type, pct]) => {
+      return ret + (expectedReturns[type] || 8) * (pct / 100);
+    }, 0);
+    
+    const sharpeRatio = portfolioVolatility > 0 ? (portfolioExpectedReturn - riskFreeRate) / portfolioVolatility : 0;
+
+    // Risk level determination based on actual volatility
+    let riskLevel: string;
     let riskColor: string;
     let recommendations: string[];
+    let expectedDrawdown: string;
 
-    if (portfolioRiskScore < 30) {
+    if (portfolioVolatility < 8) {
+      riskLevel = "Very Conservative";
+      riskColor = "text-success";
+      expectedDrawdown = "5-10% max decline";
+      recommendations = [
+        `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Very stable`,
+        `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 1 ? 'Excellent' : sharpeRatio > 0.5 ? 'Good' : 'Room for improvement'} risk-adjusted returns`,
+        "Consider adding growth assets for higher returns if time horizon permits",
+        "Excellent for near-term goals (1-3 years)",
+        diversificationScore < 50 ? "Improve diversification to reduce remaining risk" : "Well diversified within conservative range"
+      ];
+    } else if (portfolioVolatility < 15) {
       riskLevel = "Conservative";
       riskColor = "text-success";
+      expectedDrawdown = "10-20% max decline";
       recommendations = [
-        "Well-balanced for capital preservation",
-        "Consider growth investments for long-term gains",
-        "Stability-focused with lower returns",
+        `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Stable with modest growth`,
+        `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 1 ? 'Excellent' : 'Good'} risk-adjusted returns`,
+        "Suitable for 3-5 year investment horizon",
+        "Good balance for pre-retirees or conservative investors",
+        concentrationRisk !== "Low" ? `Reduce concentration risk (currently ${concentrationRisk})` : "Concentration risk well managed"
       ];
-    } else if (portfolioRiskScore < 50) {
+    } else if (portfolioVolatility < 20) {
       riskLevel = "Moderate";
       riskColor = "text-primary";
+      expectedDrawdown = "20-30% max decline";
       recommendations = [
-        "Balanced growth and security approach",
-        "Good risk/reward balance",
-        "Consider tax-advantaged accounts",
+        `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Balanced risk/return profile`,
+        `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.8 ? 'Strong' : 'Adequate'} risk-adjusted performance`,
+        "Appropriate for 5-10 year investment horizon",
+        "Expect 1-2 significant corrections in 10 years",
+        diversificationScore < 60 ? "Increase diversification to smooth volatility" : "Good diversification level",
+        "Ensure 6-month emergency fund is separate"
       ];
-    } else if (portfolioRiskScore < 70) {
+    } else if (portfolioVolatility < 30) {
       riskLevel = "Aggressive";
       riskColor = "text-warning";
+      expectedDrawdown = "30-40% max decline";
       recommendations = [
-        "Higher growth with increased volatility",
-        "Ensure emergency fund is separate",
-        "Review concentration risk",
+        `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - High volatility, growth-focused`,
+        `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.6 ? 'Acceptable' : 'Below optimal'} for risk taken`,
+        "Requires 10+ year investment horizon",
+        "Expect 2-3 major corrections (20%+) over 10 years",
+        concentrationRisk === "High" || concentrationRisk === "Critical" ? "URGENT: Reduce concentration - single position risk is high" : "Monitor concentration risk",
+        diversificationScore < 70 ? "Diversification critical at this volatility level" : "Diversification helps manage volatility",
+        "NOT suitable if you need funds in next 5 years"
       ];
     } else {
       riskLevel = "Very Aggressive";
       riskColor = "text-destructive";
+      expectedDrawdown = "40-70%+ max decline";
       recommendations = [
-        "Very high risk - significant volatility",
-        "Consider diversifying into stable assets",
-        "Only suitable for 10+ year horizon",
-        "Prepare for 30-50% portfolio swings",
-      ];
+        `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - EXTREME risk level`,
+        `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.5 ? 'Risk somewhat justified by returns' : 'WARNING: High risk for returns achieved'}`,
+        "ONLY for 15+ year horizon and strong risk tolerance",
+        "Expect multiple 30-50% drawdowns",
+        "Potential for total loss in individual positions",
+        concentrationRisk === "Critical" ? "CRITICAL: Over-concentrated position - immediate rebalancing needed" : "High concentration amplifies volatility",
+        diversificationScore < 50 ? "Poor diversification at extreme risk level - URGENT priority" : "Improve diversification to reduce downside",
+        percentages.crypto > 20 ? `Crypto allocation (${percentages.crypto?.toFixed(1)}%) is very high - consider 5-10% max` : "",
+        "Have 12-month emergency fund separate from this portfolio"
+      ].filter(Boolean);
     }
+
+    // Historical context
+    const historicalContext = {
+      worstYearLoss: `-${(portfolioVolatility * 2).toFixed(0)}%`,
+      bestYearGain: `+${(portfolioExpectedReturn + portfolioVolatility).toFixed(0)}%`,
+      avgAnnualReturn: `${portfolioExpectedReturn.toFixed(1)}%`
+    };
 
     return {
       riskLevel,
-      riskScore: portfolioRiskScore,
+      riskScore: Math.round(portfolioVolatility * 10) / 10, // Volatility as risk score
       riskColor,
       diversificationScore,
       concentrationRisk,
+      concentrationColor,
       largestAllocation,
+      top3Allocation,
       allocations: percentages,
       recommendations,
+      portfolioVolatility,
+      sharpeRatio,
+      expectedReturn: portfolioExpectedReturn,
+      expectedDrawdown,
+      historicalContext,
+      numHoldings: investments.length,
+      numAssetClasses: numTypes
     };
   };
 
@@ -882,13 +1112,29 @@ const Investments = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
           <Card className="shadow-luxe hover:shadow-glow transition-all duration-300 bg-gradient-card border-border/50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-success" />
-                Total Current Value
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-success" />
+                  Current Value (LIVE)
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshPrices}
+                  disabled={refreshing}
+                  className="hover:bg-primary/10"
+                  title="Refresh all prices now"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">${totalCurrentValue.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" />
+                Auto-updates every 60 seconds
+              </div>
             </CardContent>
           </Card>
 
@@ -896,14 +1142,24 @@ const Investments = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
-                Projected Future Value
+                Future Value Projection
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">${totalFutureValue.toFixed(2)}</div>
               <p className="text-sm text-muted-foreground mt-2">
-                Potential gain: ${(totalFutureValue - totalCurrentValue).toFixed(2)}
+                +${(totalFutureValue - totalCurrentValue).toFixed(2)} projected gain ({((totalFutureValue - totalCurrentValue) / totalCurrentValue * 100).toFixed(1)}%)
               </p>
+              <div className="text-xs text-primary mt-2 flex items-center gap-1">
+                <span className="font-semibold">
+                  {investments.length > 0 && investments[0].years_remaining ? 
+                    `${Math.max(...investments.map(i => i.years_remaining || 0))} YEAR HORIZON` : 
+                    'MULTI-YEAR HORIZON'}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                ℹ Based on market data & live values
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -917,30 +1173,82 @@ const Investments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Primary Risk Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Risk Level</div>
                   <div className={`text-xl font-bold ${riskAnalysis.riskColor}`}>
                     {riskAnalysis.riskLevel}
                   </div>
-                  <div className="text-xs text-muted-foreground">Score: {riskAnalysis.riskScore.toFixed(0)}/100</div>
+                  <div className="text-xs text-muted-foreground mt-1">Volatility: {riskAnalysis.portfolioVolatility.toFixed(1)}%</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Diversification</div>
                   <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
                   <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
+                  <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.numAssetClasses} asset types</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Concentration Risk</div>
-                  <div className="text-xl font-bold">{riskAnalysis.concentrationRisk}</div>
-                  <div className="text-xs text-muted-foreground">Largest: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
+                  <div className={`text-xl font-bold ${riskAnalysis.concentrationColor}`}>{riskAnalysis.concentrationRisk}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Top position: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
+                  <div className="text-xs text-muted-foreground">Top 3: {riskAnalysis.top3Allocation.toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Sharpe Ratio</div>
+                  <div className={`text-xl font-bold ${riskAnalysis.sharpeRatio > 1 ? 'text-success' : riskAnalysis.sharpeRatio > 0.5 ? 'text-primary' : 'text-warning'}`}>
+                    {riskAnalysis.sharpeRatio.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {riskAnalysis.sharpeRatio > 1 ? 'Excellent' : riskAnalysis.sharpeRatio > 0.5 ? 'Good' : 'Below target'}
+                  </div>
                 </div>
               </div>
+
+              {/* Expected Performance Metrics */}
               <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2">Recommendations:</div>
-                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <div className="text-sm font-medium mb-2">Expected Performance:</div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Avg Annual Return</div>
+                    <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.avgAnnualReturn}</div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Best Year (95%)</div>
+                    <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.bestYearGain}</div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Worst Year (5%)</div>
+                    <div className="text-lg font-semibold text-destructive">{riskAnalysis.historicalContext.worstYearLoss}</div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <div className="text-xs text-muted-foreground">Max Drawdown</div>
+                    <div className="text-lg font-semibold text-warning">{riskAnalysis.expectedDrawdown}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Asset Allocation Breakdown */}
+              <div className="border-t pt-3">
+                <div className="text-sm font-medium mb-2">Asset Allocation ({riskAnalysis.numHoldings} holdings):</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(riskAnalysis.allocations)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([type, pct]) => (
+                      <div key={type} className="bg-muted/20 rounded p-2">
+                        <div className="text-xs text-muted-foreground capitalize">{type.replace(/_/g, ' ')}</div>
+                        <div className="text-sm font-semibold">{pct.toFixed(1)}%</div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="border-t pt-3">
+                <div className="text-sm font-medium mb-2">Risk Analysis & Recommendations:</div>
+                <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
                   {riskAnalysis.recommendations.map((rec, idx) => (
-                    <li key={idx}>{rec}</li>
+                    <li key={idx} className={rec.includes('URGENT') || rec.includes('CRITICAL') || rec.includes('WARNING') ? 'text-destructive font-semibold' : ''}>{rec}</li>
                   ))}
                 </ul>
               </div>
@@ -1001,12 +1309,16 @@ const Investments = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <div className="flex justify-end">
-                      <div className="text-xs px-2 py-1 rounded-md bg-muted/10">1M</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3" />
+                        Updates every 60 sec
+                      </div>
+                      <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
                     </div>
                     <PerformanceChart 
                       data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
-                      title={`${FIXED_PERIOD} Performance`}
+                      title={`${FIXED_PERIOD} Performance (Live)`}
                       ticker={investment.ticker_symbol!}
                       isLoading={!!priceLoading[tickerKey!]}
                     />
@@ -1014,19 +1326,35 @@ const Investments = () => {
                   
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm text-muted-foreground">Current Value</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          Current Value
+                          <span className="text-xs">(Live)</span>
+                        </div>
                         <div className="text-xl font-bold">${liveValue.toFixed(2)}</div>
                         {investment.shares_owned && (
                           <div className="text-xs text-muted-foreground">
                             {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${priceData[tickerKey!]?.latest?.price?.toFixed(2) || investment.purchase_price_per_share?.toFixed(2)}
                           </div>
                         )}
+                        {priceData[tickerKey!]?.latest?.change24h !== undefined && (
+                          <div className={`text-xs font-medium ${
+                            priceData[tickerKey!].latest.change24h >= 0 ? 'text-success' : 'text-destructive'
+                          }`}>
+                            {priceData[tickerKey!].latest.change24h >= 0 ? '↑' : '↓'} {Math.abs(priceData[tickerKey!].latest.change24h).toFixed(2)}% today
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <div className="text-sm text-muted-foreground">Projected ({investment.years_remaining}y)</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          Future Value
+                          <span className="text-xs font-semibold text-primary">({investment.years_remaining} {investment.years_remaining === 1 ? 'year' : 'years'})</span>
+                        </div>
                         <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
                         <div className="text-xs text-muted-foreground">
-                          +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}%)
+                          +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}% total gain)
+                        </div>
+                        <div className="text-xs text-primary font-medium mt-0.5">
+                          @ {getEffectiveReturn(investment).toFixed(1)}% annually
                         </div>
                       </div>
                     </div>
@@ -1037,16 +1365,24 @@ const Investments = () => {
                         <div>
                           <div className="text-muted-foreground">Monthly Contribution</div>
                           <div className="font-medium">${Number(investment.monthly_contribution).toFixed(2)}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            ${(Number(investment.monthly_contribution) * 12).toFixed(0)}/year for {investment.years_remaining} years
+                          </div>
                         </div>
                       )}
 
-                      {/* Show expected annual return for non-stock/crypto types */}
-                      {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
-                        <div>
-                          <div className="text-muted-foreground">Expected Return</div>
-                          <div className="font-medium">{Number(investment.annual_return_pct).toFixed(1)}% annually</div>
+                      {/* Show effective return rate being used */}
+                      <div>
+                        <div className="text-muted-foreground">
+                          {(investment.type === 'individual_stock' || investment.type === 'crypto') ? 'Return Rate (Live)' : 'Expected Return'}
                         </div>
-                      )}
+                        <div className="font-medium">{getEffectiveReturn(investment).toFixed(1)}% annually</div>
+                        {(investment.type === 'individual_stock' || investment.type === 'crypto') && priceData[tickerKey!]?.[FIXED_PERIOD]?.history?.length >= 20 && (
+                          <div className="text-xs text-success mt-0.5">
+                            ✓ Based on 30-day market data
+                          </div>
+                        )}
+                      </div>
                     </div>
                 </CardContent>
               </Card>

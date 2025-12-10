@@ -50,6 +50,52 @@ const Goals = () => {
     fetchData();
   }, []);
 
+  const updateAllGoalsProgress = async (userId: string) => {
+    try {
+      // Get all accounts for the user
+      const { data: accountsData } = await supabase
+        .from("accounts")
+        .select("id, balance")
+        .eq("user_id", userId);
+
+      if (!accountsData) return;
+
+      // Get all goals for the user
+      const { data: goalsData } = await supabase
+        .from("goals")
+        .select("id, account_id")
+        .eq("user_id", userId);
+
+      if (!goalsData) return;
+
+      // Calculate total balance for "overall" goals
+      const totalBalance = accountsData.reduce((sum, acc) => sum + Number(acc.balance), 0);
+
+      // Update each goal's current_amount
+      const updates = goalsData.map(goal => {
+        let currentAmount = 0;
+        
+        if (!goal.account_id) {
+          // Overall goal - use total balance
+          currentAmount = totalBalance;
+        } else {
+          // Specific account goal - use that account's balance
+          const account = accountsData.find(acc => acc.id === goal.account_id);
+          currentAmount = account?.balance || 0;
+        }
+
+        return supabase
+          .from("goals")
+          .update({ current_amount: currentAmount })
+          .eq("id", goal.id);
+      });
+
+      await Promise.all(updates);
+    } catch (error) {
+      console.error("Failed to update goal progress:", error);
+    }
+  };
+
   const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +108,18 @@ const Goals = () => {
 
       setGoals(goalsRes.data || []);
       setAccounts(accountsRes.data || []);
+
+      // Update all goals progress after fetching data
+      await updateAllGoalsProgress(user.id);
+
+      // Fetch goals again to get updated progress
+      const { data: updatedGoals } = await supabase
+        .from("goals")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("end_date", { ascending: true });
+      
+      setGoals(updatedGoals || []);
     } catch (error) {
       toast.error("Failed to load goals");
     } finally {
