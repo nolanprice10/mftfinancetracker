@@ -81,8 +81,8 @@ const Accounts = () => {
       }
 
       const validated = validationResult.data;
-      // Persist APY in notes for high-yield accounts (no DB migration)
-      const notesWithApy = formData.type === 'high_yield_savings' && formData.apy
+      // Persist APY in notes for savings accounts with APY (no DB migration)
+      const notesWithApy = formData.apy
         ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
         : (formData.notes || null);
 
@@ -125,7 +125,7 @@ const Accounts = () => {
       }
 
       const validated = validationResult.data;
-      const notesWithApy = formData.type === 'high_yield_savings' && formData.apy
+      const notesWithApy = formData.apy
         ? `${formData.notes ? formData.notes + ' ' : ''}APY:${parseFloat(formData.apy)}`
         : (formData.notes || null);
 
@@ -190,7 +190,6 @@ const Accounts = () => {
   const accountTypeColors: Record<string, string> = {
     checking: "bg-primary",
     savings: "bg-success",
-    high_yield_savings: "bg-emerald",
     brokerage: "bg-accent",
     retirement: "bg-secondary",
     cash: "bg-warning",
@@ -198,7 +197,6 @@ const Accounts = () => {
   const accountTypeLabels: Record<string, string> = {
     checking: 'Checking',
     savings: 'Savings',
-    high_yield_savings: 'High-Yield Savings',
     brokerage: 'Brokerage',
     retirement: 'Retirement',
     cash: 'Cash'
@@ -253,14 +251,13 @@ const Accounts = () => {
             <SelectContent>
               <SelectItem value="checking">Checking</SelectItem>
               <SelectItem value="savings">Savings</SelectItem>
-              <SelectItem value="high_yield_savings">High-Yield Savings</SelectItem>
               <SelectItem value="brokerage">Brokerage</SelectItem>
               <SelectItem value="retirement">Retirement</SelectItem>
               <SelectItem value="cash">Cash</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {formData.type === 'high_yield_savings' && (
+        {formData.type === 'savings' && (
           <div className="space-y-2">
             <Label>APY (annual %)</Label>
             <Input

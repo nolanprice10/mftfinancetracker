@@ -2,14 +2,19 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,6 +34,10 @@ jobs:
           echo "Checking for environment configuration..."
           if [ -f .env ]; then
             echo "✓ .env file found"
+            echo "Contents (without sensitive data):"
+            grep "VITE_SUPABASE_PROJECT_ID" .env || echo "Project ID not found"
+          else
+            echo "⚠️ .env file not found"
           fi
 
       - name: Build
@@ -42,12 +51,25 @@ jobs:
           echo "📄 Checking for key files:"
           [ -f dist/index.html ] && echo "✓ index.html exists" || echo "✗ index.html missing"
           [ -f dist/404.html ] && echo "✓ 404.html exists" || echo "✗ 404.html missing"
+          echo ""
+          echo "📁 Assets folder:"
+          ls -la dist/assets/ 2>/dev/null || echo "No assets folder"
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          user_name: 'github-actions[bot]'
-          user_email: '41898282+github-actions[bot]@users.noreply.github.com'
+          path: './dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
