@@ -2,7 +2,6 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
-import { InfoButton } from "@/components/InfoButton";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -206,13 +205,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <Label>Monthly Contribution</Label>
-                <InfoButton
-                  title="Monthly Contributions"
-                  content="How much will you add to this investment each month? Regular contributions are powerful - even small amounts add up! $100/month for 30 years at 10% return = $227,000 (you only contributed $36,000). This is how compound interest builds wealth. Set it to 0 if you're not adding regularly."
-                />
-              </div>
+              <Label>Monthly Contribution</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -225,13 +218,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <Label>Expected Annual Return (%)</Label>
-                <InfoButton
-                  title="Expected Annual Return"
-                  content="This is the average yearly growth rate you expect. Historical averages: S&P 500 index = 10%, bonds = 5%, savings = 4%. Don't be too optimistic! Use conservative estimates. The calculator will use this to project your future value. For stocks/crypto with live data, we'll automatically use real market performance."
-                />
-              </div>
+              <Label>Expected Annual Return (%)</Label>
               <Input
                 type="number"
                 step="0.1"
@@ -243,13 +230,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <Label>Years to Project</Label>
-                <InfoButton
-                  title="Years to Project"
-                  content="How many years until you need this money? Longer time periods = more compound growth! Use your actual timeline: retirement in 30 years? House down payment in 5 years? College fund in 15 years? This determines your investment horizon and helps calculate realistic future values."
-                />
-              </div>
+              <Label>Years to Project</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -660,7 +641,6 @@ const Investments = () => {
   };
 
   // Calculate future value using LIVE market data and historical performance
-  // Uses compound interest formula with inflation adjustment for real returns
   const calculateFutureValue = (investment: Investment) => {
     const liveValue = getLiveValue(investment);
     const PV = liveValue; // Use live market value, not stale stored value
@@ -681,13 +661,13 @@ const Investments = () => {
       const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
       
       if (history && history.length >= 20) {
-        // Calculate annualized return from 30-day price history using CAGR formula
+        // Calculate annualized return from 30-day price history
         const startPrice = history[0].price;
         const endPrice = history[history.length - 1].price;
         const days = history.length;
         
         if (startPrice > 0 && endPrice > 0 && days > 0) {
-          // Compound Annual Growth Rate: CAGR = (End/Start)^(365/days) - 1
+          // Annualize the period return: ((endPrice/startPrice)^(365/days) - 1) * 100
           const periodReturn = endPrice / startPrice;
           const annualizedReturn = (Math.pow(periodReturn, 365 / days) - 1) * 100;
           
@@ -699,15 +679,14 @@ const Investments = () => {
       }
     }
     
-    // Enhanced expected returns based on historical asset class performance
-    // These are long-term nominal returns based on market data
+    // Enhanced expected returns based on asset type (used as fallback)
     const marketBasedReturns: Record<string, number> = {
-      individual_stock: 10.5, // S&P 500 historical avg (1926-2023)
-      crypto: 15, // High volatility, high potential return
-      index_fund: 10, // Diversified market exposure
-      taxable_etf: 9, // Sector/strategy dependent
-      roth_ira: 10, // Typically holds diversified portfolio
-      savings: 4.5, // Current high-yield savings rate
+      individual_stock: 11, // S&P 500 historical avg
+      crypto: 15, // High volatility, high return
+      index_fund: 10, // Broad market
+      taxable_etf: 9, // Sector-dependent
+      roth_ira: 10, // Depends on holdings
+      savings: 4.5, // Current high-yield savings
       other: 8
     };
     
@@ -716,26 +695,19 @@ const Investments = () => {
       annualReturnPct = marketBasedReturns[investment.type] || 8;
     }
 
-    // Convert annual rate to monthly rate using precise compounding
-    // r_monthly = (1 + r_annual)^(1/12) - 1
-    const annualRate = annualReturnPct / 100;
-    const r = Math.pow(1 + annualRate, 1/12) - 1; // Monthly compound rate
+    const r = (annualReturnPct / 100) / 12; // Monthly rate
     const n = Math.round(years * 12); // Total months
 
     // Handle zero return rate (no growth)
-    if (r === 0 || annualReturnPct === 0) {
+    if (r === 0) {
       return PV + pmt * n;
     }
 
-    // Future Value formula with compound interest:
-    // FV = PV(1+r)^n + PMT * [((1+r)^n - 1) / r]
-    // This accounts for:
-    // - Initial principal growing exponentially (PV component)
-    // - Regular contributions growing at compound rate (PMT component)
+    // Future Value formula: FV = PV(1+r)^n + PMT * [((1+r)^n - 1) / r]
     const factor = Math.pow(1 + r, n);
     const futureValue = PV * factor + pmt * ((factor - 1) / r);
     
-    // Round to 2 decimal places for currency display
+    // Round to 2 decimal places for currency
     return Math.round(futureValue * 100) / 100;
   };
   
@@ -763,9 +735,8 @@ const Investments = () => {
       }
     }
     
-    // Historical long-term returns based on market data
     const marketBasedReturns: Record<string, number> = {
-      individual_stock: 10.5, // S&P 500 historical average
+      individual_stock: 11,
       crypto: 15,
       index_fund: 10,
       taxable_etf: 9,
@@ -840,53 +811,24 @@ const Investments = () => {
       return acc;
     }, {} as Record<string, number>);
 
-    // Enhanced volatility and beta scores based on historical market data
-    // Volatility = annual standard deviation (%)
-    // Beta = sensitivity to market movements (1.0 = market average)
-    const volatilityScores: Record<string, { volatility: number; beta: number; description: string }> = {
-      crypto: { volatility: 80, beta: 0.3, description: "Extreme volatility (60-100% annual swings), low market correlation" },
-      individual_stock: { volatility: 35, beta: 1.2, description: "High volatility (20-50% annual swings), higher market sensitivity" },
-      taxable_etf: { volatility: 18, beta: 1.0, description: "Moderate volatility, market-correlated" },
-      index_fund: { volatility: 15, beta: 1.0, description: "Moderate volatility (15-20% annual swings), tracks market" },
-      roth_ira: { volatility: 15, beta: 1.0, description: "Moderate (depends on holdings)" },
-      other: { volatility: 20, beta: 0.8, description: "Variable volatility" },
-      savings: { volatility: 0, beta: 0, description: "No volatility (stable value), zero market correlation" },
+    // Enhanced volatility scores based on historical data and asset class characteristics
+    // These reflect annual volatility (standard deviation) percentages
+    const volatilityScores: Record<string, { volatility: number; description: string }> = {
+      crypto: { volatility: 80, description: "Extreme volatility (60-100% annual swings)" },
+      individual_stock: { volatility: 35, description: "High volatility (20-50% annual swings)" },
+      taxable_etf: { volatility: 18, description: "Moderate volatility (sector-dependent)" },
+      index_fund: { volatility: 15, description: "Moderate volatility (15-20% annual swings)" },
+      roth_ira: { volatility: 15, description: "Moderate (depends on holdings)" },
+      other: { volatility: 20, description: "Variable volatility" },
+      savings: { volatility: 0, description: "No volatility (stable value)" },
     };
 
-    // Calculate portfolio-weighted volatility using Modern Portfolio Theory
-    // Portfolio variance = Σ(wi * σi)^2 + 2 * ΣΣ(wi * wj * σi * σj * ρij)
-    // where wi = weight, σi = volatility, ρij = correlation
-    
-    // First, calculate weighted variance considering correlations (covariance)
-    let portfolioVariance = 0;
-    const types = Object.keys(percentages);
-    
-    for (let i = 0; i < types.length; i++) {
-      const type1 = types[i];
-      const weight1 = percentages[type1] / 100;
-      const vol1 = volatilityScores[type1]?.volatility || 20;
-      
-      for (let j = 0; j < types.length; j++) {
-        const type2 = types[j];
-        const weight2 = percentages[type2] / 100;
-        const vol2 = volatilityScores[type2]?.volatility || 20;
-        const correlation = correlationMatrix[type1]?.[type2] || (i === j ? 1.0 : 0.5);
-        
-        // Add covariance contribution: wi * wj * σi * σj * ρij
-        portfolioVariance += weight1 * weight2 * vol1 * vol2 * correlation;
-      }
-    }
-    
-    // Portfolio volatility is the square root of variance
-    const portfolioVolatility = Math.sqrt(Math.max(0, portfolioVariance));
-
-    // Calculate portfolio beta (market sensitivity)
-    // Portfolio Beta = Σ(wi * βi)
-    const portfolioBeta = Object.entries(percentages).reduce((beta, [type, pct]) => {
-      const assetBeta = volatilityScores[type]?.beta || 1.0;
-      return beta + (assetBeta * (pct / 100));
+    // Calculate portfolio-weighted volatility (standard deviation)
+    const portfolioVolatility = Object.entries(percentages).reduce((vol, [type, pct]) => {
+      const assetVol = volatilityScores[type]?.volatility || 20;
+      return vol + (assetVol * (pct / 100));
     }, 0);
-    
+
     // Correlation adjustments for diversification benefit
     // Uncorrelated assets reduce overall portfolio risk
     const correlationMatrix: Record<string, Record<string, number>> = {
@@ -918,7 +860,7 @@ const Investments = () => {
       }
     }
 
-    // Enhanced diversification score using Modern Portfolio Theory principles
+    // Enhanced diversification score: considers asset variety, correlation, AND volatility spread
     const numTypes = Object.keys(allocations).length;
     const typesDiversification = Math.min(100, (numTypes / 6) * 100); // Max at 6 different types
     const correlationBenefit = pairCount > 0 ? (totalDiversificationBenefit / pairCount) * 100 : 0;
@@ -928,8 +870,7 @@ const Investments = () => {
     const volatilityByType = Object.entries(percentages).map(([type, pct]) => ({
       type,
       pct,
-      volatility: volatilityScores[type]?.volatility || 20,
-      beta: volatilityScores[type]?.beta || 1.0
+      volatility: volatilityScores[type]?.volatility || 20
     }));
     
     // Calculate volatility range and distribution
@@ -958,32 +899,20 @@ const Investments = () => {
     const tierCount = (lowVolAllocation > 0 ? 1 : 0) + (medVolAllocation > 0 ? 1 : 0) + (highVolAllocation > 0 ? 1 : 0);
     const tierDiversityScore = (tierCount / 3) * 100;
     
-    // Beta diversification: reward having assets with different market sensitivities
-    const betas = volatilityByType.map(v => v.beta);
-    const avgBeta = betas.reduce((sum, b) => sum + b, 0) / betas.length;
-    const betaStdDev = Math.sqrt(betas.reduce((sum, b) => sum + Math.pow(b - avgBeta, 2), 0) / betas.length);
-    // Higher beta diversity = better hedge against market movements
-    const betaDiversityScore = Math.min(100, betaStdDev * 100);
-    
     // Penalize extreme concentration in high volatility
     let highVolPenalty = 0;
     if (highVolAllocation > 70) highVolPenalty = 30; // Very risky - major penalty
     else if (highVolAllocation > 50) highVolPenalty = 15; // Quite risky - moderate penalty
     
-    // Reward having some low-volatility "ballast" in portfolio
-    const ballastBonus = lowVolAllocation > 20 ? 10 : lowVolAllocation > 10 ? 5 : 0;
-    
-    // Volatility diversification combines spread, tier balance, beta diversity, and safety checks
+    // Volatility diversification combines spread, tier balance, and safety check
     const volatilityDiversification = Math.max(0, 
-      (volatilitySpreadScore * 0.35 + tierDiversityScore * 0.35 + betaDiversityScore * 0.30 + ballastBonus) - highVolPenalty
+      (volatilitySpreadScore * 0.4 + tierDiversityScore * 0.6) - highVolPenalty
     );
     
-    // Final diversification score using risk-adjusted weighting:
-    // - Asset variety (25%): Different types of investments
-    // - Correlation benefit (25%): Low correlation between assets
-    // - Volatility/risk spread (50%): Proper risk distribution is most critical
+    // Final diversification score: asset types (30%) + correlation (30%) + volatility spread (40%)
+    // Volatility gets highest weight because risk management is critical
     const diversificationScore = Math.round(
-      (typesDiversification * 0.25 + correlationBenefit * 0.25 + volatilityDiversification * 0.50) * 100
+      (typesDiversification * 0.30 + correlationBenefit * 0.30 + volatilityDiversification * 0.40) * 100
     ) / 100;
 
     // Concentration risk analysis
@@ -1114,7 +1043,6 @@ const Investments = () => {
       allocations: percentages,
       recommendations,
       portfolioVolatility,
-      portfolioBeta,
       sharpeRatio,
       expectedReturn: portfolioExpectedReturn,
       expectedDrawdown,
@@ -1237,10 +1165,6 @@ const Investments = () => {
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-success" />
                   Current Value (LIVE)
-                  <InfoButton
-                    title="Live Portfolio Value"
-                    content="This is the real-time total value of all your investments. For stocks and crypto, prices update automatically every 60 seconds using live market data. This gives you an accurate, up-to-the-minute view of what your investments are worth right now."
-                  />
                 </div>
                 <Button
                   variant="ghost"
@@ -1268,10 +1192,6 @@ const Investments = () => {
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-primary" />
                 Future Value Projection
-                <InfoButton
-                  title="Future Value Projection"
-                  content="This shows what your investments could be worth in the future using compound interest. It's based on: (1) your current holdings growing at historical market rates, (2) any monthly contributions you make, and (3) real market data for stocks/crypto. Think of it as a realistic estimate, not a guarantee - actual returns will vary."
-                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1305,50 +1225,26 @@ const Investments = () => {
               {/* Primary Risk Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Risk Level
-                    <InfoButton
-                      title="Portfolio Risk Level"
-                      content="This measures how much your portfolio value could swing up or down. It's based on volatility (how much prices bounce around). Conservative = stable but slower growth. Aggressive = wild swings but higher potential returns. Choose based on when you need the money and your comfort with losses."
-                    />
-                  </div>
+                  <div className="text-sm text-muted-foreground">Risk Level</div>
                   <div className={`text-xl font-bold ${riskAnalysis.riskColor}`}>
                     {riskAnalysis.riskLevel}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Volatility: {riskAnalysis.portfolioVolatility.toFixed(1)}%</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Diversification
-                    <InfoButton
-                      title="Diversification Score"
-                      content="Don't put all your eggs in one basket! This score measures how spread out your money is across different types of investments and risk levels. Higher score = more protected when one investment drops. We look at: how many different asset types you own, how they move together (correlation), and whether you mix low-risk and high-risk investments."
-                    />
-                  </div>
+                  <div className="text-sm text-muted-foreground">Diversification</div>
                   <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
                   <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
                   <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.numAssetClasses} asset types</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Concentration Risk
-                    <InfoButton
-                      title="Concentration Risk"
-                      content="This warns you if too much money is in one investment or a few investments. If your biggest holding is 60%+ of your portfolio, one bad day for that stock could devastate you. Professional investors usually keep any single position under 20-25% to stay safe."
-                    />
-                  </div>
+                  <div className="text-sm text-muted-foreground">Concentration Risk</div>
                   <div className={`text-xl font-bold ${riskAnalysis.concentrationColor}`}>{riskAnalysis.concentrationRisk}</div>
                   <div className="text-xs text-muted-foreground mt-1">Top position: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Top 3: {riskAnalysis.top3Allocation.toFixed(1)}%</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Sharpe Ratio
-                    <InfoButton
-                      title="Sharpe Ratio"
-                      content="This measures if your returns are worth the risk. It's (your returns - safe returns) ÷ volatility. Higher is better! Above 1.0 = excellent (getting paid well for risk). 0.5-1.0 = good. Below 0.5 = you're taking a lot of risk for not much reward. It helps you compare if a roller-coaster investment is actually worth it."
-                    />
-                  </div>
+                  <div className="text-sm text-muted-foreground">Sharpe Ratio</div>
                   <div className={`text-xl font-bold ${riskAnalysis.sharpeRatio > 1 ? 'text-success' : riskAnalysis.sharpeRatio > 0.5 ? 'text-primary' : 'text-warning'}`}>
                     {riskAnalysis.sharpeRatio.toFixed(2)}
                   </div>
@@ -1360,24 +1256,8 @@ const Investments = () => {
 
               {/* Expected Performance Metrics */}
               <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2 flex items-center gap-1">
-                  Expected Performance:
-                  <InfoButton
-                    title="Expected Performance Ranges"
-                    content="These show what to expect from your portfolio based on its risk level and historical data. Average return is what you'll likely get in a typical year. Best/worst years show the realistic range (not guaranteed). Max drawdown is the biggest drop you might see - important for knowing if you can stomach the losses."
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Portfolio Beta
-                      <InfoButton
-                        title="Portfolio Beta"
-                        content="Beta measures how much your portfolio moves with the overall stock market. 1.0 = moves exactly with the market. Above 1.0 = more volatile than the market (amplifies gains AND losses). Below 1.0 = more stable than the market. 0 = no connection to market (like savings accounts)."
-                      />
-                    </div>
-                    <div className="text-lg font-semibold text-primary">{riskAnalysis.portfolioBeta.toFixed(2)}</div>
-                  </div>
+                <div className="text-sm font-medium mb-2">Expected Performance:</div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="bg-muted/30 rounded-lg p-3">
                     <div className="text-xs text-muted-foreground">Avg Annual Return</div>
                     <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.avgAnnualReturn}</div>
@@ -1391,13 +1271,7 @@ const Investments = () => {
                     <div className="text-lg font-semibold text-destructive">{riskAnalysis.historicalContext.worstYearLoss}</div>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Max Drawdown
-                      <InfoButton
-                        title="Maximum Drawdown"
-                        content="This is the biggest peak-to-valley drop you might experience. For example, '30-40% max decline' means your $10,000 could temporarily drop to $6,000-$7,000 in a bad market. If that would make you panic-sell, your portfolio might be too risky. Most portfolios recover over time."
-                      />
-                    </div>
+                    <div className="text-xs text-muted-foreground">Max Drawdown</div>
                     <div className="text-lg font-semibold text-warning">{riskAnalysis.expectedDrawdown}</div>
                   </div>
                 </div>
