@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Target, Edit, Trash2 } from "lucide-react";
+import { InfoButton } from "@/components/InfoButton";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -370,7 +371,13 @@ const Goals = () => {
     return (
       <form onSubmit={handleLocalSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label>Goal Name</Label>
+          <div className="flex items-center gap-1">
+            <Label>Goal Name</Label>
+            <InfoButton
+              title="Choosing a Goal Name"
+              content="Pick a clear, motivating name! Good examples: 'Emergency Fund', 'Down Payment', 'Vacation to Japan', 'New Car'. Avoid vague names like 'Savings'. A specific name keeps you motivated and focused."
+            />
+          </div>
           <Input
             placeholder="e.g., Emergency Fund"
             value={localName}
@@ -381,7 +388,13 @@ const Goals = () => {
           />
         </div>
       <div className="space-y-2">
-        <Label>Select Account *</Label>
+        <div className="flex items-center gap-1">
+          <Label>Select Account *</Label>
+          <InfoButton
+            title="Linking Goals to Accounts"
+            content="Choose 'Overall' to track a goal against all your money combined (great for net worth goals). Or pick a specific account to track that account's growth toward this goal (perfect for dedicated savings accounts). The goal automatically updates as your account balance changes!"
+          />
+        </div>
         <Select value={formData.account_id} onValueChange={(value) => setFormData({ ...formData, account_id: value })} required>
           <SelectTrigger>
             <SelectValue placeholder="Choose which account this goal tracks" />
@@ -574,7 +587,13 @@ const Goals = () => {
                       <>
                         <div>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm text-muted-foreground">Progress</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm text-muted-foreground">Progress</span>
+                              <InfoButton
+                                title="Goal Progress"
+                                content="Your progress automatically updates based on the linked account's balance. If you linked a specific savings account, this shows that account's balance vs. your target. If you chose 'Overall', it tracks your total net worth across all accounts."
+                              />
+                            </div>
                             <span className="text-sm font-medium">{progress.toFixed(1)}%</span>
                           </div>
                           <Progress value={progress} className="h-3" />
@@ -590,7 +609,13 @@ const Goals = () => {
 
                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Daily</p>
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs text-muted-foreground">Daily</p>
+                              <InfoButton
+                                title="Savings Targets"
+                                content="These show how much you need to save per day/week/month to reach your goal on time. Breaking big goals into small daily amounts makes them feel achievable! For example, $10/day is easier to visualize than $3,650/year."
+                              />
+                            </div>
                             <p className="text-lg font-bold">${dailyTarget.toFixed(2)}</p>
                           </div>
                           <div>

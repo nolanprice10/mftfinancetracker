@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Wallet, Edit, Trash2 } from "lucide-react";
+import { InfoButton } from "@/components/InfoButton";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -246,7 +247,13 @@ const Accounts = () => {
           />
         </div>
         <div className="space-y-2">
-          <Label>Type</Label>
+          <div className="flex items-center gap-1">
+            <Label>Type</Label>
+            <InfoButton
+              title="Account Types"
+              content="Checking = everyday spending money. Savings = emergency fund or short-term goals (usually earns interest). Brokerage = taxable investment account. Retirement = 401k, IRA, Roth IRA (tax-advantaged). Cash = physical money or money market accounts. Choose the type that matches how you use the account!"
+            />
+          </div>
           <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
             <SelectTrigger>
               <SelectValue />
@@ -262,7 +269,13 @@ const Accounts = () => {
         </div>
         {formData.type === 'savings' && (
           <div className="space-y-2">
-            <Label>APY (annual %)</Label>
+            <div className="flex items-center gap-1">
+              <Label>APY (annual %)</Label>
+              <InfoButton
+                title="Annual Percentage Yield (APY)"
+                content="APY is how much interest your savings account earns per year. For example, 4% APY means you earn $4 per year for every $100 in the account. High-yield savings accounts currently offer 4-5% APY, while traditional banks offer around 0.01%. The higher the better! APY includes compound interest (earning interest on your interest)."
+              />
+            </div>
             <Input
               type="number"
               step="0.01"

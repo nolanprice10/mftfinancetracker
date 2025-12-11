@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import { InfoButton } from "@/components/InfoButton";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -192,7 +193,13 @@ const Transactions = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Type</Label>
+                  <div className="flex items-center gap-1">
+                    <Label>Type</Label>
+                    <InfoButton
+                      title="Transaction Type"
+                      content="Income = money coming in (salary, gifts, side hustles). Expense = money going out (bills, shopping, food). Choose the right type to accurately track where your money comes from and goes. This helps you see spending patterns and make better financial decisions."
+                    />
+                  </div>
                   <Select value={type} onValueChange={setType}>
                     <SelectTrigger>
                       <SelectValue />
@@ -221,7 +228,13 @@ const Transactions = () => {
                   <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Category</Label>
+                  <div className="flex items-center gap-1">
+                    <Label>Category</Label>
+                    <InfoButton
+                      title="Transaction Categories"
+                      content="Categories help you understand spending habits. For example, tracking 'Food & Dining' separately from 'Entertainment' shows exactly where your money goes. Pick the category that best fits - you can always adjust later. Good categorization reveals opportunities to save money."
+                    />
+                  </div>
                   <Select value={category} onValueChange={setCategory} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />

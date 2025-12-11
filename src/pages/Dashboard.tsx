@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target as TargetIcon } from "lucide-react";
+import { InfoButton } from "@/components/InfoButton";
 import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
@@ -142,7 +143,13 @@ const Dashboard = () => {
           <Card className="bg-gradient-card border-none shadow-luxe hover:shadow-glow transition-all duration-500 overflow-hidden group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
               <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all duration-700"></div>
-              <CardTitle className="text-sm font-medium relative z-10">Total Balance</CardTitle>
+              <div className="flex items-center gap-1 relative z-10">
+                <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
+                <InfoButton
+                  title="Total Balance"
+                  content="This is the sum of all your accounts (checking, savings, investments, etc.). It represents your total liquid assets - money you could access if needed. Growing this number over time means you're building wealth!"
+                />
+              </div>
               <DollarSign className="h-5 w-5 text-primary relative z-10" />
             </CardHeader>
             <CardContent className="relative z-10">
@@ -153,7 +160,13 @@ const Dashboard = () => {
 
           <Card className="bg-gradient-card border-none shadow-lg hover:shadow-glow transition-shadow col-span-1 md:col-span-2">
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Monthly Cash Flow</CardTitle>
+              <div className="flex items-center gap-1">
+                <CardTitle className="text-sm font-medium">Monthly Cash Flow</CardTitle>
+                <InfoButton
+                  title="Monthly Cash Flow"
+                  content="This shows income minus expenses for the current month. Surplus (positive) = you're saving money! Deficit (negative) = you're spending more than you earn. Aim for a surplus of at least 20% of your income. The chart visualizes how your income compares to your expenses."
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-6">
