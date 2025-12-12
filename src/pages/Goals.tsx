@@ -33,6 +33,7 @@ const Goals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -131,6 +132,9 @@ const Goals = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (submitting) return;
+    setSubmitting(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -202,9 +206,11 @@ const Goals = () => {
         notes: "",
         account_id: "",
       });
-      fetchData();
+      await fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to create goal");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -351,7 +357,7 @@ const Goals = () => {
     setEditDialogOpen(true);
   };
 
-  const GoalForm = ({ onSubmit, buttonText }: { onSubmit: (e: React.FormEvent) => void; buttonText: string }) => {
+  const GoalForm = ({ onSubmit, buttonText, submitting }: { onSubmit: (e: React.FormEvent) => void; buttonText: string; submitting?: boolean }) => {
     // Local state to prevent keyboard dismissal on mobile
     const [localName, setLocalName] = useState(formData.name);
     const [localTargetAmount, setLocalTargetAmount] = useState(formData.target_amount);
@@ -458,7 +464,9 @@ const Goals = () => {
             autoComplete="off"
           />
         </div>
-        <Button type="submit" className="w-full">{buttonText}</Button>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Saving..." : buttonText}
+        </Button>
       </form>
     );
   };
@@ -486,7 +494,7 @@ const Goals = () => {
                 <DialogTitle>Create Goal</DialogTitle>
                 <DialogDescription>Set a new financial goal</DialogDescription>
               </DialogHeader>
-              <GoalForm onSubmit={handleSubmit} buttonText="Create Goal" />
+              <GoalForm onSubmit={handleSubmit} buttonText="Create Goal" submitting={submitting} />
             </DialogContent>
           </Dialog>
         </div>
@@ -663,7 +671,7 @@ const Goals = () => {
               <DialogTitle>Edit Goal</DialogTitle>
               <DialogDescription>Update goal details</DialogDescription>
             </DialogHeader>
-            <GoalForm onSubmit={handleEdit} buttonText="Update Goal" />
+            <GoalForm onSubmit={handleEdit} buttonText="Update Goal" submitting={submitting} />
           </DialogContent>
         </Dialog>
 

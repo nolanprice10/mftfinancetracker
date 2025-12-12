@@ -36,6 +36,8 @@ const Transactions = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [lastSubmission, setLastSubmission] = useState<{timestamp: number, hash: string} | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -75,6 +77,14 @@ const Transactions = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 Form submitted, submitting state:', submitting);
+    
+    // Prevent duplicate submissions
+    if (submitting) {
+      console.log('⚠️ Already submitting, ignoring duplicate submission');
+      return;
+    }
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -97,8 +107,25 @@ const Transactions = () => {
 
       const validated = validationResult.data;
       
+      // Create hash of transaction data for deduplication
+      const txHash = `${validated.account_id}-${validated.type}-${validated.amount}-${validated.category}-${validated.date}`;
+      const now = Date.now();
+      
+      // Prevent duplicate submission within 3 seconds with same data
+      if (lastSubmission && 
+          lastSubmission.hash === txHash && 
+          (now - lastSubmission.timestamp) < 3000) {
+        console.log('⚠️ Duplicate transaction detected within 3 seconds, ignoring');
+        return;
+      }
+      
+      setSubmitting(true);
+      setLastSubmission({ timestamp: now, hash: txHash });
+      
+      console.log('💾 Inserting transaction:', validated);
+      
       // Insert transaction (trigger will automatically update account balance)
-      const { error: txError } = await supabase.from("transactions").insert({
+      const { data: insertedData, error: txError } = await supabase.from("transactions").insert({
         user_id: user.id,
         account_id: validated.account_id,
         type: validated.type as any,
@@ -106,11 +133,38 @@ const Transactions = () => {
         amount: validated.amount,
         date: validated.date,
         notes: validated.notes,
-      } as any);
+      } as any).select();
 
       if (txError) throw txError;
 
-      toast.success("Transaction added successfully");
+      console.log('✅ Transaction inserted successfully:', insertedData);
+      
+      // Check for duplicates created within last 2 seconds with same data
+      if (insertedData && insertedData.length > 0) {
+        const insertedId = insertedData[0].id;
+        const twoSecondsAgo = new Date(Date.now() - 2000).toISOString();
+        
+        const { data: recentDuplicates } = await supabase
+          .from("transactions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("account_id", validated.account_id)
+          .eq("type", validated.type)
+          .eq("category", validated.category)
+          .eq("amount", validated.amount)
+          .eq("date", validated.date)
+          .gte("created_at", twoSecondsAgo)
+          .neq("id", insertedId);
+        
+        // Delete any duplicates found
+        if (recentDuplicates && recentDuplicates.length > 0) {
+          console.warn('⚠️ Found', recentDuplicates.length, 'duplicate(s), removing them');
+          const duplicateIds = recentDuplicates.map(d => d.id);
+          await supabase.from("transactions").delete().in("id", duplicateIds);
+        }
+      }
+      
+      // Close dialog and reset form BEFORE fetching data
       setDialogOpen(false);
       amountInput.reset();
       notesInput.reset();
@@ -118,9 +172,13 @@ const Transactions = () => {
       setCategory("");
       setAccountId("");
       setDate(new Date().toISOString().split("T")[0]);
-      fetchData();
+      
+      toast.success("Transaction added successfully");
+      await fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to add transaction");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -277,7 +335,9 @@ const Transactions = () => {
                   <Label>Notes (optional)</Label>
                   <Input placeholder="Add details..." {...notesInput} />
                 </div>
-                <Button type="submit" className="w-full">Add Transaction</Button>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? "Adding..." : "Add Transaction"}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>

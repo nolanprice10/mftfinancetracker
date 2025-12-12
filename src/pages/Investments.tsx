@@ -56,6 +56,7 @@ interface InvestmentFormProps {
   fetchingPrice: boolean;
   onSubmit: (e: React.FormEvent) => void;
   buttonText: string;
+  submitting?: boolean;
 }
 
 const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
@@ -70,6 +71,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   fetchingPrice,
   onSubmit,
   buttonText,
+  submitting,
 }) => {
   const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
 
@@ -246,8 +248,8 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         </>
       )}
 
-      <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe">
-        {buttonText}
+      <Button type="submit" className="w-full shadow-elegant hover:shadow-luxe" disabled={submitting}>
+        {submitting ? "Saving..." : buttonText}
       </Button>
     </form>
   );
@@ -259,6 +261,7 @@ const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -469,6 +472,9 @@ const Investments = () => {
       const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (submitting) return;
+        setSubmitting(true);
+
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
@@ -542,9 +548,11 @@ const Investments = () => {
       toast.success("Investment added successfully");
       setDialogOpen(false);
       resetForm();
-      fetchInvestments();
+      await fetchInvestments();
     } catch (error: any) {
       toast.error(error.message || "Failed to add investment");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1211,6 +1219,7 @@ const Investments = () => {
                   fetchingPrice={fetchingPrice}
                   onSubmit={handleSubmit}
                   buttonText="Add Investment"
+                  submitting={submitting}
                 />
               </DialogContent>
             </Dialog>
@@ -1588,6 +1597,7 @@ const Investments = () => {
                     fetchingPrice={fetchingPrice}
                     onSubmit={handleSubmit}
                     buttonText="Add Investment"
+                    submitting={submitting}
                   />
                 </DialogContent>
               </Dialog>
@@ -1617,6 +1627,7 @@ const Investments = () => {
               fetchingPrice={fetchingPrice}
               onSubmit={handleEdit}
               buttonText="Update Investment"
+              submitting={submitting}
             />
           </DialogContent>
         </Dialog>

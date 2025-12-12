@@ -25,6 +25,7 @@ interface Account {
 const Accounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -62,6 +63,9 @@ const Accounts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (submitting) return;
+    setSubmitting(true);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -103,9 +107,11 @@ const Accounts = () => {
       toast.success("Account created successfully");
       setDialogOpen(false);
       setFormData({ name: "", balance: "", type: "checking", notes: "", apy: "" });
-      fetchAccounts();
+      await fetchAccounts();
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -312,7 +318,9 @@ const Accounts = () => {
         </div>
 
         
-        <Button type="submit" className="w-full">{buttonText}</Button>
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Creating..." : buttonText}
+        </Button>
       </form>
     );
   };

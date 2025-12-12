@@ -1,4 +1,7 @@
 -- Create trigger to update account balance when transactions change
+-- Drop old triggers from previous migrations
+DROP TRIGGER IF EXISTS on_transaction_change_update_account ON public.transactions;
+DROP TRIGGER IF EXISTS on_transaction_update_goal ON public.transactions;
 DROP TRIGGER IF EXISTS update_account_balance_trigger ON public.transactions;
 CREATE TRIGGER update_account_balance_trigger
   AFTER INSERT OR UPDATE OR DELETE ON public.transactions

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Duplicate Triggers - MyFinanceTracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-top: 0; }
+        .status { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 4px; 
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .info { background: #e3f2fd; color: #1976d2; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
+        .warning { background: #fff3e0; color: #f57c00; }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #1565c0; }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed; 
+        }
+        .sql-box {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Duplicate Triggers</h1>
+        
+        <div class="status info">
+            <strong>Database Issue:</strong> Your database has duplicate triggers causing transactions to be created twice.
+        </div>
+
+        <h2>Solution:</h2>
+        <p>Run this SQL in your Supabase SQL Editor (Project Settings → Database → SQL Editor):</p>
+        
+        <div class="sql-box">-- Remove old duplicate triggers
+DROP TRIGGER IF EXISTS on_transaction_change_update_account ON public.transactions;
+DROP TRIGGER IF EXISTS on_transaction_update_goal ON public.transactions;
+
+-- Verify current triggers
+SELECT tgname, tgtype, tgenabled 
+FROM pg_trigger 
+WHERE tgrelid = 'public.transactions'::regclass 
+  AND tgname NOT LIKE 'pg_%';
+        </div>
+
+        <h2>Or Try Programmatic Fix:</h2>
+        <p><strong>Note:</strong> This requires admin/service role key (not recommended for security, but works if you have it)</p>
+        
+        <button onclick="findDuplicates()" id="findBtn">1. Find Duplicate Transactions</button>
+        <button onclick="removeDuplicates()" id="removeBtn" disabled>2. Remove Duplicates</button>
+        
+        <div id="output"></div>
+
+        <h2>Manual Steps:</h2>
+        <ol>
+            <li>Go to <a href="https://supabase.com/dashboard/project/rkmbgejeafrdeyamlqcm" target="_blank">your Supabase dashboard</a></li>
+            <li>Click "SQL Editor" in the sidebar</li>
+            <li>Click "New query"</li>
+            <li>Paste the SQL above</li>
+            <li>Click "Run" or press Ctrl+Enter</li>
+        </ol>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://rkmbgejeafrdeyamlqcm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrbWJnZWplYWZyZGV5YW1scWNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NDMxNjksImV4cCI6MjA3NzIxOTE2OX0.Aesw929lZHbFRkva3TtSWF6EbcXF8sbN3QnWACVmJsc';
+        
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let duplicates = [];
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+
+        async function findDuplicates() {
+            log('🔍 Searching for duplicate transactions...', 'info');
+            document.getElementById('findBtn').disabled = true;
+
+            try {
+                const { data: user } = await supabaseClient.auth.getUser();
+                if (!user || !user.user) {
+                    log('❌ Not logged in. Please log in to the main app first.', 'error');
+                    return;
+                }
+
+                const { data: transactions, error } = await supabaseClient
+                    .from('transactions')
+                    .select('*')
+                    .eq('user_id', user.user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Find duplicates - transactions with same data within 5 seconds
+                const dupsMap = new Map();
+                duplicates = [];
+
+                transactions.forEach(tx => {
+                    const key = `${tx.account_id}-${tx.type}-${tx.amount}-${tx.category}-${tx.date}`;
+                    if (!dupsMap.has(key)) {
+                        dupsMap.set(key, []);
+                    }
+                    dupsMap.get(key).push(tx);
+                });
+
+                dupsMap.forEach(group => {
+                    if (group.length > 1) {
+                        // Sort by created_at, keep oldest, mark rest as duplicates
+                        group.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                        const timeDiff = new Date(group[1].created_at) - new Date(group[0].created_at);
+                        if (timeDiff < 5000) { // Within 5 seconds
+                            duplicates.push(...group.slice(1));
+                        }
+                    }
+                });
+
+                if (duplicates.length === 0) {
+                    log('✅ No duplicate transactions found!', 'success');
+                } else {
+                    log(`⚠️ Found ${duplicates.length} duplicate transaction(s)`, 'warning');
+                    log(`Duplicate IDs: ${duplicates.map(d => d.id).join(', ')}`, 'info');
+                    document.getElementById('removeBtn').disabled = false;
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('findBtn').disabled = false;
+            }
+        }
+
+        async function removeDuplicates() {
+            if (duplicates.length === 0) {
+                log('❌ No duplicates to remove. Run "Find Duplicates" first.', 'error');
+                return;
+            }
+
+            log(`🗑️ Removing ${duplicates.length} duplicate transaction(s)...`, 'info');
+            document.getElementById('removeBtn').disabled = true;
+
+            try {
+                const ids = duplicates.map(d => d.id);
+                const { error } = await supabaseClient
+                    .from('transactions')
+                    .delete()
+                    .in('id', ids);
+
+                if (error) throw error;
+
+                log(`✅ Successfully removed ${duplicates.length} duplicate(s)!`, 'success');
+                duplicates = [];
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                document.getElementById('removeBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

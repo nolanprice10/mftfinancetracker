@@ -32,6 +32,7 @@ interface EditTransactionDialogProps {
 }
 
 export function EditTransactionDialog({ transaction, accounts, open, onOpenChange, onSuccess }: EditTransactionDialogProps) {
+  const [submitting, setSubmitting] = useState(false);
   const [type, setType] = useState(transaction?.type || "expense");
   const [accountId, setAccountId] = useState(transaction?.account_id || "");
   const [date, setDate] = useState(transaction?.date || new Date().toISOString().split("T")[0]);
@@ -54,6 +55,9 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transaction) return;
+
+    if (submitting) return;
+    setSubmitting(true);
 
     try {
       // Validate input data
@@ -94,6 +98,8 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
       onSuccess();
     } catch (error: any) {
       toast.error(error.message || "Failed to update transaction");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -150,7 +156,9 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
             <Label>Notes (optional)</Label>
             <Input placeholder="Add details..." {...notesInput} />
           </div>
-          <Button type="submit" className="w-full">Update Transaction</Button>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Updating..." : "Update Transaction"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
