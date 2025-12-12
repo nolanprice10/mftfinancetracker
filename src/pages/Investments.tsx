@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InfoButton } from "@/components/InfoButton";
 
 interface Investment {
   id: string;
@@ -1283,26 +1284,50 @@ const Investments = () => {
               {/* Primary Risk Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground">Risk Level</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    Risk Level
+                    <InfoButton 
+                      title="Risk Level"
+                      content="How much your portfolio can swing up and down. Conservative = stable but slower growth. Aggressive = wild swings but potential for bigger gains. Think of it like a roller coaster - conservative is the kiddie ride, aggressive is the loop-de-loop."
+                    />
+                  </div>
                   <div className={`text-xl font-bold ${riskAnalysis.riskColor}`}>
                     {riskAnalysis.riskLevel}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Volatility: {riskAnalysis.portfolioVolatility.toFixed(1)}%</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Diversification</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    Diversification
+                    <InfoButton 
+                      title="Diversification"
+                      content="Don't put all your eggs in one basket! This score shows how spread out your money is across different types of investments and risk levels. Higher = safer. We look at asset variety (stocks vs bonds), how they move together (correlation), and most importantly (50% weight), whether you're mixing safe and risky stuff properly."
+                    />
+                  </div>
                   <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
                   <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
                   <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.numAssetClasses} asset types</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Concentration Risk</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    Concentration Risk
+                    <InfoButton 
+                      title="Concentration Risk"
+                      content="Are you betting too much on one thing? If your biggest investment tanks, how badly are you hurt? Low = you're safe. Critical = one bad day could wreck your whole portfolio. Like having 80% of your net worth in GameStop stock - that's concentration risk!"
+                    />
+                  </div>
                   <div className={`text-xl font-bold ${riskAnalysis.concentrationColor}`}>{riskAnalysis.concentrationRisk}</div>
                   <div className="text-xs text-muted-foreground mt-1">Top position: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Top 3: {riskAnalysis.top3Allocation.toFixed(1)}%</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Sharpe Ratio</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    Sharpe Ratio
+                    <InfoButton 
+                      title="Sharpe Ratio"
+                      content="Bang for your buck - how much return are you getting for the risk you're taking? Above 1.0 = excellent (you're getting paid well for the risk). Below 0.5 = not great (too much stress for the reward). It's like asking: is this roller coaster worth the price of admission?"
+                    />
+                  </div>
                   <div className={`text-xl font-bold ${riskAnalysis.sharpeRatio > 1 ? 'text-success' : riskAnalysis.sharpeRatio > 0.5 ? 'text-primary' : 'text-warning'}`}>
                     {riskAnalysis.sharpeRatio.toFixed(2)}
                   </div>
@@ -1314,22 +1339,52 @@ const Investments = () => {
 
               {/* Expected Performance Metrics */}
               <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2">Expected Performance:</div>
+                <div className="text-sm font-medium mb-2 flex items-center gap-1">
+                  Expected Performance:
+                  <InfoButton 
+                    title="Expected Performance"
+                    content="What might happen to your money based on historical data. These aren't guarantees - just educated guesses based on how these types of investments have performed in the past."
+                  />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Avg Annual Return</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      Avg Annual Return
+                      <InfoButton 
+                        title="Average Annual Return"
+                        content="What you'd expect to make in a typical year. If it says 10%, you'd turn $1,000 into $1,100 in an average year. But remember - some years are way better, some are way worse. This is just the middle ground."
+                      />
+                    </div>
                     <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.avgAnnualReturn}</div>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Best Year (95%)</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      Best Year (95%)
+                      <InfoButton 
+                        title="Best Year Scenario"
+                        content="Your best realistic year (95th percentile). Like when everything goes RIGHT - the stock market booms, crypto pumps, your picks crush it. This has happened about 1 in 20 years historically. Don't count on it, but it's possible!"
+                      />
+                    </div>
                     <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.bestYearGain}</div>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Worst Year (5%)</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      Worst Year (5%)
+                      <InfoButton 
+                        title="Worst Year Scenario"
+                        content="Your worst realistic year (5th percentile). Like 2008 crash level bad. This has happened about 1 in 20 years historically. If you can't stomach seeing this loss, your portfolio is too risky for you. This is the 'oh crap' number."
+                      />
+                    </div>
                     <div className="text-lg font-semibold text-destructive">{riskAnalysis.historicalContext.worstYearLoss}</div>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground">Max Drawdown</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      Max Drawdown
+                      <InfoButton 
+                        title="Maximum Drawdown"
+                        content="The biggest peak-to-valley drop you should expect. If you have $10,000 and max drawdown is 30%, you might see it drop to $7,000 before recovering. This is the 'can you sleep at night?' test. If this number terrifies you, reduce your risk!"
+                      />
+                    </div>
                     <div className="text-lg font-semibold text-warning">{riskAnalysis.expectedDrawdown}</div>
                   </div>
                 </div>
