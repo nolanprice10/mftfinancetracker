@@ -860,59 +860,79 @@ const Investments = () => {
       }
     }
 
-    // Enhanced diversification score: considers asset variety, correlation, AND volatility spread
+    // COMPREHENSIVE DIVERSIFICATION: asset variety + correlation + volatility spread
     const numTypes = Object.keys(allocations).length;
     const typesDiversification = Math.min(100, (numTypes / 6) * 100); // Max at 6 different types
     const correlationBenefit = pairCount > 0 ? (totalDiversificationBenefit / pairCount) * 100 : 0;
     
-    // Volatility diversification: Reward having mix of low, medium, and high volatility assets
-    // This ensures portfolio isn't all high-risk or all low-risk
+    // VOLATILITY DIVERSIFICATION - Critical for true risk management
+    // Maps each asset to its volatility characteristics
     const volatilityByType = Object.entries(percentages).map(([type, pct]) => ({
       type,
       pct,
       volatility: volatilityScores[type]?.volatility || 20
     }));
     
-    // Calculate volatility range and distribution
+    // Calculate weighted average volatility and spread
+    const weightedVolatility = volatilityByType.reduce((sum, v) => sum + (v.volatility * v.pct / 100), 0);
     const volatilities = volatilityByType.map(v => v.volatility);
     const minVol = Math.min(...volatilities);
     const maxVol = Math.max(...volatilities);
     const volRange = maxVol - minVol;
     
     // Volatility spread score: wider range = better diversification (0-100)
-    // Perfect spread would be 0% (savings) to 80% (crypto) = 80 point range
+    // Perfect spread: 0% (savings) to 80% (crypto) = 80 point range
     const volatilitySpreadScore = Math.min(100, (volRange / 80) * 100);
     
-    // Check for balanced allocation across volatility tiers
-    let lowVolAllocation = 0;  // 0-10% volatility
-    let medVolAllocation = 0;  // 11-25% volatility
-    let highVolAllocation = 0; // 26%+ volatility
+    // Classify assets into volatility tiers for balance analysis
+    let lowVolAllocation = 0;    // 0-10% volatility (savings, stable assets)
+    let medLowVolAllocation = 0; // 11-18% volatility (bonds, stable funds)
+    let medVolAllocation = 0;    // 19-30% volatility (diversified stocks)
+    let highVolAllocation = 0;   // 31-50% volatility (individual stocks)
+    let extremeVolAllocation = 0; // 51%+ volatility (crypto, speculative)
     
     volatilityByType.forEach(({ pct, volatility }) => {
       if (volatility <= 10) lowVolAllocation += pct;
-      else if (volatility <= 25) medVolAllocation += pct;
-      else highVolAllocation += pct;
+      else if (volatility <= 18) medLowVolAllocation += pct;
+      else if (volatility <= 30) medVolAllocation += pct;
+      else if (volatility <= 50) highVolAllocation += pct;
+      else extremeVolAllocation += pct;
     });
     
-    // Balanced tier score: penalize over-concentration in one risk tier
-    // Ideal is some allocation to all three tiers (low/med/high risk)
-    const tierCount = (lowVolAllocation > 0 ? 1 : 0) + (medVolAllocation > 0 ? 1 : 0) + (highVolAllocation > 0 ? 1 : 0);
-    const tierDiversityScore = (tierCount / 3) * 100;
+    // Count how many tiers have meaningful allocation (>5%)
+    const meaningfulTiers = [
+      lowVolAllocation > 5,
+      medLowVolAllocation > 5,
+      medVolAllocation > 5,
+      highVolAllocation > 5,
+      extremeVolAllocation > 5
+    ].filter(Boolean).length;
     
-    // Penalize extreme concentration in high volatility
-    let highVolPenalty = 0;
-    if (highVolAllocation > 70) highVolPenalty = 30; // Very risky - major penalty
-    else if (highVolAllocation > 50) highVolPenalty = 15; // Quite risky - moderate penalty
+    // Tier diversity score: reward having allocations across multiple risk levels
+    const tierDiversityScore = (meaningfulTiers / 5) * 100;
     
-    // Volatility diversification combines spread, tier balance, and safety check
-    const volatilityDiversification = Math.max(0, 
-      (volatilitySpreadScore * 0.4 + tierDiversityScore * 0.6) - highVolPenalty
-    );
+    // Balance score: penalize overweight in extremes (all safe or all risky)
+    let balancePenalty = 0;
+    if (lowVolAllocation > 80) balancePenalty = 25; // Too conservative - not diversified
+    if (highVolAllocation + extremeVolAllocation > 70) balancePenalty = 35; // Too aggressive - dangerous
+    if (extremeVolAllocation > 30) balancePenalty = Math.max(balancePenalty, 20); // Too much extreme risk
     
-    // Final diversification score: asset types (30%) + correlation (30%) + volatility spread (40%)
-    // Volatility gets highest weight because risk management is critical
+    // Reward having "stability ballast" (low vol assets) when holding high risk assets
+    let stabilityBonus = 0;
+    const highRiskTotal = highVolAllocation + extremeVolAllocation;
+    if (highRiskTotal > 40 && lowVolAllocation + medLowVolAllocation > 20) {
+      stabilityBonus = 10; // Good - balancing high risk with stability
+    }
+    
+    // Volatility diversification: combines spread, tier balance, penalties, and bonuses
+    const rawVolDiversification = (volatilitySpreadScore * 0.35 + tierDiversityScore * 0.65);
+    const volatilityDiversification = Math.max(0, Math.min(100, rawVolDiversification - balancePenalty + stabilityBonus));
+    
+    // FINAL DIVERSIFICATION SCORE
+    // Asset types (25%) + Correlation (25%) + Volatility spread (50%)
+    // Volatility gets HIGHEST weight - it's the most important risk factor
     const diversificationScore = Math.round(
-      (typesDiversification * 0.30 + correlationBenefit * 0.30 + volatilityDiversification * 0.40) * 100
+      (typesDiversification * 0.25 + correlationBenefit * 0.25 + volatilityDiversification * 0.50) * 100
     ) / 100;
 
     // Concentration risk analysis
@@ -960,16 +980,33 @@ const Investments = () => {
     let recommendations: string[];
     let expectedDrawdown: string;
 
+    // Generate volatility-specific recommendations
+    const volRecommendations = [];
+    if (extremeVolAllocation > 20) {
+      volRecommendations.push(`⚠️ ${extremeVolAllocation.toFixed(0)}% in extreme volatility assets (crypto) - very risky`);
+    }
+    if (highVolAllocation + extremeVolAllocation > 60 && lowVolAllocation + medLowVolAllocation < 15) {
+      volRecommendations.push("Add stable assets (bonds/savings) to balance high-risk holdings");
+    }
+    if (lowVolAllocation > 75) {
+      volRecommendations.push("Portfolio too conservative - add growth assets for long-term goals");
+    }
+    if (meaningfulTiers <= 2) {
+      volRecommendations.push(`Only ${meaningfulTiers} risk tiers represented - diversify across volatility spectrum`);
+    }
+
     if (portfolioVolatility < 8) {
       riskLevel = "Very Conservative";
       riskColor = "text-success";
       expectedDrawdown = "5-10% max decline";
       recommendations = [
         `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Very stable`,
+        `Volatility breakdown: ${lowVolAllocation.toFixed(0)}% low-risk, ${(medLowVolAllocation + medVolAllocation).toFixed(0)}% medium-risk`,
         `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 1 ? 'Excellent' : sharpeRatio > 0.5 ? 'Good' : 'Room for improvement'} risk-adjusted returns`,
-        "Consider adding growth assets for higher returns if time horizon permits",
+        diversificationScore < 50 ? `Diversification ${diversificationScore.toFixed(0)}% - needs improvement` : `Well diversified (${diversificationScore.toFixed(0)}%)`,
+        lowVolAllocation > 80 ? "Too concentrated in safe assets - limits growth potential" : "Consider adding growth assets for higher returns if time horizon permits",
         "Excellent for near-term goals (1-3 years)",
-        diversificationScore < 50 ? "Improve diversification to reduce remaining risk" : "Well diversified within conservative range"
+        ...volRecommendations
       ];
     } else if (portfolioVolatility < 15) {
       riskLevel = "Conservative";
@@ -977,10 +1014,12 @@ const Investments = () => {
       expectedDrawdown = "10-20% max decline";
       recommendations = [
         `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Stable with modest growth`,
+        `Risk spread: ${lowVolAllocation.toFixed(0)}% low, ${(medLowVolAllocation + medVolAllocation).toFixed(0)}% medium, ${(highVolAllocation + extremeVolAllocation).toFixed(0)}% high volatility`,
         `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 1 ? 'Excellent' : 'Good'} risk-adjusted returns`,
+        diversificationScore < 60 ? `Diversification ${diversificationScore.toFixed(0)}% - could improve` : `Good diversification (${diversificationScore.toFixed(0)}%)`,
+        concentrationRisk !== "Low" ? `Reduce concentration risk (currently ${concentrationRisk})` : "Concentration risk well managed",
         "Suitable for 3-5 year investment horizon",
-        "Good balance for pre-retirees or conservative investors",
-        concentrationRisk !== "Low" ? `Reduce concentration risk (currently ${concentrationRisk})` : "Concentration risk well managed"
+        ...volRecommendations
       ];
     } else if (portfolioVolatility < 20) {
       riskLevel = "Moderate";
@@ -988,11 +1027,14 @@ const Investments = () => {
       expectedDrawdown = "20-30% max decline";
       recommendations = [
         `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - Balanced risk/return profile`,
+        `Volatility balance: ${(lowVolAllocation + medLowVolAllocation).toFixed(0)}% stable, ${medVolAllocation.toFixed(0)}% moderate, ${(highVolAllocation + extremeVolAllocation).toFixed(0)}% high-risk`,
         `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.8 ? 'Strong' : 'Adequate'} risk-adjusted performance`,
+        diversificationScore < 60 ? `⚠️ Diversification only ${diversificationScore.toFixed(0)}% - increase volatility spread` : `Solid diversification (${diversificationScore.toFixed(0)}%)`,
+        meaningfulTiers < 3 ? `Only ${meaningfulTiers} risk tiers - add more volatility variety` : "Good spread across risk levels",
         "Appropriate for 5-10 year investment horizon",
         "Expect 1-2 significant corrections in 10 years",
-        diversificationScore < 60 ? "Increase diversification to smooth volatility" : "Good diversification level",
-        "Ensure 6-month emergency fund is separate"
+        "Ensure 6-month emergency fund is separate",
+        ...volRecommendations
       ];
     } else if (portfolioVolatility < 30) {
       riskLevel = "Aggressive";
@@ -1000,12 +1042,15 @@ const Investments = () => {
       expectedDrawdown = "30-40% max decline";
       recommendations = [
         `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - High volatility, growth-focused`,
+        `⚠️ High-risk assets: ${(highVolAllocation + extremeVolAllocation).toFixed(0)}% of portfolio in volatile holdings`,
         `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.6 ? 'Acceptable' : 'Below optimal'} for risk taken`,
+        diversificationScore < 70 ? `⚠️ CRITICAL: Diversification ${diversificationScore.toFixed(0)}% - urgent need to spread risk` : `Diversification helps (${diversificationScore.toFixed(0)}%)`,
+        (lowVolAllocation + medLowVolAllocation) < 20 ? "Add 20-30% stable assets to cushion volatility" : "Stable asset buffer helps manage swings",
+        concentrationRisk === "High" || concentrationRisk === "Critical" ? "URGENT: Reduce concentration - single position risk is high" : "Monitor concentration risk",
         "Requires 10+ year investment horizon",
         "Expect 2-3 major corrections (20%+) over 10 years",
-        concentrationRisk === "High" || concentrationRisk === "Critical" ? "URGENT: Reduce concentration - single position risk is high" : "Monitor concentration risk",
-        diversificationScore < 70 ? "Diversification critical at this volatility level" : "Diversification helps manage volatility",
-        "NOT suitable if you need funds in next 5 years"
+        "NOT suitable if you need funds in next 5 years",
+        ...volRecommendations
       ];
     } else {
       riskLevel = "Very Aggressive";
@@ -1013,14 +1058,18 @@ const Investments = () => {
       expectedDrawdown = "40-70%+ max decline";
       recommendations = [
         `Portfolio volatility: ${portfolioVolatility.toFixed(1)}% - EXTREME risk level`,
+        `🔴 DANGER: ${(highVolAllocation + extremeVolAllocation).toFixed(0)}% in high/extreme volatility - severe downside risk`,
+        extremeVolAllocation > 15 ? `🔴 ${extremeVolAllocation.toFixed(0)}% in extreme volatility (crypto/speculation) - very dangerous` : "",
         `Sharpe Ratio: ${sharpeRatio.toFixed(2)} - ${sharpeRatio > 0.5 ? 'Risk somewhat justified by returns' : 'WARNING: High risk for returns achieved'}`,
+        diversificationScore < 50 ? `🔴 URGENT: Diversification ${diversificationScore.toFixed(0)}% - extremely poor risk management` : `Diversification ${diversificationScore.toFixed(0)}% - still concerning at this volatility`,
+        (lowVolAllocation + medLowVolAllocation) < 20 ? "🔴 CRITICAL: Add 30-40% stable assets immediately - no safety net" : "Need more stability ballast",
+        concentrationRisk === "Critical" ? "🔴 CRITICAL: Over-concentrated position - immediate rebalancing needed" : "High concentration amplifies extreme volatility",
         "ONLY for 15+ year horizon and strong risk tolerance",
         "Expect multiple 30-50% drawdowns",
         "Potential for total loss in individual positions",
-        concentrationRisk === "Critical" ? "CRITICAL: Over-concentrated position - immediate rebalancing needed" : "High concentration amplifies volatility",
-        diversificationScore < 50 ? "Poor diversification at extreme risk level - URGENT priority" : "Improve diversification to reduce downside",
         percentages.crypto > 20 ? `Crypto allocation (${percentages.crypto?.toFixed(1)}%) is very high - consider 5-10% max` : "",
-        "Have 12-month emergency fund separate from this portfolio"
+        "Have 12-month emergency fund separate from this portfolio",
+        ...volRecommendations
       ].filter(Boolean);
     }
 
@@ -1048,7 +1097,16 @@ const Investments = () => {
       expectedDrawdown,
       historicalContext,
       numHoldings: investments.length,
-      numAssetClasses: numTypes
+      numAssetClasses: numTypes,
+      // Volatility breakdown for detailed analysis
+      volatilityBreakdown: {
+        low: lowVolAllocation,
+        medLow: medLowVolAllocation,
+        medium: medVolAllocation,
+        high: highVolAllocation,
+        extreme: extremeVolAllocation,
+        tierCount: meaningfulTiers
+      }
     };
   };
 
