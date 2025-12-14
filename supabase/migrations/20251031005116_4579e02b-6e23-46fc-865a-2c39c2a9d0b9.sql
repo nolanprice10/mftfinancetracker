@@ -67,11 +67,12 @@ END;
 $$;
 
 -- Create trigger for transaction changes
-DROP TRIGGER IF EXISTS on_transaction_change_update_account ON public.transactions;
-CREATE TRIGGER on_transaction_change_update_account
-  AFTER INSERT OR UPDATE OR DELETE ON public.transactions
-  FOR EACH ROW
-  EXECUTE FUNCTION public.update_account_balance_from_transaction();
+-- DISABLED: This trigger is now created in migration 20251104211127 and fixed in 20251214000000
+-- DROP TRIGGER IF EXISTS on_transaction_change_update_account ON public.transactions;
+-- CREATE TRIGGER on_transaction_change_update_account
+--   AFTER INSERT OR UPDATE OR DELETE ON public.transactions
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.update_account_balance_from_transaction();
 
 -- Add spending_limits table for daily/weekly/monthly limits
 CREATE TABLE IF NOT EXISTS public.spending_limits (

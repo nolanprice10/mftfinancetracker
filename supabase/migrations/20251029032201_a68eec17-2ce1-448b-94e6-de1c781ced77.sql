@@ -34,8 +34,9 @@ END;
 $$;
 
 -- Create trigger for goal updates on transaction insert
-DROP TRIGGER IF EXISTS on_transaction_update_goal ON public.transactions;
-CREATE TRIGGER on_transaction_update_goal
-  AFTER INSERT ON public.transactions
-  FOR EACH ROW
-  EXECUTE FUNCTION public.update_goal_from_transaction();
+-- DISABLED: This trigger is now properly created in migration 20251214000000
+-- DROP TRIGGER IF EXISTS on_transaction_update_goal ON public.transactions;
+-- CREATE TRIGGER on_transaction_update_goal
+--   AFTER INSERT ON public.transactions
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.update_goal_from_transaction();

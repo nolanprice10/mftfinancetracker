@@ -1,7 +1,7 @@
 -- Fix duplicate triggers on transactions table
--- Remove old trigger that was not properly cleaned up
-DROP TRIGGER IF EXISTS on_transaction_change_update_account ON public.transactions;
-DROP TRIGGER IF EXISTS on_transaction_update_goal ON public.transactions;
+-- DISABLED: This migration is superseded by 20251214000000_fix_duplicate_triggers_final.sql
+-- The problem: Multiple triggers were calling update_account_balance_from_transaction()
+-- causing the balance to be updated multiple times for a single transaction
 
--- Ensure only the latest triggers exist
--- The update_account_balance_trigger and update_goal_from_transaction_trigger should be the only ones
+-- This migration has been disabled to prevent duplicate trigger creation
+-- All trigger management is now handled in the 20251214000000 migration

@@ -22,8 +22,9 @@ END;
 $$;
 
 -- Create trigger for syncing goals when account balance changes
-DROP TRIGGER IF EXISTS on_account_update_sync_goals ON public.accounts;
-CREATE TRIGGER on_account_update_sync_goals
-  AFTER INSERT OR UPDATE OF balance ON public.accounts
-  FOR EACH ROW
-  EXECUTE FUNCTION public.sync_goal_with_account_balance();
+-- DISABLED: This trigger is now properly created in migration 20251214000000
+-- DROP TRIGGER IF EXISTS on_account_update_sync_goals ON public.accounts;
+-- CREATE TRIGGER on_account_update_sync_goals
+--   AFTER INSERT OR UPDATE OF balance ON public.accounts
+--   FOR EACH ROW
+--   EXECUTE FUNCTION public.sync_goal_with_account_balance();
