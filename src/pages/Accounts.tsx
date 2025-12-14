@@ -1,8 +1,9 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Wallet, Edit, Trash2 } from "lucide-react";
+import { Plus, Wallet, Edit, Trash2, ArrowLeftRight } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
+import { TransferDialog } from "@/components/TransferDialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -29,6 +30,7 @@ const Accounts = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -63,6 +65,7 @@ const Accounts = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (submitting) return;
     setSubmitting(true);
@@ -117,6 +120,7 @@ const Accounts = () => {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!selectedAccount) return;
 
     try {
@@ -333,13 +337,23 @@ const Accounts = () => {
             <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Accounts</h1>
             <p className="text-muted-foreground">Wealth account management</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-elegant hover:shadow-luxe transition-all">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Account
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setTransferDialogOpen(true)}
+              disabled={accounts.length < 2}
+              variant="outline"
+              className="shadow-elegant hover:shadow-luxe transition-all"
+            >
+              <ArrowLeftRight className="h-4 w-4 mr-2" />
+              Transfer
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="shadow-elegant hover:shadow-luxe transition-all">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Account
+                </Button>
+              </DialogTrigger>
             <DialogContent
               disableFocusTrap
               disableOutsidePointerEvents={false}
@@ -351,6 +365,7 @@ const Accounts = () => {
               <AccountForm onSubmit={handleSubmit} buttonText="Create Account" />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 stagger-children">
@@ -503,6 +518,13 @@ const Accounts = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <TransferDialog
+          open={transferDialogOpen}
+          onOpenChange={setTransferDialogOpen}
+          accounts={accounts}
+          onTransferComplete={fetchAccounts}
+        />
       </div>
     </Layout>
   );

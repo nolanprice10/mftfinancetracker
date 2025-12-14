@@ -131,6 +131,7 @@ const Goals = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (submitting) return;
     setSubmitting(true);
@@ -216,6 +217,7 @@ const Goals = () => {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!selectedGoal) return;
 
     try {

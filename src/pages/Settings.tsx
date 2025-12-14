@@ -52,6 +52,7 @@ const Settings = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
 
     try {
@@ -94,6 +95,7 @@ const Settings = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (!currentPassword) {
       toast.error("Please enter your current password");

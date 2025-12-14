@@ -51,6 +51,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
   const handleNext = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.stopPropagation();
     console.log("Next button clicked, current step:", currentStep);
     
     if (currentStep < onboardingSteps.length - 1) {
@@ -62,6 +63,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
 
   const handleSkip = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.stopPropagation();
     console.log("Skip button clicked");
     handleComplete();

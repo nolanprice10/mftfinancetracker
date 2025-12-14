@@ -30,6 +30,7 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
 
     try {
@@ -59,6 +60,7 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
 
     try {
@@ -78,8 +80,7 @@ const Auth = () => {
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault();    e.stopPropagation();    setLoading(true);
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {

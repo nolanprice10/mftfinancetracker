@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen, PlusCircle } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InfoButton } from "@/components/InfoButton";
+import { AddFundsDialog } from "@/components/AddFundsDialog";
 
 interface Investment {
   id: string;
@@ -86,7 +87,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           <SelectContent>
             {accounts.map(account => (
               <SelectItem key={account.id} value={account.id}>
-                {account.name} (${account.balance.toFixed(2)})
+                {account.name} (${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
               </SelectItem>
             ))}
           </SelectContent>
@@ -221,16 +222,16 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Expected Annual Return (%)</Label>
+              <Label>Expected Annual Return (%) - Optional</Label>
               <Input
                 type="number"
                 step="0.1"
-                placeholder="7"
+                placeholder="Leave empty for historical average"
                 value={formData.annualReturn}
                 onChange={(e) => handleInputChange('annualReturn', e.target.value)}
                 autoComplete="off"
-                required
               />
+              <p className="text-xs text-muted-foreground">If left empty, uses asset-specific historical averages</p>
             </div>
             <div className="space-y-2">
               <Label>Years to Project</Label>
@@ -265,6 +266,7 @@ const Investments = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addFundsDialogOpen, setAddFundsDialogOpen] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   // priceData structure: { [TICKER_UPPER]: { latest: PriceData, [periodKey]: PriceData } }
   const [priceData, setPriceData] = useState<Record<string, Record<string, PriceData>>>({});
@@ -283,7 +285,7 @@ const Investments = () => {
     pricePerShare: "",
     currentValue: "",
     monthlyContribution: "",
-    annualReturn: "7",
+    annualReturn: "",
     yearsRemaining: "10",
   });
   
@@ -457,7 +459,7 @@ const Investments = () => {
           history: response.data.history || []
         };
         setPriceData(prev => ({ ...(prev), [tickerKey]: { ...(prev[tickerKey] || {}), latest: entry, [period]: entry } }));
-        toast.success(`Fetched price: $${response.data.price.toFixed(2)}`);
+        toast.success(`Fetched price: $${response.data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
       } else {
         toast.error('Failed to fetch price - check ticker symbol');
       }
@@ -471,6 +473,7 @@ const Investments = () => {
   };
       const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        e.stopPropagation();
 
         if (submitting) return;
         setSubmitting(true);
@@ -492,7 +495,7 @@ const Investments = () => {
       }
 
       if (sourceAccount.balance < investmentAmount) {
-        toast.error(`Insufficient funds. Account balance: $${sourceAccount.balance.toFixed(2)}`);
+        toast.error(`Insufficient funds. Account balance: $${sourceAccount.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         return;
       }
 
@@ -504,7 +507,7 @@ const Investments = () => {
         type: formType,
         current_value: investmentAmount,
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
-        annual_return_pct: parseFloat(formData.annualReturn),
+        annual_return_pct: formData.annualReturn ? parseFloat(formData.annualReturn) : 0,
         years_remaining: parseFloat(formData.yearsRemaining),
         ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
         shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
@@ -558,6 +561,7 @@ const Investments = () => {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!selectedInvestment) return;
 
     try {
@@ -569,7 +573,7 @@ const Investments = () => {
         type: formType,
         current_value: parseFloat(formData.currentValue),
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
-        annual_return_pct: parseFloat(formData.annualReturn),
+        annual_return_pct: formData.annualReturn ? parseFloat(formData.annualReturn) : 0,
         years_remaining: parseFloat(formData.yearsRemaining),
         ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
         shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
@@ -626,11 +630,173 @@ const Investments = () => {
       pricePerShare: "",
       currentValue: "",
       monthlyContribution: "",
-      annualReturn: "7",
+      annualReturn: "",
       yearsRemaining: "10",
     });
     setFormType("index_fund");
     setSourceAccountId("");
+  };
+
+  // Helper function to format currency with commas
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Helper function to format numbers with commas (for shares, etc.)
+  const formatNumber = (value: number, decimals: number = 2): string => {
+    return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  };
+
+  // Monte Carlo simulation using Geometric Brownian Motion for investment projections
+  const runMonteCarloSimulation = (
+    presentValue: number,
+    monthlyContribution: number,
+    expectedAnnualReturn: number,
+    annualVolatility: number,
+    years: number,
+    simulations: number = 10000
+  ): number => {
+    const results: number[] = [];
+    const months = years * 12;
+    const dt = 1 / 12; // Time step (monthly)
+    
+    // Convert annual parameters to continuous compounding
+    // Using geometric mean: ln(1 + return) for more accurate compounding
+    const mu = Math.log(1 + expectedAnnualReturn / 100); // Drift (continuous return)
+    const sigma = annualVolatility / 100; // Volatility
+    
+    // Adjust drift for volatility (variance drag)
+    // E[geometric return] = mu - (sigma^2 / 2)
+    const adjustedMu = mu - (sigma * sigma / 2);
+
+    for (let sim = 0; sim < simulations; sim++) {
+      let value = presentValue;
+      
+      for (let month = 0; month < months; month++) {
+        // Generate two independent random normal variables using Box-Muller
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        
+        // Geometric Brownian Motion: dS = S * (mu*dt + sigma*sqrt(dt)*z)
+        // More accurate: S(t+dt) = S(t) * exp((mu - sigma^2/2)*dt + sigma*sqrt(dt)*z)
+        const drift = adjustedMu * dt;
+        const randomShock = sigma * Math.sqrt(dt) * z;
+        const growthFactor = Math.exp(drift + randomShock);
+        
+        // Apply growth to existing value
+        value = value * growthFactor;
+        
+        // Add monthly contribution (happens at end of month)
+        value = value + monthlyContribution;
+        
+        // Prevent negative values (investments can't go below zero in reality)
+        if (value < 0) value = 0;
+      }
+      
+      results.push(value);
+    }
+
+    // Sort results to get percentiles
+    results.sort((a, b) => a - b);
+    
+    // Return 50th percentile (median) - most likely outcome
+    // Median is more robust than mean for skewed distributions
+    const medianIndex = Math.floor(results.length / 2);
+    return results[medianIndex];
+  };
+
+  // Calculate historical return and volatility from actual price data for a specific asset
+  const calculateAssetSpecificParameters = (investment: Investment): { expectedReturn: number; volatility: number } | null => {
+    if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
+      const tickerKey = investment.ticker_symbol.toUpperCase();
+      const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
+      
+      if (history && history.length >= 20) {
+        // Calculate log returns (more appropriate for financial data)
+        const logReturns: number[] = [];
+        for (let i = 1; i < history.length; i++) {
+          const prevPrice = history[i - 1].price;
+          const currPrice = history[i].price;
+          if (prevPrice > 0 && currPrice > 0) {
+            // Log return: ln(P(t) / P(t-1))
+            const logReturn = Math.log(currPrice / prevPrice);
+            logReturns.push(logReturn);
+          }
+        }
+        
+        if (logReturns.length >= 15) {
+          // Calculate mean of log returns
+          const meanLogReturn = logReturns.reduce((sum, r) => sum + r, 0) / logReturns.length;
+          
+          // Annualize using geometric compounding: (1 + daily_return)^252 - 1
+          // More accurate: exp(mean_log_return * 252) - 1
+          const annualizedReturn = (Math.exp(meanLogReturn * 252) - 1) * 100;
+          
+          // Calculate sample standard deviation (unbiased estimator)
+          const variance = logReturns.reduce((sum, r) => sum + Math.pow(r - meanLogReturn, 2), 0) / (logReturns.length - 1);
+          const dailyVolatility = Math.sqrt(variance);
+          
+          // Annualize volatility: daily_vol * sqrt(252 trading days)
+          const annualizedVolatility = dailyVolatility * Math.sqrt(252) * 100;
+          
+          // Sanity check: return only if values are reasonable
+          // Allow wider range for crypto (can be very volatile)
+          const maxReturn = investment.type === 'crypto' ? 500 : 200;
+          const maxVol = investment.type === 'crypto' ? 300 : 150;
+          
+          if (annualizedReturn > -95 && annualizedReturn < maxReturn && 
+              annualizedVolatility > 0.1 && annualizedVolatility < maxVol) {
+            return {
+              expectedReturn: annualizedReturn,
+              volatility: annualizedVolatility
+            };
+          }
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // Get historical volatility and expected return for each asset type
+  const getAssetParameters = (type: string, userSpecifiedReturn?: number): { expectedReturn: number; volatility: number } => {
+    // Historical data based on extensive market analysis (1926-2023)
+    const assetParams: Record<string, { expectedReturn: number; volatility: number }> = {
+      individual_stock: { 
+        expectedReturn: userSpecifiedReturn || 10.26,  // S&P 500 geometric mean 1926-2023
+        volatility: 18.42  // Historical annual volatility of S&P 500
+      },
+      crypto: { 
+        expectedReturn: userSpecifiedReturn || 47.5,  // Bitcoin 2015-2023 CAGR (highly volatile)
+        volatility: 73.2  // Bitcoin historical volatility
+      },
+      index_fund: { 
+        expectedReturn: userSpecifiedReturn || 10.15,  // Total US market index historical
+        volatility: 15.8  // Broad diversification reduces volatility
+      },
+      taxable_etf: { 
+        expectedReturn: userSpecifiedReturn || 9.8,  // Average sector ETF performance
+        volatility: 17.5  // Varies by sector concentration
+      },
+      roth_ira: { 
+        expectedReturn: userSpecifiedReturn || 9.5,  // Typical balanced portfolio (60/40 stocks/bonds)
+        volatility: 12.3  // Diversified with bonds for stability
+      },
+      savings: { 
+        expectedReturn: userSpecifiedReturn || 4.25,  // Current high-yield savings APY
+        volatility: 0.3  // Nearly zero risk, FDIC insured
+      },
+      other: { 
+        expectedReturn: userSpecifiedReturn || 8.5,  // Mixed asset allocation estimate
+        volatility: 14.2  // Moderate diversification
+      }
+    };
+
+    return assetParams[type] || { 
+      expectedReturn: userSpecifiedReturn || 8.5,  // Conservative mixed portfolio
+      volatility: 14.2 
+    };
   };
 
   const openEditDialog = (investment: Investment) => {
@@ -649,116 +815,70 @@ const Investments = () => {
     setEditDialogOpen(true);
   };
 
-  // Calculate future value using LIVE market data and historical performance
+  // Calculate future value using Monte Carlo simulation for accurate projections
   const calculateFutureValue = (investment: Investment) => {
     const liveValue = getLiveValue(investment);
-    const PV = liveValue; // Use live market value, not stale stored value
-    const pmt = Number(investment.monthly_contribution);
-    const years = Number(investment.years_remaining);
+    const PV = liveValue; // Present Value - current investment value
+    const pmt = Number(investment.monthly_contribution); // Monthly contribution
+    const years = Number(investment.years_remaining); // Years to project
 
     // Validate inputs
-    if (isNaN(PV) || isNaN(pmt) || isNaN(years) || years <= 0) {
+    if (isNaN(PV) || isNaN(pmt) || isNaN(years) || years <= 0 || PV < 0) {
       return PV || 0;
     }
 
-    // Calculate market-based expected return using historical data where available
-    let annualReturnPct = Number(investment.annual_return_pct);
+    // Get user-specified return rate - only use if it's explicitly set and meaningful
+    // Ignore generic 7% that was the old default
+    const userSpecifiedReturn = Number(investment.annual_return_pct);
+    const validUserReturn = !isNaN(userSpecifiedReturn) && userSpecifiedReturn > 0 && userSpecifiedReturn !== 7 ? userSpecifiedReturn : undefined;
+
+    // Try to get asset-specific parameters from actual price history first
+    const assetSpecific = calculateAssetSpecificParameters(investment);
     
-    // For stocks/crypto with ticker symbols, use actual historical performance
-    if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
-      const tickerKey = investment.ticker_symbol.toUpperCase();
-      const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
-      
-      if (history && history.length >= 20) {
-        // Calculate annualized return from 30-day price history
-        const startPrice = history[0].price;
-        const endPrice = history[history.length - 1].price;
-        const days = history.length;
-        
-        if (startPrice > 0 && endPrice > 0 && days > 0) {
-          // Annualize the period return: ((endPrice/startPrice)^(365/days) - 1) * 100
-          const periodReturn = endPrice / startPrice;
-          const annualizedReturn = (Math.pow(periodReturn, 365 / days) - 1) * 100;
-          
-          // Use historical return if reasonable (between -50% and +200%)
-          if (annualizedReturn > -50 && annualizedReturn < 200) {
-            annualReturnPct = annualizedReturn;
-          }
-        }
-      }
-    }
+    let expectedReturn: number;
+    let volatility: number;
     
-    // Enhanced expected returns based on asset type (used as fallback)
-    const marketBasedReturns: Record<string, number> = {
-      individual_stock: 11, // S&P 500 historical avg
-      crypto: 15, // High volatility, high return
-      index_fund: 10, // Broad market
-      taxable_etf: 9, // Sector-dependent
-      roth_ira: 10, // Depends on holdings
-      savings: 4.5, // Current high-yield savings
-      other: 8
-    };
-    
-    // Use market-based return if user didn't specify or specified 0
-    if (isNaN(annualReturnPct) || annualReturnPct === 0) {
-      annualReturnPct = marketBasedReturns[investment.type] || 8;
+    if (assetSpecific && !validUserReturn) {
+      // Use actual historical data from this specific asset
+      expectedReturn = assetSpecific.expectedReturn;
+      volatility = assetSpecific.volatility;
+    } else {
+      // Fall back to asset-type parameters
+      const params = getAssetParameters(investment.type, validUserReturn);
+      expectedReturn = params.expectedReturn;
+      volatility = params.volatility;
     }
 
-    const r = (annualReturnPct / 100) / 12; // Monthly rate
-    const n = Math.round(years * 12); // Total months
-
-    // Handle zero return rate (no growth)
-    if (r === 0) {
-      return PV + pmt * n;
-    }
-
-    // Future Value formula: FV = PV(1+r)^n + PMT * [((1+r)^n - 1) / r]
-    const factor = Math.pow(1 + r, n);
-    const futureValue = PV * factor + pmt * ((factor - 1) / r);
+    // Run Monte Carlo simulation with 10,000 iterations
+    // This accounts for volatility and randomness in returns
+    const futureValue = runMonteCarloSimulation(
+      PV,
+      pmt,
+      expectedReturn,
+      volatility,
+      years,
+      10000
+    );
     
-    // Round to 2 decimal places for currency
+    // Return precise value rounded to cents
     return Math.round(futureValue * 100) / 100;
   };
   
   // Get the effective annual return being used for an investment
   const getEffectiveReturn = (investment: Investment): number => {
-    let annualReturnPct = Number(investment.annual_return_pct);
+    const userSpecifiedReturn = Number(investment.annual_return_pct);
+    // Ignore the old default of 7%, use asset-specific rates instead
+    const validUserReturn = !isNaN(userSpecifiedReturn) && userSpecifiedReturn > 0 && userSpecifiedReturn !== 7 ? userSpecifiedReturn : undefined;
     
-    if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
-      const tickerKey = investment.ticker_symbol.toUpperCase();
-      const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
-      
-      if (history && history.length >= 20) {
-        const startPrice = history[0].price;
-        const endPrice = history[history.length - 1].price;
-        const days = history.length;
-        
-        if (startPrice > 0 && endPrice > 0 && days > 0) {
-          const periodReturn = endPrice / startPrice;
-          const annualizedReturn = (Math.pow(periodReturn, 365 / days) - 1) * 100;
-          
-          if (annualizedReturn > -50 && annualizedReturn < 200) {
-            return annualizedReturn;
-          }
-        }
-      }
+    // Try to get asset-specific parameters from actual price history first
+    const assetSpecific = calculateAssetSpecificParameters(investment);
+    
+    if (assetSpecific && !validUserReturn) {
+      return assetSpecific.expectedReturn;
     }
     
-    const marketBasedReturns: Record<string, number> = {
-      individual_stock: 11,
-      crypto: 15,
-      index_fund: 10,
-      taxable_etf: 9,
-      roth_ira: 10,
-      savings: 4.5,
-      other: 8
-    };
-    
-    if (isNaN(annualReturnPct) || annualReturnPct === 0) {
-      return marketBasedReturns[investment.type] || 8;
-    }
-    
-    return annualReturnPct;
+    const { expectedReturn } = getAssetParameters(investment.type, validUserReturn);
+    return expectedReturn;
   };
 
   const investmentTypeColors: Record<string, string> = {
@@ -1247,7 +1367,7 @@ const Investments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${totalCurrentValue.toFixed(2)}</div>
+              <div className="text-3xl font-bold">${formatCurrency(totalCurrentValue)}</div>
               <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Auto-updates every 60 seconds
@@ -1263,9 +1383,9 @@ const Investments = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${totalFutureValue.toFixed(2)}</div>
+              <div className="text-3xl font-bold">${formatCurrency(totalFutureValue)}</div>
               <p className="text-sm text-muted-foreground mt-2">
-                +${(totalFutureValue - totalCurrentValue).toFixed(2)} projected gain ({((totalFutureValue - totalCurrentValue) / totalCurrentValue * 100).toFixed(1)}%)
+                +${formatCurrency(totalFutureValue - totalCurrentValue)} projected gain ({((totalFutureValue - totalCurrentValue) / totalCurrentValue * 100).toFixed(1)}%)
               </p>
               <div className="text-xs text-primary mt-2 flex items-center gap-1">
                 <span className="font-semibold">
@@ -1459,6 +1579,18 @@ const Investments = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => {
+                          setSelectedInvestment(investment);
+                          setAddFundsDialogOpen(true);
+                        }}
+                        className="hover:bg-success/10"
+                        title="Add Funds"
+                      >
+                        <PlusCircle className="w-4 h-4 text-success" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => openEditDialog(investment)}
                         className="hover:bg-primary/10"
                       >
@@ -1501,10 +1633,10 @@ const Investments = () => {
                           Current Value
                           <span className="text-xs">(Live)</span>
                         </div>
-                        <div className="text-xl font-bold">${liveValue.toFixed(2)}</div>
+                        <div className="text-xl font-bold">${formatCurrency(liveValue)}</div>
                         {investment.shares_owned && (
                           <div className="text-xs text-muted-foreground">
-                            {investment.shares_owned} {investment.type === "crypto" ? "units" : "shares"} × ${priceData[tickerKey!]?.latest?.price?.toFixed(2) || investment.purchase_price_per_share?.toFixed(2)}
+                            {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
                           </div>
                         )}
                         {priceData[tickerKey!]?.latest?.change24h !== undefined && (
@@ -1520,12 +1652,12 @@ const Investments = () => {
                           Future Value
                           <span className="text-xs font-semibold text-primary">({investment.years_remaining} {investment.years_remaining === 1 ? 'year' : 'years'})</span>
                         </div>
-                        <div className="text-xl font-bold text-success">${futureValue.toFixed(2)}</div>
+                        <div className="text-xl font-bold text-success">${formatCurrency(futureValue)}</div>
                         <div className="text-xs text-muted-foreground">
-                          +${gain.toFixed(2)} ({((gain / liveValue) * 100).toFixed(1)}% total gain)
+                          +${formatCurrency(gain)} ({((gain / liveValue) * 100).toFixed(1)}% total gain)
                         </div>
                         <div className="text-xs text-primary font-medium mt-0.5">
-                          @ {getEffectiveReturn(investment).toFixed(1)}% annually
+                          @ {getEffectiveReturn(investment).toFixed(2)}% annually
                         </div>
                       </div>
                     </div>
@@ -1535,9 +1667,9 @@ const Investments = () => {
                       {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
                         <div>
                           <div className="text-muted-foreground">Monthly Contribution</div>
-                          <div className="font-medium">${Number(investment.monthly_contribution).toFixed(2)}</div>
+                          <div className="font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            ${(Number(investment.monthly_contribution) * 12).toFixed(0)}/year for {investment.years_remaining} years
+                            ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
                           </div>
                         </div>
                       )}
@@ -1545,12 +1677,16 @@ const Investments = () => {
                       {/* Show effective return rate being used */}
                       <div>
                         <div className="text-muted-foreground">
-                          {(investment.type === 'individual_stock' || investment.type === 'crypto') ? 'Return Rate (Live)' : 'Expected Return'}
+                          Expected Return (Monte Carlo)
                         </div>
-                        <div className="font-medium">{getEffectiveReturn(investment).toFixed(1)}% annually</div>
-                        {(investment.type === 'individual_stock' || investment.type === 'crypto') && priceData[tickerKey!]?.[FIXED_PERIOD]?.history?.length >= 20 && (
+                        <div className="font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
+                        {calculateAssetSpecificParameters(investment) ? (
                           <div className="text-xs text-success mt-0.5">
-                            ✓ Based on 30-day market data
+                            ✓ Based on {investment.ticker_symbol?.toUpperCase()} historical data
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Based on {investment.type.replace(/_/g, ' ')} average
                           </div>
                         )}
                       </div>
@@ -1648,6 +1784,14 @@ const Investments = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <AddFundsDialog
+          open={addFundsDialogOpen}
+          onOpenChange={setAddFundsDialogOpen}
+          investment={selectedInvestment}
+          accounts={accounts}
+          onComplete={fetchInvestments}
+        />
       </div>
     </Layout>
   );
