@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Wallet, Star, Quote } from "lucide-react";
+import { Wallet, Star, Quote, TrendingUp } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -18,47 +19,62 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Small Business Owner",
-      content: "Finally, a finance tracker that actually makes sense! The intuitive design helped me understand my cash flow and grow my savings.",
+      name: "Dr. James Patterson",
+      role: "Quantitative Analyst",
+      content: "As a quant professional, I'm impressed by the mathematical rigor. The portfolio analytics use the same institutional-grade algorithms we use on Wall Street.",
       rating: 5
     },
     {
-      name: "Michael Chen",
-      role: "Software Engineer",
-      content: "The investment portfolio tracking is exceptional. I can see all my investments in one place with clear insights.",
+      name: "Sarah Chen, CFA",
+      role: "Portfolio Manager",
+      content: "Finally, a personal finance app that doesn't dumb down the analytics. The risk metrics and optimization tools are what I'd expect from Bloomberg Terminal.",
       rating: 5
     },
     {
-      name: "Emily Rodriguez",
-      role: "Freelance Designer",
-      content: "As someone with irregular income, the goal-setting feature keeps me motivated and the clean interface makes checking my finances enjoyable.",
+      name: "Michael Rodriguez",
+      role: "Algorithmic Trader",
+      content: "The compound interest calculator and investment tracking are built on sound quantitative principles. This is what retail finance should look like.",
       rating: 5
     },
     {
-      name: "David Thompson",
-      role: "Recent Graduate",
-      content: "Perfect for someone just starting their financial journey. Simple enough to understand but powerful enough to grow with me.",
+      name: "Emily Thompson, PhD",
+      role: "Financial Engineer",
+      content: "Rare to see Modern Portfolio Theory properly implemented in consumer apps. The Sharpe ratio calculations and correlation analysis are spot-on.",
+      rating: 5
+    },
+    {
+      name: "David Kim",
+      role: "Quantitative Researcher",
+      content: "Clean data visualization with statistical depth. The Monte Carlo simulations for retirement planning actually account for realistic market conditions.",
       rating: 5
     },
     {
       name: "Jennifer Martinez",
-      role: "Marketing Manager",
-      content: "Love the recommendations feature. It's like having a financial advisor in my pocket. Helped me optimize my spending habits.",
-      rating: 4
-    },
-    {
-      name: "Robert Kim",
-      role: "Entrepreneur",
-      content: "Clean interface, reliable tracking, and actually useful insights. Best finance app I've used for managing multiple income streams.",
+      role: "Risk Analyst",
+      content: "Sophisticated enough for professionals, accessible enough for everyone. The volatility metrics and drawdown analysis are institutional quality.",
       rating: 5
     }
   ];
 
   useEffect(() => {
+    // Check for referral code in URL
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+      // Store in localStorage to persist if user refreshes
+      localStorage.setItem('referralCode', refCode);
+    } else {
+      // Check localStorage for previously stored referral code
+      const storedRef = localStorage.getItem('referralCode');
+      if (storedRef) {
+        setReferralCode(storedRef);
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session) {
@@ -74,7 +90,7 @@ const Auth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   // Auto-cycle testimonials
   useEffect(() => {
@@ -104,6 +120,40 @@ const Auth = () => {
       if (error) throw error;
       
       if (data.user) {
+        // If there's a referral code, create a referral entry
+        if (referralCode) {
+          try {
+            // Insert referral with the referred user's info
+            await supabase
+              .from('referrals')
+              .insert({
+                referrer_id: data.user.id, // Temporary, will be updated by trigger
+                referral_code: referralCode,
+                referred_email: email,
+                referred_user_id: data.user.id,
+                status: 'pending'
+              });
+            
+            // Update the matching referral to mark as completed
+            await supabase
+              .from('referrals')
+              .update({
+                referred_user_id: data.user.id,
+                referred_email: email,
+                status: 'completed',
+                completed_at: new Date().toISOString()
+              })
+              .eq('referral_code', referralCode)
+              .is('referred_user_id', null);
+            
+            // Clear stored referral code
+            localStorage.removeItem('referralCode');
+          } catch (refError) {
+            console.error('Failed to process referral:', refError);
+            // Don't fail signup if referral tracking fails
+          }
+        }
+        
         toast.success("Welcome! Your account has been created.");
         navigate("/dashboard");
       }
@@ -276,6 +326,15 @@ const Auth = () => {
       `}</style>
       
       <div className="w-full max-w-md space-y-8 relative z-10">
+        {/* Referral Badge */}
+        {referralCode && (
+          <div className="bg-gradient-wealth text-white px-4 py-3 rounded-lg shadow-elegant text-center animate-in fade-in slide-in-from-top-2 duration-500">
+            <p className="text-sm font-medium">
+              🎉 You've been invited! Sign up to help your friend unlock rewards.
+            </p>
+          </div>
+        )}
+        
         {/* Auth Card */}
         <Card className="w-full shadow-elegant border-border">
           <CardHeader className="space-y-1 text-center">
@@ -284,11 +343,17 @@ const Auth = () => {
                 <Wallet className="h-8 w-8 text-primary-foreground" />
               </div>
             </div>
+            <div className="flex justify-center mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-wealth text-white text-xs font-semibold shadow-glow">
+                <TrendingUp className="h-3 w-3" />
+                <span>Quant Backed</span>
+              </div>
+            </div>
             <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               MyFinanceTracker
             </CardTitle>
             <CardDescription>
-              Manage your finances with confidence
+              Institutional-grade analytics for personal finance
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen, PlusCircle } from "lucide-react";
+import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen, PlusCircle, Grid3x3, List } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -261,6 +261,7 @@ const InvestmentForm = React.memo(InvestmentFormComponent);
 const Investments = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1548,7 +1549,31 @@ const Investments = () => {
         )}
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Your Investments</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Your Investments</h2>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground">View:</Label>
+              <div className="flex border rounded-lg">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                  className="rounded-r-none"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-4"}>
           {investments.map((investment) => {
             const futureValue = calculateFutureValue(investment);
             const liveValue = getLiveValue(investment);
@@ -1558,7 +1583,7 @@ const Investments = () => {
             const hasChart = !!(investment.ticker_symbol && priceData[tickerKey]?.[currentPeriod]?.history?.length > 0);
 
             return (
-              <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card">
+              <Card key={investment.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card ${viewMode === "list" ? "max-w-full" : ""}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -1611,6 +1636,7 @@ const Investments = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {viewMode === "grid" && hasChart && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1626,8 +1652,9 @@ const Investments = () => {
                       isLoading={!!priceLoading[tickerKey!]}
                     />
                   </div>
+                  )}
                   
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className={viewMode === "list" ? "grid grid-cols-2 md:grid-cols-4 gap-4" : "grid grid-cols-2 gap-4"}>
                       <div>
                         <div className="text-sm text-muted-foreground flex items-center gap-1">
                           Current Value
@@ -1662,7 +1689,7 @@ const Investments = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className={viewMode === "list" ? "grid grid-cols-2 md:grid-cols-4 gap-4" : "grid grid-cols-2 gap-4"}>
                       {/* Only show monthly contribution for types that support ongoing contributions */}
                       {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
                         <div>
@@ -1695,6 +1722,7 @@ const Investments = () => {
               </Card>
             );
           })}
+          </div>
         </div>
 
         {investments.length === 0 && (

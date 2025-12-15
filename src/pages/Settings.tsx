@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare } from "lucide-react";
+import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare, Gift, Copy, Check, Users, Palette, Sparkles } from "lucide-react";
+import { themes, getFreeThemes, getLockedThemes } from "@/lib/themes";
+import { useTheme } from "@/hooks/useTheme";
+import { useRewards } from "@/hooks/useRewards";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -22,9 +26,22 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("weak");
+  
+  // Referral state
+  const [referralCode, setReferralCode] = useState("");
+  const [referralCount, setReferralCount] = useState(0);
+  const [activeRewards, setActiveRewards] = useState<any[]>([]);
+  const [copied, setCopied] = useState(false);
+  
+  // Theme and rewards
+  const { currentTheme, changeTheme } = useTheme();
+  const { hasCustomThemes, hasAllFeatures, loading: rewardsLoading } = useRewards();
+  const hasBasicThemes = hasCustomThemes();
+  const hasAllThemesUnlocked = hasAllFeatures();
 
   useEffect(() => {
     fetchUserData();
+    fetchReferralData();
     const isDark = document.documentElement.classList.contains('dark');
     setDarkMode(isDark);
   }, []);
@@ -48,6 +65,86 @@ const Settings = () => {
     } catch (error) {
       toast.error("Failed to load user data");
     }
+  };
+
+  const fetchReferralData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get or create unique referral code for this user
+      // Check if user already has ANY referral code (not just pending ones)
+      const { data: existingReferrals } = await supabase
+        .from("referrals")
+        .select("referral_code")
+        .eq("referrer_id", user.id)
+        .limit(1);
+
+      if (existingReferrals && existingReferrals.length > 0) {
+        setReferralCode(existingReferrals[0].referral_code);
+      } else {
+        // Generate unique referral code (8 character alphanumeric)
+        let code = '';
+        let isUnique = false;
+        
+        while (!isUnique) {
+          code = Math.random().toString(36).substring(2, 10).toUpperCase();
+          
+          // Check if code already exists
+          const { data: existingCode } = await supabase
+            .from("referrals")
+            .select("id")
+            .eq("referral_code", code)
+            .limit(1);
+          
+          if (!existingCode || existingCode.length === 0) {
+            isUnique = true;
+          }
+        }
+        
+        // Create a base referral entry with this user's unique code
+        const { error: insertError } = await supabase
+          .from("referrals")
+          .insert({ 
+            referrer_id: user.id, 
+            referral_code: code,
+            status: 'pending'
+          });
+        
+        if (!insertError) {
+          setReferralCode(code);
+        }
+      }
+
+      // Count completed referrals
+      const { count } = await supabase
+        .from("referrals")
+        .select("*", { count: "exact", head: true })
+        .eq("referrer_id", user.id)
+        .eq("status", "completed");
+
+      setReferralCount(count || 0);
+
+      // Get active rewards
+      const { data: rewards } = await supabase
+        .from("user_rewards")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .or("expires_at.is.null,expires_at.gt.now()");
+
+      setActiveRewards(rewards || []);
+    } catch (error) {
+      console.error("Failed to load referral data:", error);
+    }
+  };
+
+  const copyReferralLink = () => {
+    const referralLink = `${window.location.origin}/auth?ref=${referralCode}`;
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    toast.success("Referral link copied!");
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -349,6 +446,247 @@ const Settings = () => {
                 checked={darkMode}
                 onCheckedChange={handleToggleDarkMode}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Theme Selector */}
+        <Card className="shadow-md border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-primary" />
+              <CardTitle>Color Themes</CardTitle>
+            </div>
+            <CardDescription>
+              Personalize your finance tracker with elegant color schemes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Free Themes */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label>Free Themes</Label>
+                <Badge variant="outline" className="text-xs">Always Available</Badge>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {getFreeThemes().map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => {
+                      changeTheme(theme.id);
+                      toast.success(`Theme changed to ${theme.name}`);
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
+                      currentTheme === theme.id
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div
+                      className="w-full h-12 rounded-md mb-2"
+                      style={{ background: theme.colors.gradient }}
+                    />
+                    <p className="font-medium text-sm">{theme.name}</p>
+                    <p className="text-xs text-muted-foreground">{theme.description}</p>
+                    {currentTheme === theme.id && (
+                      <Check className="h-4 w-4 text-primary mx-auto mt-2" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Locked Themes */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label>Premium Themes</Label>
+                {hasAllThemesUnlocked ? (
+                  <Badge className="text-xs bg-gradient-wealth">All Unlocked!</Badge>
+                ) : hasBasicThemes ? (
+                  <Badge className="text-xs bg-gradient-wealth">Partially Unlocked</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Locked
+                  </Badge>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {getLockedThemes().map((theme) => {
+                  const isUnlocked = hasAllThemesUnlocked || (hasBasicThemes && theme.requiredReward === 'custom_themes');
+                  const requiresAll = theme.requiredReward === 'all_features';
+                  
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => {
+                        if (isUnlocked) {
+                          changeTheme(theme.id);
+                          toast.success(`Theme changed to ${theme.name}`);
+                        } else if (requiresAll) {
+                          toast.error('Refer 5 friends to unlock all themes!');
+                        } else {
+                          toast.error('Refer 1 friend to unlock custom themes!');
+                        }
+                      }}
+                      className={`p-4 rounded-lg border-2 transition-all relative ${
+                        isUnlocked
+                          ? currentTheme === theme.id
+                            ? 'border-primary bg-primary/10 hover:scale-105'
+                            : 'border-border hover:border-primary/50 hover:scale-105'
+                          : 'border-border opacity-60 cursor-not-allowed'
+                      }`}
+                      disabled={!isUnlocked}
+                    >
+                      {!isUnlocked && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                          <div className="text-center">
+                            <Lock className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+                            <p className="text-xs text-muted-foreground">
+                              {requiresAll ? '5 referrals' : '1 referral'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <div
+                        className="w-full h-12 rounded-md mb-2"
+                        style={{ background: theme.colors.gradient }}
+                      />
+                      <p className="font-medium text-sm">{theme.name}</p>
+                      <p className="text-xs text-muted-foreground">{theme.description}</p>
+                      {currentTheme === theme.id && isUnlocked && (
+                        <Check className="h-4 w-4 text-primary mx-auto mt-2" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {!hasAllThemesUnlocked && (
+                <div className="p-4 rounded-lg bg-gradient-wealth/10 border border-primary/30">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium mb-1">Unlock Themes</p>
+                      {!hasBasicThemes ? (
+                        <p className="text-sm text-muted-foreground">
+                          Refer <strong>1 friend</strong> to unlock 3 premium themes, or <strong>5 friends</strong> to unlock all {getLockedThemes().length} themes!
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Refer <strong>5 friends</strong> to unlock the remaining exclusive themes!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Referral Program */}
+        <Card className="shadow-md border-primary/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              <CardTitle>Invite Friends & Earn Rewards</CardTitle>
+            </div>
+            <CardDescription>Share MyFinanceTracker and unlock premium features</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Referral Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Users className="h-4 w-4 text-primary" />
+                  <p className="text-xs text-muted-foreground">Successful Referrals</p>
+                </div>
+                <p className="text-2xl font-bold">{referralCount}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <Gift className="h-4 w-4 text-primary" />
+                  <p className="text-xs text-muted-foreground">Active Rewards</p>
+                </div>
+                <p className="text-2xl font-bold">{activeRewards.length}</p>
+              </div>
+            </div>
+
+            {/* Active Rewards Display */}
+            {activeRewards.length > 0 && (
+              <div className="space-y-2">
+                <Label>Your Active Rewards</Label>
+                {activeRewards.map((reward) => (
+                  <div 
+                    key={reward.id} 
+                    className="p-3 rounded-lg bg-gradient-wealth/10 border border-primary/30 flex items-start gap-3"
+                  >
+                    <Gift className="h-5 w-5 text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium">{reward.reward_description}</p>
+                      {reward.expires_at && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Expires: {new Date(reward.expires_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Referral Link */}
+            <div className="space-y-2">
+              <Label>Your Referral Link</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={`${window.location.origin}/auth?ref=${referralCode}`}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button 
+                  onClick={copyReferralLink}
+                  variant="outline"
+                  size="icon"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Share this link with friends to earn rewards
+              </p>
+            </div>
+
+            {/* Reward Tiers */}
+            <div className="space-y-3">
+              <Label>Unlock Rewards</Label>
+              <div className="space-y-2">
+                <div className={`p-3 rounded-lg border ${referralCount >= 1 ? 'bg-primary/10 border-primary/30' : 'bg-card border-border'}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">1 Friend → Custom Themes (6 premium colors)</p>
+                    {referralCount >= 1 && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg border ${referralCount >= 3 ? 'bg-primary/10 border-primary/30' : 'bg-card border-border'}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">3 Friends → Advanced Analytics + Data Export</p>
+                    {referralCount >= 3 && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg border ${referralCount >= 5 ? 'bg-gradient-wealth/20 border-primary/30' : 'bg-card border-border'}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">5 Friends → All Advanced Features Forever! 🎉</p>
+                    {referralCount >= 5 && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <p className="text-xs text-muted-foreground">
+                💡 <strong>Tip:</strong> Share your link on social media, with coworkers, or in your Discord/Slack communities. 
+                Your friends get a great finance tool, and you unlock premium features!
+              </p>
             </div>
           </CardContent>
         </Card>

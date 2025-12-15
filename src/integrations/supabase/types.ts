@@ -233,6 +233,7 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          theme: string | null
           updated_at: string | null
         }
         Insert: {
@@ -242,6 +243,7 @@ export type Database = {
           email?: string | null
           id: string
           name?: string | null
+          theme?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -251,7 +253,77 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          theme?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          id: string
+          referrer_id: string
+          referred_user_id: string | null
+          referral_code: string
+          referred_email: string | null
+          status: string
+          reward_granted: boolean
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          referrer_id: string
+          referred_user_id?: string | null
+          referral_code: string
+          referred_email?: string | null
+          status?: string
+          reward_granted?: boolean
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          referrer_id?: string
+          referred_user_id?: string | null
+          referral_code?: string
+          referred_email?: string | null
+          status?: string
+          reward_granted?: boolean
+          created_at?: string
+          completed_at?: string | null
+        }
+        Relationships: []
+      }
+      user_rewards: {
+        Row: {
+          id: string
+          user_id: string
+          reward_type: string
+          reward_description: string
+          expires_at: string | null
+          is_active: boolean
+          granted_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          reward_type: string
+          reward_description: string
+          expires_at?: string | null
+          is_active?: boolean
+          granted_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          reward_type?: string
+          reward_description?: string
+          expires_at?: string | null
+          is_active?: boolean
+          granted_at?: string
+          created_at?: string
         }
         Relationships: []
       }

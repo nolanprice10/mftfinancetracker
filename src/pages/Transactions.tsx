@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowUpDown } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ const Transactions = () => {
   const [category, setCategory] = useState("");
   const [accountId, setAccountId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "category" | "type">("date");
   
   const amountInput = useFormInput("");
   const notesInput = useFormInput("");
@@ -203,7 +204,22 @@ const Transactions = () => {
       toast.error(error.message || "Failed to delete transaction");
     }
   };
-
+  // Sort transactions based on selected sort option
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...transactions];
+    switch (sortBy) {
+      case "date":
+        return sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      case "amount":
+        return sorted.sort((a, b) => b.amount - a.amount);
+      case "category":
+        return sorted.sort((a, b) => a.category.localeCompare(b.category));
+      case "type":
+        return sorted.sort((a, b) => a.type.localeCompare(b.type));
+      default:
+        return sorted;
+    }
+  }, [transactions, sortBy]);
   const categoryData = useMemo(() => {
     const incomeByCategory = transactions
       .filter(t => t.type === "income")
@@ -412,8 +428,26 @@ const Transactions = () => {
 
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle>Transaction History</CardTitle>
-            <CardDescription>All your financial transactions</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Transaction History</CardTitle>
+                <CardDescription>All your financial transactions</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Sort by:</Label>
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Date (Newest)</SelectItem>
+                    <SelectItem value="amount">Amount (High-Low)</SelectItem>
+                    <SelectItem value="category">Category (A-Z)</SelectItem>
+                    <SelectItem value="type">Type</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -428,7 +462,7 @@ const Transactions = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {transactions.map((transaction) => (
+                {sortedTransactions.map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
