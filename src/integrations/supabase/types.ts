@@ -47,6 +47,45 @@ export type Database = {
         }
         Relationships: []
       }
+      connected_accounts: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          expires_at: string | null
+          id: string
+          provider: string
+          provider_account_id: string
+          provider_email: string | null
+          refresh_token: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          expires_at?: string | null
+          id?: string
+          provider: string
+          provider_account_id: string
+          provider_email?: string | null
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          expires_at?: string | null
+          id?: string
+          provider?: string
+          provider_account_id?: string
+          provider_email?: string | null
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           account_id: string | null

@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Moon, Sun, User, Lock, Trash2, LogOut } from "lucide-react";
+import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare } from "lucide-react";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -349,6 +349,58 @@ const Settings = () => {
                 checked={darkMode}
                 onCheckedChange={handleToggleDarkMode}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact & Support */}
+        <Card className="shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              <CardTitle>Contact & Support</CardTitle>
+            </div>
+            <CardDescription>Get in touch with the developer</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">Email</p>
+                  <a 
+                    href="mailto:nolangp10@icloud.com" 
+                    className="text-sm text-primary hover:underline break-all"
+                  >
+                    nolangp10@icloud.com
+                  </a>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <Linkedin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">LinkedIn</p>
+                  <a 
+                    href="https://linkedin.com/in/nolan-price-7373b0382" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                  >
+                    linkedin.com/in/nolan-price-7373b0382
+                  </a>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+                <p className="text-sm text-muted-foreground">
+                  Have questions, feedback, or need support? Feel free to reach out via email or connect on LinkedIn. I'd love to hear from you!
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
