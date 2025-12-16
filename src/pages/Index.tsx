@@ -195,6 +195,43 @@ const Index = () => {
         <InvestmentCalculator />
       </section>
 
+      {/* Social Proof Section */}
+      <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-center">
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-2">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 border-2 border-background"></div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-background"></div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 border-2 border-background"></div>
+            </div>
+            <div className="text-left">
+              <p className="text-2xl font-bold text-foreground">500+</p>
+              <p className="text-sm text-muted-foreground">Active Users</p>
+            </div>
+          </div>
+          
+          <div className="h-12 w-px bg-border hidden sm:block"></div>
+          
+          <div className="text-center">
+            <p className="text-2xl font-bold text-foreground">$2.5M+</p>
+            <p className="text-sm text-muted-foreground">Wealth Tracked</p>
+          </div>
+          
+          <div className="h-12 w-px bg-border hidden sm:block"></div>
+          
+          <div className="text-center">
+            <div className="flex items-center gap-1 justify-center mb-1">
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+            </div>
+            <p className="text-sm text-muted-foreground">Rated 4.9/5</p>
+          </div>
+        </div>
+      </section>
+
       {/* Problem Section */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Card className="bg-card/70 backdrop-blur-md border-border/50 shadow-elegant">

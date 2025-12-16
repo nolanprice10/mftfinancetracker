@@ -3,13 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, TrendingDown, DollarSign, Target as TargetIcon } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, Target as TargetIcon, Gift, Copy, Check } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
 import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
+import { useRewards } from "@/hooks/useRewards";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Account {
   id: string;
@@ -39,10 +41,15 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  
+  const { hasAllThemesUnlocked } = useRewards();
 
   useEffect(() => {
     fetchData();
     checkOnboarding();
+    loadReferralCode();
   }, []);
 
   const checkOnboarding = async () => {
@@ -64,6 +71,42 @@ const Dashboard = () => {
       // If any error occurs, show onboarding for new users
       console.error("Error checking onboarding status:", error);
       setShowOnboarding(true);
+    }
+  };
+
+  const loadReferralCode = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("referral_code")
+        .eq("id", user.id)
+        .single();
+
+      if (data?.referral_code) {
+        setReferralCode(data.referral_code);
+      }
+    } catch (error) {
+      console.error("Failed to load referral code:", error);
+    }
+  };
+
+  const copyReferralLink = () => {
+    const referralLink = `${window.location.origin}/auth?ref=${referralCode}`;
+    navigator.clipboard.writeText(referralLink);
+    setLinkCopied(true);
+    toast.success("Referral link copied!");
+    setTimeout(() => setLinkCopied(false), 2000);
+    
+    // Track referral link copy
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'share', {
+        method: 'copy_link',
+        content_type: 'referral',
+        source: 'dashboard_banner'
+      });
     }
   };
 
@@ -230,6 +273,48 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Referral CTA Banner */}
+        {!hasAllThemesUnlocked && referralCode && (
+          <Alert className="bg-gradient-wealth border-primary/20 shadow-glow">
+            <Gift className="h-5 w-5" />
+            <AlertDescription>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold text-base mb-1">🎁 Unlock Premium Themes!</p>
+                  <p className="text-sm text-muted-foreground">
+                    Share your referral link and unlock exclusive elegant themes. 
+                    <span className="font-medium text-foreground"> 1 friend = 3 themes, 5 friends = all 8 themes!</span>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={copyReferralLink}
+                    size="sm"
+                    className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+                  >
+                    {linkCopied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Link
+                      </>
+                    )}
+                  </Button>
+                  <Link to="/settings">
+                    <Button size="sm" variant="outline">
+                      View Themes →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Goals Preview */}
         {goals.length > 0 && (

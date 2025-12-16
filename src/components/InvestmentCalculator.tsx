@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, DollarSign, Calendar, Percent } from "lucide-react";
+import { TrendingUp, DollarSign, Calendar, Percent, Share2, Twitter, Facebook, Linkedin, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 
 const InvestmentCalculator = () => {
   const [currentAge, setCurrentAge] = useState<string>("22");
@@ -12,6 +13,7 @@ const InvestmentCalculator = () => {
   const [annualReturn, setAnnualReturn] = useState<string>("8");
   const [initialInvestment, setInitialInvestment] = useState<string>("1000");
   const [result, setResult] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const calculateInvestment = () => {
     const current = parseFloat(currentAge);
@@ -40,6 +42,16 @@ const InvestmentCalculator = () => {
 
     const totalValue = futureValueInitial + futureValueMonthly;
     setResult(totalValue);
+    
+    // Track calculator usage
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'calculator_used', {
+        target_age: target,
+        initial_investment: initial,
+        monthly_investment: monthly,
+        projected_value: Math.round(totalValue)
+      });
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -49,6 +61,57 @@ const InvestmentCalculator = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
+  };
+
+  const shareText = result 
+    ? `By age ${targetAge}, I could have ${formatCurrency(result)} using compound interest! Calculate yours at MyFinanceTracker 📈`
+    : '';
+  
+  const shareUrl = 'https://myfinancetracker.app';
+
+  const handleShare = (platform: string) => {
+    const encodedText = encodeURIComponent(shareText);
+    const encodedUrl = encodeURIComponent(shareUrl);
+    
+    let url = '';
+    switch (platform) {
+      case 'twitter':
+        url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+        break;
+      case 'facebook':
+        url = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`;
+        break;
+      case 'linkedin':
+        url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+        break;
+    }
+    
+    if (url) {
+      window.open(url, '_blank', 'width=600,height=400');
+      
+      // Track share
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'share', {
+          method: platform,
+          content_type: 'calculator_result'
+        });
+      }
+    }
+  };
+
+  const copyShareText = () => {
+    navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+    setCopied(true);
+    toast.success("Copied to clipboard!");
+    setTimeout(() => setCopied(false), 2000);
+    
+    // Track copy
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'share', {
+        method: 'copy',
+        content_type: 'calculator_result'
+      });
+    }
   };
 
   const totalContributed = (parseFloat(initialInvestment) || 0) + 
@@ -180,12 +243,66 @@ const InvestmentCalculator = () => {
               </div>
             </div>
 
+            {/* Social Sharing Section */}
+            <div className="p-4 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <Share2 className="h-4 w-4 text-primary" />
+                <p className="text-sm font-medium">Share your projection</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare('twitter')}
+                  className="flex-1 min-w-[100px]"
+                >
+                  <Twitter className="h-4 w-4 mr-2" />
+                  Twitter
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare('facebook')}
+                  className="flex-1 min-w-[100px]"
+                >
+                  <Facebook className="h-4 w-4 mr-2" />
+                  Facebook
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleShare('linkedin')}
+                  className="flex-1 min-w-[100px]"
+                >
+                  <Linkedin className="h-4 w-4 mr-2" />
+                  LinkedIn
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyShareText}
+                  className="flex-1 min-w-[100px]"
+                >
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  Copy
+                </Button>
+              </div>
+            </div>
+
             <div className="text-center pt-4 space-y-3">
               <p className="text-sm text-muted-foreground">
                 💡 Want to track this in real-time and get personalized recommendations?
               </p>
               <Button 
-                onClick={() => window.location.href = "/auth"}
+                onClick={() => {
+                  window.location.href = "/auth";
+                  // Track signup intent
+                  if (typeof window !== 'undefined' && (window as any).gtag) {
+                    (window as any).gtag('event', 'signup_intent', {
+                      source: 'calculator'
+                    });
+                  }
+                }}
                 variant="outline"
                 className="border-primary/50 hover:bg-primary/10"
               >

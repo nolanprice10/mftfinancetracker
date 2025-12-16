@@ -145,6 +145,15 @@ const Settings = () => {
     setCopied(true);
     toast.success("Referral link copied!");
     setTimeout(() => setCopied(false), 2000);
+    
+    // Track referral link copy
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'share', {
+        method: 'copy_link',
+        content_type: 'referral',
+        successful_referrals: successfulReferrals
+      });
+    }
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -248,6 +257,13 @@ const Settings = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      
+      // Track password change
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'security_action', {
+          action_type: 'password_changed'
+        });
+      }
     } catch (error: any) {
       toast.error("Unable to change password");
     } finally {
@@ -475,6 +491,15 @@ const Settings = () => {
                     onClick={() => {
                       changeTheme(theme.id);
                       toast.success(`Theme changed to ${theme.name}`);
+                      
+                      // Track theme change
+                      if (typeof window !== 'undefined' && (window as any).gtag) {
+                        (window as any).gtag('event', 'theme_changed', {
+                          theme_id: theme.id,
+                          theme_name: theme.name,
+                          is_premium: false
+                        });
+                      }
                     }}
                     className={`p-4 rounded-lg border-2 transition-all hover:scale-105 ${
                       currentTheme === theme.id
@@ -523,6 +548,16 @@ const Settings = () => {
                         if (isUnlocked) {
                           changeTheme(theme.id);
                           toast.success(`Theme changed to ${theme.name}`);
+                          
+                          // Track theme change
+                          if (typeof window !== 'undefined' && (window as any).gtag) {
+                            (window as any).gtag('event', 'theme_changed', {
+                              theme_id: theme.id,
+                              theme_name: theme.name,
+                              is_premium: true,
+                              required_reward: theme.requiredReward
+                            });
+                          }
                         } else if (requiresAll) {
                           toast.error('Refer 5 friends to unlock all themes!');
                         } else {

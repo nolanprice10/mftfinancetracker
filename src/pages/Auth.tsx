@@ -155,6 +155,15 @@ const Auth = () => {
         }
         
         toast.success("Welcome! Your account has been created.");
+        
+        // Track signup
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'sign_up', {
+            method: 'email',
+            has_referral: !!referralCode
+          });
+        }
+        
         navigate("/dashboard");
       }
     } catch (error: any) {
@@ -177,6 +186,14 @@ const Auth = () => {
 
       if (error) throw error;
       toast.success("Welcome back!");
+      
+      // Track login
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'login', {
+          method: 'email'
+        });
+      }
+      
       navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
