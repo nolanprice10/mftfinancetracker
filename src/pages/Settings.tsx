@@ -72,16 +72,15 @@ const Settings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get or create unique referral code for this user
-      // Check if user already has ANY referral code (not just pending ones)
-      const { data: existingReferrals } = await supabase
-        .from("referrals")
+      // Get or create unique referral code for this user from user_referral_codes table
+      const { data: codeData } = await supabase
+        .from("user_referral_codes")
         .select("referral_code")
-        .eq("referrer_id", user.id)
-        .limit(1);
+        .eq("user_id", user.id)
+        .single();
 
-      if (existingReferrals && existingReferrals.length > 0) {
-        setReferralCode(existingReferrals[0].referral_code);
+      if (codeData) {
+        setReferralCode(codeData.referral_code);
       } else {
         // Generate unique referral code (8 character alphanumeric)
         let code = '';
@@ -92,7 +91,7 @@ const Settings = () => {
           
           // Check if code already exists
           const { data: existingCode } = await supabase
-            .from("referrals")
+            .from("user_referral_codes")
             .select("id")
             .eq("referral_code", code)
             .limit(1);
@@ -102,17 +101,18 @@ const Settings = () => {
           }
         }
         
-        // Create a base referral entry with this user's unique code
+        // Create the user's unique referral code
         const { error: insertError } = await supabase
-          .from("referrals")
+          .from("user_referral_codes")
           .insert({ 
-            referrer_id: user.id, 
-            referral_code: code,
-            status: 'pending'
+            user_id: user.id, 
+            referral_code: code
           });
         
         if (!insertError) {
           setReferralCode(code);
+        } else {
+          console.error("Error creating referral code:", insertError);
         }
       }
 

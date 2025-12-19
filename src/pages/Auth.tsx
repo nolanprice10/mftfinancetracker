@@ -123,28 +123,34 @@ const Auth = () => {
         // If there's a referral code, create a referral entry
         if (referralCode) {
           try {
-            // Insert referral with the referred user's info
-            await supabase
-              .from('referrals')
-              .insert({
-                referrer_id: data.user.id, // Temporary, will be updated by trigger
-                referral_code: referralCode,
-                referred_email: email,
-                referred_user_id: data.user.id,
-                status: 'pending'
-              });
-            
-            // Update the matching referral to mark as completed
-            await supabase
-              .from('referrals')
-              .update({
-                referred_user_id: data.user.id,
-                referred_email: email,
-                status: 'completed',
-                completed_at: new Date().toISOString()
-              })
+            // First, find the referrer by their referral code
+            const { data: referrerData } = await supabase
+              .from('user_referral_codes')
+              .select('user_id')
               .eq('referral_code', referralCode)
-              .is('referred_user_id', null);
+              .single();
+            
+            if (referrerData) {
+              // Create a new referral entry
+              const { error: refError } = await supabase
+                .from('referrals')
+                .insert({
+                  referrer_id: referrerData.user_id,
+                  referred_user_id: data.user.id,
+                  referral_code: referralCode,
+                  referred_email: email,
+                  status: 'completed',
+                  completed_at: new Date().toISOString()
+                });
+              
+              if (refError) {
+                console.error('Error creating referral:', refError);
+              } else {
+                console.log('Referral successfully created for code:', referralCode);
+              }
+            } else {
+              console.warn('No referrer found for code:', referralCode);
+            }
             
             // Clear stored referral code
             localStorage.removeItem('referralCode');

@@ -294,6 +294,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_referral_codes: {
+        Row: {
+          id: string
+          user_id: string
+          referral_code: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          referral_code: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          referral_code?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       user_rewards: {
         Row: {
           id: string

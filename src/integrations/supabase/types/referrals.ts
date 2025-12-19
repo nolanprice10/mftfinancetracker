@@ -10,6 +10,13 @@ export interface Referral {
   completed_at: string | null;
 }
 
+export interface UserReferralCode {
+  id: string;
+  user_id: string;
+  referral_code: string;
+  created_at: string;
+}
+
 export interface UserReward {
   id: string;
   user_id: string;
