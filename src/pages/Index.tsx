@@ -153,15 +153,14 @@ const Index = () => {
           </div>
           
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
+            <span className="text-foreground">How Much Money Do I </span>
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Stop Juggling Apps.
+              Actually Have?
             </span>
-            <br />
-            <span className="text-foreground">See Your Complete Financial Picture</span>
           </h1>
           
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Tired of switching between 5 different apps to track your money? MyFinanceTracker brings all your accounts, investments, and goals into one elegant dashboard. <strong>Built with quantitative finance principles</strong> used by Wall Street professionals.
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            Stop opening 5 different apps to answer this simple question. MyFinanceTracker shows <strong>your complete net worth</strong> across all accounts, investments, and goals in <strong>one unified dashboard</strong>. Built with the same quantitative finance math used by Wall Street professionals.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
@@ -236,17 +235,20 @@ const Index = () => {
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Card className="bg-card/70 backdrop-blur-md border-border/50 shadow-elegant">
           <CardContent className="p-8">
-            <h2 className="text-2xl font-bold text-center mb-8">
-              You're Not Alone If You're Struggling With...
+            <h2 className="text-3xl font-bold text-center mb-4">
+              <span className="bg-gradient-primary bg-clip-text text-transparent">The Simple Question</span> That Takes Too Long To Answer
             </h2>
+            <p className="text-center text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              "How much money do I have right now?" should be easy. But you're stuck...
+            </p>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-3">
                   <span className="text-2xl">😵</span>
                 </div>
-                <h3 className="font-semibold">App Overload</h3>
+                <h3 className="font-semibold">Opening 5+ Apps</h3>
                 <p className="text-sm text-muted-foreground">
-                  Opening 5+ different banking and investment apps just to see where you stand financially
+                  Chase for checking, Ally for savings, Robinhood for stocks, Coinbase for crypto... just to calculate your net worth manually
                 </p>
               </div>
               <div className="space-y-2">
@@ -276,14 +278,14 @@ const Index = () => {
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-wealth/10 border border-primary/20 mb-4">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold text-primary">Quantitative Finance Principles Applied</span>
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            <span className="text-sm font-semibold text-primary">One Simple Answer</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Everything You Need in One Place
+            See Your <span className="bg-gradient-primary bg-clip-text text-transparent">Total Net Worth</span> Instantly
           </h2>
           <p className="text-lg text-muted-foreground">
-            Built for professionals who demand institutional-grade analytics
+            Everything aggregated in one dashboard. Answer "How much do I have?" in under 3 seconds.
           </p>
         </div>
 
@@ -293,9 +295,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <Wallet className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Unified Dashboard</h3>
+              <h3 className="text-xl font-semibold mb-2">All Accounts, One View</h3>
               <p className="text-muted-foreground">
-                See all your checking, savings, and credit accounts in one clean view
+                Checking, savings, credit cards, cash—see your complete liquid net worth at a glance
               </p>
             </CardContent>
           </Card>
@@ -305,9 +307,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <TrendingUp className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Quantitative Analytics</h3>
+              <h3 className="text-xl font-semibold mb-2">Investment Tracking</h3>
               <p className="text-muted-foreground">
-                Track portfolios with institutional-grade metrics: Sharpe ratios, volatility analysis, and correlation matrices
+                See real-time stock and crypto values. Know exactly what your portfolio is worth today
               </p>
             </CardContent>
           </Card>
@@ -317,9 +319,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <Target className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Goal Setting</h3>
+              <h3 className="text-xl font-semibold mb-2">Financial Goals Progress</h3>
               <p className="text-muted-foreground">
-                Set savings targets, track progress, and stay motivated with visual milestones
+                Track savings targets visually. Know instantly if you're on track to hit your goals
               </p>
             </CardContent>
           </Card>
@@ -329,9 +331,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <BarChart3 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Transaction History</h3>
+              <h3 className="text-xl font-semibold mb-2">Monthly Cash Flow</h3>
               <p className="text-muted-foreground">
-                Automatically categorize and track every transaction across all accounts
+                Instantly see if you're spending more than you earn—stop guessing, start knowing
               </p>
             </CardContent>
           </Card>
@@ -341,9 +343,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <PieChart className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Quantitative Risk Models</h3>
+              <h3 className="text-xl font-semibold mb-2">Professional Analytics</h3>
               <p className="text-muted-foreground">
-                Portfolio optimization using Modern Portfolio Theory and Monte Carlo simulations
+                Bonus: Get Wall Street-grade portfolio analytics with Sharpe ratios and Monte Carlo simulations
               </p>
             </CardContent>
           </Card>
@@ -353,9 +355,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-gradient-primary/10 flex items-center justify-center mb-4">
                 <Lightbulb className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Smart Recommendations</h3>
+              <h3 className="text-xl font-semibold mb-2">Actionable Insights</h3>
               <p className="text-muted-foreground">
-                AI-powered insights to optimize spending and grow your wealth faster
+                Get personalized recommendations to optimize your money and reach goals faster
               </p>
             </CardContent>
           </Card>
@@ -412,30 +414,33 @@ const Index = () => {
         <Card className="bg-gradient-wealth shadow-elegant">
           <CardContent className="p-12 text-center text-white">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Ready to Take Control?
+              Stop Wondering. Start Knowing.
             </h2>
-            <p className="text-lg mb-8 opacity-90">
-              Join professionals who've simplified their financial lives
+            <p className="text-lg mb-2 opacity-90 font-semibold">
+              "How much money do I have?"
+            </p>
+            <p className="text-base mb-8 opacity-80">
+              Answer in 3 seconds instead of 30 minutes. Join 500+ professionals who simplified their finances.
             </p>
             <Button 
               size="lg"
               onClick={() => navigate("/auth")}
               className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
             >
-              Start Tracking Free <ArrowRight className="ml-2 h-5 w-5" />
+              See Your Net Worth Now <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <div className="mt-6 flex flex-wrap justify-center gap-6 text-sm opacity-90">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
-                <span>Free to start</span>
+                <span>100% Free</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
-                <span>No credit card required</span>
+                <span>No credit card</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
-                <span>Setup in 2 minutes</span>
+                <span>2-minute setup</span>
               </div>
             </div>
           </CardContent>

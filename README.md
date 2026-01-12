@@ -1,44 +1,47 @@
 # MyFinanceTracker
 
-A comprehensive personal finance platform with professional-grade analytics and projections. Originally built with [Lovable](https://lovable.dev).
+**Answer one question in 10 seconds: "Am I on track financially?"**
+
+A personal finance app that shows you the probability of hitting your financial goals using Monte Carlo simulations. No confusion, no complexity - just clear decisions.
+
+## 🎯 What Makes This Different
+
+**Most finance apps show data. This shows decisions.**
+
+- **ONE clear outcome**: "You have a 42% chance of hitting your goal"
+- **ONE actionable lever**: "Increase monthly savings by $180 to reach 75%"
+- **10-second setup**: Income, spending, one goal. Done.
 
 ## ✨ Key Features
 
-**💰 Account Management** - Track checking, savings, brokerage, retirement accounts, and cash. Transfer funds between accounts seamlessly.
+**🎲 Probability Engine** - Monte Carlo simulation (1,000 iterations) with income/expense variance modeling. Shows realistic success probability, not false hope.
 
-**📊 Investment Tracking** - Real-time stock/crypto prices with live 30-day charts. Add funds to investments directly from your accounts.
+**📊 Goal Tracking** - Set financial goals and see exact monthly savings needed to hit target probability.
 
-**💵 Transactions & Goals** - Log income/expenses and track progress towards financial goals.
+**💰 Account Management** - Track checking, savings, investment accounts. Automatic balance sync.
 
-**📈 Portfolio Analytics** - Comprehensive risk analysis including diversification scores, concentration risk, Sharpe ratios, and expected performance metrics.
+**📈 Smart Recommendations** - Clear, actionable steps to improve your financial trajectory.
 
 **🔐 Secure** - Built on Supabase with row-level security and user authentication.
 
-## 🧮 Advanced Mathematics & Statistics
+## 🧮 The Math
 
-### Monte Carlo Simulation
-- **10,000 simulations** per investment using **Geometric Brownian Motion** (GBM)
-- Returns median (50th percentile) for realistic projections
-- Formula: `S(t+dt) = S(t) × exp((μ - σ²/2)×dt + σ×√dt×z)`
+### Probability Calculation
+- **1,000 Monte Carlo simulations** per goal
+- **10% variance** on income and spending (realistic fluctuation)
+- **15% safety margin** in recommendations
+- Color-coded results:
+  - 🔴 Red (< 50%): High risk
+  - 🟡 Yellow (50-70%): On track with caution
+  - 🟢 Green (> 70%): Strong trajectory
 
-### Statistical Methods
-- **Log Returns**: `ln(P(t) / P(t-1))` for accurate compounding
-- **Continuous Compounding**: `μ = ln(1 + return)` with variance drag adjustment
-- **Volatility Scaling**: Annualized using `√252` (trading days)
-- **Unbiased Estimators**: Bessel's correction (n-1) for sample variance
+### Why This Matters
+Simple projections assume perfect consistency. Real life has variance:
+- Some months you spend more
+- Some months you earn less
+- Emergencies happen
 
-### Asset-Specific Parameters
-Each investment uses its own historical data:
-- **Stocks**: 10.26% return, 18.42% volatility (S&P 500 1926-2023)
-- **Crypto**: 47.5% return, 73.2% volatility (Bitcoin 2015-2023)
-- **Index Funds**: 10.15% return, 15.8% volatility
-- **Savings**: 4.25% APY, 0.3% volatility
-
-## 🛠️ Tech Stack
-
-React • TypeScript • Vite • Tailwind CSS • Supabase • Recharts
-
-Live data from Yahoo Finance & CoinGecko APIs
+Our simulation models this reality and shows your true probability.
 
 ## 🚀 Quick Start
 
@@ -47,6 +50,17 @@ npm install
 # Add Supabase credentials to .env
 npm run dev
 ```
+
+**First-time setup takes 10 seconds:**
+1. Monthly income: `$5,000`
+2. Monthly spending: `$3,500`
+3. Goal: `$10,000 in 12 months`
+
+Instantly see your probability and what to change.
+
+## 📋 Strategy
+
+See [EXECUTION_STRATEGY.md](EXECUTION_STRATEGY.md) for complete product, distribution, and growth plan.
 
 ---
 

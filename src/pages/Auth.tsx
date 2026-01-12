@@ -373,10 +373,10 @@ const Auth = () => {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              MyFinanceTracker
+              Know Your Net Worth
             </CardTitle>
-            <CardDescription>
-              Institutional-grade analytics for personal finance
+            <CardDescription className="text-base">
+              Stop juggling apps. See all your money in one place—instantly.
             </CardDescription>
           </CardHeader>
           <CardContent>

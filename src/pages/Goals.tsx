@@ -534,9 +534,18 @@ const Goals = () => {
               const dailyTarget = calculateDailyTarget(goal);
               const linkedAccount = accounts.find(a => a.id === goal.account_id);
               const isGoalComplete = progress >= 100;
+              const endDate = new Date(goal.end_date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              endDate.setHours(0, 0, 0, 0);
+              const isExpired = endDate < today && progress < 100;
 
               return (
-                <Card key={goal.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 ${isGoalComplete ? 'bg-gradient-to-br from-success/20 to-primary/20 border-success' : 'bg-gradient-card'} overflow-hidden group`}>
+                <Card key={goal.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-500 border-border/50 ${
+                  isGoalComplete ? 'bg-gradient-to-br from-success/20 to-primary/20 border-success' : 
+                  isExpired ? 'bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive' : 
+                  'bg-gradient-card'
+                } overflow-hidden group`}>
                   <CardHeader className="relative">
                     {isGoalComplete && (
                       <div className="absolute top-2 right-2 animate-bounce">
@@ -584,7 +593,43 @@ const Goals = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isGoalComplete ? (
+                    {isExpired ? (
+                      <div className="space-y-4 text-center py-4">
+                        <div className="text-6xl">⏰</div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-destructive mb-2">Goal Deadline Passed</h3>
+                          <p className="text-muted-foreground mb-2">This goal ended on {new Date(goal.end_date).toLocaleDateString()}</p>
+                          <p className="text-lg font-semibold">
+                            ${Number(goal.current_amount).toLocaleString()} / ${Number(goal.target_amount).toLocaleString()}
+                            <span className="text-sm text-muted-foreground ml-2">({progress.toFixed(1)}% reached)</span>
+                          </p>
+                        </div>
+                        <div className="pt-4 border-t border-destructive/20">
+                          <p className="text-sm font-medium mb-3">What would you like to do?</p>
+                          <div className="flex gap-3 justify-center">
+                            <Button
+                              onClick={() => openEditDialog(goal)}
+                              variant="outline"
+                              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Extend Goal
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setSelectedGoal(goal);
+                                setDeleteDialogOpen(true);
+                              }}
+                              variant="outline"
+                              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Goal
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : isGoalComplete ? (
                       <div className="space-y-4 text-center py-4">
                         <div className="text-6xl animate-bounce">🎉</div>
                         <div>

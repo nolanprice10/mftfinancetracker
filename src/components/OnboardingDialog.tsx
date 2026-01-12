@@ -1,40 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Wallet, Landmark, Target, TrendingUp, Check } from "lucide-react";
-
-const onboardingSteps = [
-  {
-    id: "welcome",
-    title: "Welcome to MyFinanceTracker",
-    description: "Your personal finance management companion for achieving financial wellness",
-    icon: Wallet,
-    content: "Track your accounts, transactions, goals, and investments all in one elegant platform designed with the sophistication you deserve.",
-  },
-  {
-    id: "accounts",
-    title: "Manage Your Accounts",
-    description: "Add and track all your financial accounts",
-    icon: Landmark,
-    content: "Start by adding your checking, savings, and investment accounts. Your account balances automatically update as you record transactions.",
-  },
-  {
-    id: "goals",
-    title: "Set Financial Goals",
-    description: "Define and track your savings objectives",
-    icon: Target,
-    content: "Create goals linked to specific accounts. Watch your progress automatically update as your account balances grow toward your targets.",
-  },
-  {
-    id: "investments",
-    title: "Track Investments",
-    description: "Monitor your investment portfolio growth",
-    icon: TrendingUp,
-    content: "Add your investment accounts, from index funds to individual stocks. Project future values based on contributions and expected returns.",
-  },
-];
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Target, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -42,54 +13,75 @@ interface OnboardingDialogProps {
 }
 
 export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    monthlyIncome: "5000",
+    monthlySpending: "3500",
+    goalAmount: "10000",
+    goalMonths: "12"
+  });
 
-  const progress = ((currentStep + 1) / onboardingSteps.length) * 100;
-  const step = onboardingSteps[currentStep];
-  const StepIcon = step.icon;
-
-  const handleNext = (e: React.MouseEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    e.stopPropagation();
-    console.log("Next button clicked, current step:", currentStep);
     
-    if (currentStep < onboardingSteps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      handleComplete();
+    if (submitting) return;
+    setSubmitting(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Create initial checking account
+      const { data: accountData, error: accountError } = await supabase
+        .from("accounts")
+        .insert({
+          user_id: user.id,
+          name: "Checking Account",
+          type: "checking",
+          balance: 0
+        })
+        .select()
+        .single();
+
+      if (accountError) throw accountError;
+
+      // Create initial goal
+      const monthlyIncome = parseFloat(formData.monthlyIncome) || 0;
+      const monthlySpending = parseFloat(formData.monthlySpending) || 0;
+      const monthlySavings = monthlyIncome - monthlySpending;
+      const goalAmount = parseFloat(formData.goalAmount) || 0;
+      const goalMonths = parseInt(formData.goalMonths) || 12;
+
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + goalMonths);
+
+      await supabase.from("goals").insert({
+        user_id: user.id,
+        name: "Savings Goal",
+        target_amount: goalAmount,
+        current_amount: 0,
+        start_date: new Date().toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+        account_id: accountData.id,
+        notes: `Monthly income: $${monthlyIncome.toFixed(0)}, Monthly spending: $${monthlySpending.toFixed(0)}, Monthly savings: $${monthlySavings.toFixed(0)}`
+      });
+
+      // Mark onboarding complete
+      await supabase.from("onboarding_progress").upsert({
+        user_id: user.id,
+        completed: true,
+        steps_completed: ["quick-setup"],
+      });
+
+      toast.success("Setup complete!");
+      onOpenChange(false);
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Failed to complete onboarding:", error);
+      toast.error("Setup failed. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const handleSkip = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopPropagation();
-    console.log("Skip button clicked");
-    handleComplete();
-  };
-
-  const handleComplete = () => {
-    console.log("Completing onboarding, closing dialog");
-    // Close immediately
-    onOpenChange(false);
-    
-    // Save progress in background without blocking
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("onboarding_progress").upsert({
-            user_id: user.id,
-            completed: true,
-            steps_completed: onboardingSteps.map(s => s.id),
-          });
-          console.log("Onboarding progress saved");
-        }
-      } catch (error) {
-        console.error("Failed to save onboarding progress:", error);
-      }
-    })();
   };
 
   return (
@@ -98,57 +90,95 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
             <div className="p-4 rounded-full bg-gradient-primary">
-              <StepIcon className="h-8 w-8 text-primary-foreground" />
+              <Target className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <DialogTitle className="text-2xl text-center">{step.title}</DialogTitle>
+          <DialogTitle className="text-2xl text-center">Let's get started</DialogTitle>
           <DialogDescription className="text-center">
-            {step.description}
+            Answer 3 quick questions to see if you're on track
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <Progress value={progress} className="h-2" />
-          
-          <div className="p-4 rounded-lg bg-muted/50">
-            <p className="text-sm leading-relaxed">{step.content}</p>
-          </div>
-
-          <div className="flex items-center justify-center gap-2">
-            {onboardingSteps.map((_, index) => (
-              <div
-                key={index}
-                className={`h-2 w-2 rounded-full transition-colors ${
-                  index === currentStep
-                    ? "bg-primary w-6"
-                    : index < currentStep
-                    ? "bg-primary/50"
-                    : "bg-muted"
-                }`}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="income">Income per month</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                id="income"
+                type="number"
+                placeholder="5000"
+                className="pl-7"
+                value={formData.monthlyIncome}
+                onChange={(e) => setFormData({...formData, monthlyIncome: e.target.value})}
+                required
               />
-            ))}
+            </div>
           </div>
 
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={handleSkip} className="flex-1" type="button">
-              Skip Tour
-            </Button>
-            <Button onClick={handleNext} className="flex-1" type="button">
-              {currentStep === onboardingSteps.length - 1 ? (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Get Started
-                </>
-              ) : (
-                "Next"
-              )}
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="spending">Monthly spending</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                id="spending"
+                type="number"
+                placeholder="3500"
+                className="pl-7"
+                value={formData.monthlySpending}
+                onChange={(e) => setFormData({...formData, monthlySpending: e.target.value})}
+                required
+              />
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="goal">One goal you have</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="goal"
+                  type="number"
+                  placeholder="10000"
+                  className="pl-7"
+                  value={formData.goalAmount}
+                  onChange={(e) => setFormData({...formData, goalAmount: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="12"
+                  value={formData.goalMonths}
+                  onChange={(e) => setFormData({...formData, goalMonths: e.target.value})}
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">months</span>
+              </div>
+            </div>
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={submitting}
+          >
+            {submitting ? (
+              "Setting up..."
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Show me my probability
+              </>
+            )}
+          </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            Step {currentStep + 1} of {onboardingSteps.length}
+            Takes 10 seconds • See results immediately
           </p>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
