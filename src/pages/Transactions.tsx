@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, ArrowUpDown } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
+import { SEO } from "@/components/SEO";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -245,10 +246,15 @@ const Transactions = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Transactions"
+        description="Track all your income and expenses with detailed transaction history. Monitor spending patterns and categorize transactions for better financial insights."
+        canonicalUrl="/transactions"
+      />
       <div className="space-y-6 animate-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Transactions</h1>
+            <h1 className="text-3xl font-bold mb-2">Transaction Tracking</h1>
             <p className="text-muted-foreground">Track your income and expenses</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

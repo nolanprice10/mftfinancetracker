@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { Plus, TrendingUp, TrendingDown, DollarSign, Target as TargetIcon, Gift, Copy, Check, ChevronDown, AlertCircle, Edit, Trash2 } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
 import { Link } from "react-router-dom";
@@ -205,6 +206,11 @@ const Dashboard = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Dashboard"
+        description="View your financial dashboard with real-time portfolio tracking, goal progress, and institutional-grade analytics. Monitor your wealth at a glance."
+        canonicalUrl="/dashboard"
+      />
       <OnboardingDialog open={showOnboarding} onOpenChange={setShowOnboarding} />
       <div className="space-y-6 animate-fade-in">
         
@@ -324,7 +330,7 @@ const Dashboard = () => {
                 Welcome back{userName && `, ${userName}`}! 👋
               </p>
               <h1 className="text-3xl font-bold">
-                Set a goal to see your probability
+                Financial Dashboard - Set Your First Goal
               </h1>
               <p className="text-muted-foreground">
                 Add your first financial goal to get started

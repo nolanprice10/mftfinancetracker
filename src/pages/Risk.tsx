@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -504,9 +505,14 @@ const Risk = () => {
 
     return (
       <Layout>
+        <SEO 
+          title="Risk Assessment"
+          description="Complete your investment risk profile assessment. Get personalized portfolio recommendations based on your risk tolerance and capacity."
+          canonicalUrl="/risk"
+        />
         <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
           <div className="text-center">
-            <h1 className="text-3xl font-bold mb-2">Your Risk Profile</h1>
+            <h1 className="text-3xl font-bold mb-2">Investment Risk Assessment</h1>
             <p className="text-muted-foreground">Personalized investment recommendations based on your assessment</p>
           </div>
 

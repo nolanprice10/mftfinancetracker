@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Wallet, Edit, Trash2, ArrowLeftRight } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
 import { TransferDialog } from "@/components/TransferDialog";
+import { SEO } from "@/components/SEO";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -331,10 +332,15 @@ const Accounts = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Accounts"
+        description="Manage your financial accounts and track balances across checking, savings, investment, and retirement accounts. Visualize your wealth distribution."
+        canonicalUrl="/accounts"
+      />
       <div className="space-y-8 animate-luxe-fade-in">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Accounts</h1>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-wealth bg-clip-text text-transparent">Financial Accounts</h1>
             <p className="text-muted-foreground">Wealth account management</p>
           </div>
           <div className="flex gap-2">

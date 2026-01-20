@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import InvestmentCalculator from "@/components/InvestmentCalculator";
+import { SEO } from "@/components/SEO";
 import { 
   Wallet, 
   TrendingUp, 
@@ -80,6 +81,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <SEO 
+        title="Free Investment Calculator & Portfolio Tracker"
+        description="Track your wealth with institutional-grade analytics. Free investment calculator, compound interest projections, and portfolio tracking. Quant-backed personal finance made simple."
+        canonicalUrl="/"
+      />
       {/* Same elegant background as other pages */}
       <div className="fixed inset-0 bg-gradient-to-br from-emerald-50 via-amber-50/50 to-slate-100 dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-950 -z-10"></div>
       <div className="fixed inset-0 bg-gradient-to-tr from-emerald-900/5 via-transparent to-transparent dark:from-emerald-800/10 -z-10"></div>
@@ -153,10 +159,11 @@ const Index = () => {
           </div>
           
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-            <span className="text-foreground">How Much Money Do I </span>
+            <span className="text-foreground">Free </span>
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Actually Have?
+              Investment Calculator
             </span>
+            <span className="text-foreground"> & Portfolio Tracker</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, Target, Edit, Trash2 } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
+import { SEO } from "@/components/SEO";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -475,6 +476,11 @@ const Goals = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Financial Goals"
+        description="Set and track your financial goals with probability-based projections. Monitor progress toward retirement, savings targets, and major purchases."
+        canonicalUrl="/goals"
+      />
       <div className="space-y-8 animate-luxe-fade-in">
         <div className="flex justify-between items-center">
           <div>

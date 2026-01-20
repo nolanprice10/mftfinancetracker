@@ -5,6 +5,7 @@ import { Lightbulb, TrendingDown, PiggyBank, TrendingUp, Target, AlertCircle, Do
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RecommendationCard } from "@/components/RecommendationCard";
+import { SEO } from "@/components/SEO";
 
 const Recommendations = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -389,6 +390,11 @@ const Recommendations = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Personalized Recommendations"
+        description="Get AI-powered financial recommendations based on your portfolio, spending patterns, and goals. Quant-backed insights to optimize your wealth strategy."
+        canonicalUrl="/recommendations"
+      />
       <div className="p-8 space-y-6 animate-luxe-fade-in">
         <div className="flex items-center gap-3">
           <Lightbulb className="w-8 h-8 text-primary" />

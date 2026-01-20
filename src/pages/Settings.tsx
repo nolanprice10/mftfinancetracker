@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -314,9 +315,14 @@ const Settings = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Account Settings"
+        description="Manage your MyFinanceTracker account settings, preferences, and security options. Customize your financial tracking experience."
+        canonicalUrl="/settings"
+      />
       <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Settings</h1>
+          <h1 className="text-3xl font-bold mb-2">Account Settings</h1>
           <p className="text-muted-foreground">Manage your account preferences</p>
         </div>
 

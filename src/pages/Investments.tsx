@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen, PlusCircle, Grid3x3, List } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
+import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1262,6 +1263,11 @@ const Investments = () => {
 
   return (
     <Layout>
+      <SEO 
+        title="Investment Portfolio"
+        description="Track your investment portfolio with institutional-grade analytics. Monitor stocks, bonds, ETFs, and retirement accounts with real-time performance metrics and projections."
+        canonicalUrl="/investments"
+      />
       <div className="p-8 space-y-6 animate-luxe-fade-in">
         {userAge !== null && userAge < 18 && (
           <Card className="shadow-elegant border-primary/30 bg-gradient-card">

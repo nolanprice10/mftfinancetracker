@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Wallet, Star, Quote, TrendingUp } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -230,6 +231,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4 md:p-8">
+      <SEO 
+        title="Sign In / Sign Up"
+        description="Create your free account or sign in to access your MyFinanceTracker dashboard. Start tracking your wealth with institutional-grade analytics today."
+        canonicalUrl="/auth"
+      />
       {/* Elegant Old Money Background - Rich Colors */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-amber-50/50 to-slate-100 dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-950"></div>
       
@@ -372,9 +378,9 @@ const Auth = () => {
                 <span>Quant Backed</span>
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Know Your Net Worth
-            </CardTitle>
+            <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Personal Finance Tracker - Know Your Net Worth
+            </h1>
             <CardDescription className="text-base">
               Stop juggling apps. See all your money in one place—instantly.
             </CardDescription>
