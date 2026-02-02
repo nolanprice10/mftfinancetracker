@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://myfinancetracker.app/</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/auth</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/dashboard</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/transactions</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/accounts</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/goals</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/investments</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/recommendations</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/settings</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/risk</loc>
+  </url>
+  <url>
+    <loc>https://myfinancetracker.app/404</loc>
+  </url>
+</urlset>
