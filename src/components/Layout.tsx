@@ -70,123 +70,20 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Elegant Old Money Background - Rich Colors */}
-      <div className="fixed inset-0 bg-gradient-to-br from-emerald-50 via-amber-50/50 to-slate-100 dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-950 -z-10"></div>
-      
-      {/* Hunter Green Accent */}
-      <div className="fixed inset-0 bg-gradient-to-tr from-emerald-900/5 via-transparent to-transparent dark:from-emerald-800/10 -z-10"></div>
-      
-      {/* Burgundy Accent */}
-      <div className="fixed inset-0 bg-gradient-to-bl from-transparent via-transparent to-rose-900/5 dark:to-rose-950/10 -z-10"></div>
-      
-      {/* Herringbone Pattern */}
-      <div className="fixed inset-0 opacity-[0.04] dark:opacity-[0.06] -z-10" 
-           style={{
-             backgroundImage: `
-               linear-gradient(45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%),
-               linear-gradient(-45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%)
-             `,
-             backgroundSize: '30px 30px',
-             backgroundPosition: '0 0, 15px 15px'
-           }}>
-      </div>
-
-      {/* Elegant Damask-inspired Pattern */}
-      <div className="fixed inset-0 opacity-[0.03] dark:opacity-[0.05] -z-10" 
-           style={{
-             backgroundImage: `radial-gradient(circle at 50% 50%, currentColor 1px, transparent 1px)`,
-             backgroundSize: '50px 50px'
-           }}>
-      </div>
-
-      {/* Art Deco Corner Accents */}
-      <div className="fixed top-0 left-0 w-64 h-64 opacity-10 dark:opacity-20 -z-10">
-        <svg viewBox="0 0 200 200" className="w-full h-full text-amber-700/30 dark:text-amber-400/20">
-          <path d="M0,0 L60,0 L0,60 Z" fill="currentColor" />
-          <path d="M0,0 L40,0 L0,40 Z" fill="currentColor" opacity="0.5" />
-          <rect x="65" y="0" width="2" height="60" fill="currentColor" opacity="0.3" />
-          <rect x="0" y="65" width="60" height="2" fill="currentColor" opacity="0.3" />
-        </svg>
-      </div>
-      
-      <div className="fixed bottom-0 right-0 w-64 h-64 opacity-10 dark:opacity-20 rotate-180 -z-10">
-        <svg viewBox="0 0 200 200" className="w-full h-full text-emerald-800/30 dark:text-emerald-400/20">
-          <path d="M0,0 L60,0 L0,60 Z" fill="currentColor" />
-          <path d="M0,0 L40,0 L0,40 Z" fill="currentColor" opacity="0.5" />
-          <rect x="65" y="0" width="2" height="60" fill="currentColor" opacity="0.3" />
-          <rect x="0" y="65" width="60" height="2" fill="currentColor" opacity="0.3" />
-        </svg>
-      </div>
-
-      {/* Gold Leaf Accent Orbs with Enhanced Animation */}
-      <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-amber-400/20 via-yellow-300/15 to-transparent dark:from-amber-600/25 dark:via-yellow-700/20 rounded-full blur-3xl animate-float-enhanced -z-10"></div>
-      <div className="fixed bottom-1/3 left-1/3 w-80 h-80 bg-gradient-to-tr from-emerald-600/15 via-teal-500/12 to-transparent dark:from-emerald-400/20 dark:via-teal-300/15 rounded-full blur-3xl animate-float-delayed-enhanced -z-10"></div>
-      <div className="fixed top-1/2 left-1/4 w-72 h-72 bg-gradient-to-bl from-rose-800/12 via-rose-600/8 to-transparent dark:from-rose-600/18 dark:via-rose-400/12 rounded-full blur-3xl animate-float-slow-enhanced -z-10"></div>
-      
-      {/* Subtle Leather Texture */}
-      <div className="fixed inset-0 opacity-[0.015] dark:opacity-[0.025] mix-blend-overlay -z-10"
-           style={{
-             backgroundImage: `url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`,
-           }}>
-      </div>
-
-      {/* Subtle Gold Border Frame Effect */}
+      {/* Clean background with subtle texture */}
+      <div className="fixed inset-0 bg-background -z-10"></div>
+      <div
+        className="fixed inset-0 opacity-[0.02] dark:opacity-[0.04] mix-blend-overlay -z-10"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E")`,
+        }}
+      ></div>
       <div className="fixed inset-0 pointer-events-none -z-10">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-700/20 to-transparent dark:via-amber-400/30"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-700/20 to-transparent dark:via-amber-400/30"></div>
-        <div className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-amber-700/20 to-transparent dark:via-amber-400/30"></div>
-        <div className="absolute top-0 bottom-0 right-0 w-px bg-gradient-to-b from-transparent via-amber-700/20 to-transparent dark:via-amber-400/30"></div>
+        <div className="absolute top-0 left-0 right-0 h-px bg-border/60"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-border/60"></div>
+        <div className="absolute top-0 bottom-0 left-0 w-px bg-border/60"></div>
+        <div className="absolute top-0 bottom-0 right-0 w-px bg-border/60"></div>
       </div>
-
-      <style>{`
-        @keyframes float-enhanced {
-          0%, 100% { 
-            transform: translate(0, 0) scale(1); 
-            opacity: 1;
-          }
-          33% { 
-            transform: translate(40px, -40px) scale(1.1); 
-            opacity: 0.9;
-          }
-          66% { 
-            transform: translate(-30px, 30px) scale(0.9); 
-            opacity: 0.85;
-          }
-        }
-        @keyframes float-delayed-enhanced {
-          0%, 100% { 
-            transform: translate(0, 0) scale(1); 
-            opacity: 1;
-          }
-          33% { 
-            transform: translate(-40px, 40px) scale(0.9); 
-            opacity: 0.85;
-          }
-          66% { 
-            transform: translate(30px, -30px) scale(1.1); 
-            opacity: 0.9;
-          }
-        }
-        @keyframes float-slow-enhanced {
-          0%, 100% { 
-            transform: translate(0, 0) scale(1) rotate(0deg); 
-            opacity: 1;
-          }
-          50% { 
-            transform: translate(25px, -35px) scale(1.05) rotate(5deg); 
-            opacity: 0.9;
-          }
-        }
-        .animate-float-enhanced {
-          animation: float-enhanced 12s ease-in-out infinite;
-        }
-        .animate-float-delayed-enhanced {
-          animation: float-delayed-enhanced 15s ease-in-out infinite;
-        }
-        .animate-float-slow-enhanced {
-          animation: float-slow-enhanced 18s ease-in-out infinite;
-        }
-      `}</style>
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
