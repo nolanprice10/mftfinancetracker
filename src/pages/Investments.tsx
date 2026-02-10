@@ -353,6 +353,39 @@ const Investments = () => {
     if (!investment.ticker_symbol) return "";
     return normalizeYahooTicker(investment.ticker_symbol, investment.type);
   };
+
+  const fetchYahooChart = async (ticker: string, range: string, interval: string) => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Yahoo response ${response.status}`);
+    }
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta;
+    if (!result || !meta?.regularMarketPrice) {
+      throw new Error("Price not found");
+    }
+
+    const price = Number(meta.regularMarketPrice);
+    const previousClose = meta.chartPreviousClose;
+    const change24h = previousClose ? ((price - previousClose) / previousClose) * 100 : 0;
+    const timestamps = result.timestamp || [];
+    const prices = result.indicators?.quote?.[0]?.close || [];
+    const history = timestamps
+      .map((ts: number, idx: number) => ({
+        date: new Date(ts * 1000).toISOString(),
+        price: prices[idx] != null ? Number(prices[idx].toFixed(2)) : null,
+      }))
+      .filter((point: { price: number | null }) => point.price !== null)
+      .sort((a: { date: string }, b: { date: string }) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return {
+      price: Number(price.toFixed(2)),
+      change24h: Number(change24h.toFixed(2)),
+      history,
+    };
+  };
   
   // Form state using controlled inputs to prevent keyboard dismissal
   const [formData, setFormData] = useState({
@@ -493,31 +526,21 @@ const Investments = () => {
 
       const { range, interval } = mapping[period] || mapping["1M"];
 
-      const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker: yahooTicker, type, range, interval }
-      });
+      const yahooData = await fetchYahooChart(yahooTicker, range, interval);
+      const entry: PriceData = {
+        price: yahooData.price,
+        change24h: yahooData.change24h,
+        history: yahooData.history || []
+      };
 
-      if (response.error) {
-        console.error('Price fetch error:', response.error);
-        return;
-      }
-
-      if (response.data?.success) {
-        const entry: PriceData = {
-          price: response.data.price,
-          change24h: response.data.change24h,
-          history: response.data.history || []
-        };
-
-        setPriceData(prev => ({
-          ...prev,
-          [tickerKey]: {
-            ...(prev[tickerKey] || {}),
-            latest: entry,
-            [period]: entry,
-          }
-        }));
-      }
+      setPriceData(prev => ({
+        ...prev,
+        [tickerKey]: {
+          ...(prev[tickerKey] || {}),
+          latest: entry,
+          [period]: entry,
+        }
+      }));
     } catch (error) {
       console.error('Error fetching price data:', error);
     } finally {
@@ -558,33 +581,18 @@ const Investments = () => {
       };
       const { range, interval } = mapping[period] || mapping["1M"];
 
-      const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker: yahooTicker, type, range, interval }
-      });
-
-      if (response.error) {
-        console.error('Price fetch error:', response.error);
-        toast.error(`Failed to fetch price for ${yahooTicker}`);
-        return;
-      }
-
-      if (response.data?.success && response.data?.price) {
-        handleInputChange('pricePerShare', response.data.price.toString());
-        // store price under latest and period
-        const entry: PriceData = {
-          price: response.data.price,
-          change24h: response.data.change24h,
-          history: response.data.history || []
-        };
-        setPriceData(prev => ({ ...(prev), [tickerKey]: { ...(prev[tickerKey] || {}), latest: entry, [period]: entry } }));
-        toast.success(`Fetched price: $${response.data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      } else {
-        const details = response.data?.error || 'Price not found';
-        toast.error(`Failed to fetch price: ${details}`);
-      }
+      const yahooData = await fetchYahooChart(yahooTicker, range, interval);
+      handleInputChange('pricePerShare', yahooData.price.toString());
+      const entry: PriceData = {
+        price: yahooData.price,
+        change24h: yahooData.change24h,
+        history: yahooData.history || []
+      };
+      setPriceData(prev => ({ ...(prev), [tickerKey]: { ...(prev[tickerKey] || {}), latest: entry, [period]: entry } }));
+      toast.success(`Fetched price: $${yahooData.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     } catch (error: any) {
       console.error('Error fetching price:', error);
-      toast.error('Failed to fetch price');
+      toast.error(`Failed to fetch price for ${yahooTicker}`);
     } finally {
       setFetchingPrice(false);
       setPriceLoading(prev => ({ ...(prev), [tickerKey]: false }));
