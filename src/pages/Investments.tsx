@@ -2,7 +2,7 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Edit, Trash2, Shield, Target, Bitcoin, RefreshCw, BookOpen, PlusCircle, Grid3x3, List } from "lucide-react";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Progress } from "@/components/ui/progress";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { InfoButton } from "@/components/InfoButton";
 import { AddFundsDialog } from "@/components/AddFundsDialog";
 
@@ -128,12 +129,15 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           <div className="space-y-2">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Label>{formType === "crypto" ? "Crypto ID" : "Ticker Symbol"}</Label>
+                <Label>Ticker Symbol</Label>
                 <Input
-                  placeholder={formType === "crypto" ? "e.g., bitcoin, ethereum, cardano" : "e.g., AAPL, MSFT, GOOGL"}
+                  placeholder={formType === "crypto" ? "e.g., BTC, ETH, BTC-USD" : "e.g., AAPL, MSFT, GOOGL"}
                   value={formData.ticker}
                   onChange={(e) => {
-                    const value = formType === "crypto" ? e.target.value.toLowerCase() : e.target.value.toUpperCase();
+                    const rawValue = e.target.value;
+                    const value = formType === "crypto"
+                      ? normalizeCryptoInput(rawValue)
+                      : rawValue.toUpperCase();
                     handleInputChange('ticker', value);
                   }}
                   autoComplete="off"
@@ -152,7 +156,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              {formType === "crypto" ? "Price from CoinGecko API" : "Price from Yahoo Finance"}
+              Price from Yahoo Finance (use symbols like AAPL or BTC-USD)
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -163,7 +167,10 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
                 step="0.001"
                 placeholder="10"
                 value={formData.shares}
-                onChange={(e) => handleInputChange('shares', e.target.value)}
+                onChange={(e) => {
+                  handleInputChange('shares', e.target.value);
+                  setLastEdited("shares");
+                }}
                 autoComplete="off"
                 required
               />
@@ -181,6 +188,29 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
                 disabled={fetchingPrice}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Amount Invested ($)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="e.g., 50"
+              value={formData.amountInvested}
+              onChange={(e) => {
+                const value = e.target.value;
+                handleInputChange('amountInvested', value);
+                if (value) {
+                  const parsed = parseFloat(value);
+                  const normalized = !isNaN(parsed) ? parsed.toFixed(2) : value;
+                  handleInputChange('currentValue', normalized);
+                } else {
+                  handleInputChange('currentValue', "");
+                }
+                setLastEdited("amount");
+              }}
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">Optional: enter a dollar amount to auto-calculate shares.</p>
           </div>
           <div className="space-y-2">
             <Label>Total Value</Label>
@@ -278,6 +308,51 @@ const Investments = () => {
   const [userAge, setUserAge] = useState<number | null>(null);
   // Use single, consistent chart period for all tickers to ensure reliable data
   const FIXED_PERIOD = "1M";
+  const SIMULATION_COUNT = 1000;
+
+  const normalizeYahooTicker = (ticker: string, type: string) => {
+    if (!ticker) return "";
+    if (type === "crypto") {
+      if (ticker.includes("-")) {
+        return ticker.toUpperCase();
+      }
+      if (/^[a-zA-Z0-9]{1,6}$/.test(ticker)) {
+        return `${ticker.toUpperCase()}-USD`;
+      }
+    }
+    return ticker.toUpperCase();
+  };
+
+  const normalizeCryptoInput = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    const lower = trimmed.toLowerCase();
+    const mapping: Record<string, string> = {
+      bitcoin: "BTC-USD",
+      btc: "BTC-USD",
+      ethereum: "ETH-USD",
+      eth: "ETH-USD",
+      cardano: "ADA-USD",
+      ada: "ADA-USD",
+      dogecoin: "DOGE-USD",
+      doge: "DOGE-USD",
+      litecoin: "LTC-USD",
+      ltc: "LTC-USD",
+      tether: "USDT-USD",
+      usdt: "USDT-USD",
+    };
+
+    if (mapping[lower]) {
+      return mapping[lower];
+    }
+
+    return trimmed.toUpperCase();
+  };
+
+  const getYahooTickerKey = (investment: Investment) => {
+    if (!investment.ticker_symbol) return "";
+    return normalizeYahooTicker(investment.ticker_symbol, investment.type);
+  };
   
   // Form state using controlled inputs to prevent keyboard dismissal
   const [formData, setFormData] = useState({
@@ -285,11 +360,14 @@ const Investments = () => {
     ticker: "",
     shares: "",
     pricePerShare: "",
+    amountInvested: "",
     currentValue: "",
     monthlyContribution: "",
     annualReturn: "",
     yearsRemaining: "10",
   });
+
+  const [lastEdited, setLastEdited] = useState<"shares" | "amount" | null>(null);
   
   const [formType, setFormType] = useState("index_fund");
   const [sourceAccountId, setSourceAccountId] = useState("");
@@ -305,19 +383,44 @@ const Investments = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-calculate current value when shares or price changes with high precision
+  // Auto-calculate values when shares/amount or price changes with high precision
   useEffect(() => {
     const shares = parseFloat(formData.shares);
     const price = parseFloat(formData.pricePerShare);
+    const amount = parseFloat(formData.amountInvested);
+
+    if (isNaN(price) || price <= 0) return;
+
+    if (lastEdited === "amount" && !isNaN(amount) && amount > 0) {
+      const computedShares = amount / price;
+      const roundedShares = computedShares.toFixed(6);
+      const roundedAmount = amount.toFixed(2);
+      setFormData(prev => {
+        if (prev.shares === roundedShares && prev.currentValue === roundedAmount) {
+          return prev;
+        }
+        return {
+          ...prev,
+          shares: roundedShares,
+          currentValue: roundedAmount,
+        };
+      });
+      return;
+    }
+
     if (!isNaN(shares) && !isNaN(price) && shares > 0 && price > 0) {
       // Use high precision calculation
       const total = (shares * price).toFixed(6);
       const roundedTotal = parseFloat(total).toFixed(2);
       if (formData.currentValue !== roundedTotal) {
-        setFormData(prev => ({ ...prev, currentValue: roundedTotal }));
+        setFormData(prev => ({
+          ...prev,
+          currentValue: roundedTotal,
+          amountInvested: lastEdited === "shares" ? roundedTotal : prev.amountInvested,
+        }));
       }
     }
-  }, [formData.shares, formData.pricePerShare]);
+  }, [formData.shares, formData.pricePerShare, formData.amountInvested, lastEdited]);
 
   useEffect(() => {
     // Fetch price data for all investments with tickers using a fixed 1M daily period
@@ -375,7 +478,8 @@ const Investments = () => {
   };
 
   const fetchPriceData = async (ticker: string, type: string, period: string = "1M") => {
-    const tickerKey = ticker.toUpperCase();
+    const yahooTicker = normalizeYahooTicker(ticker, type);
+    const tickerKey = yahooTicker;
     setPriceLoading(prev => ({ ...(prev), [tickerKey]: true }));
     try {
       // Map period key to Yahoo range/interval values
@@ -390,8 +494,13 @@ const Investments = () => {
       const { range, interval } = mapping[period] || mapping["1M"];
 
       const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker: tickerKey, type, range, interval }
+        body: { ticker: yahooTicker, type, range, interval }
       });
+
+      if (response.error) {
+        console.error('Price fetch error:', response.error);
+        return;
+      }
 
       if (response.data?.success) {
         const entry: PriceData = {
@@ -435,7 +544,8 @@ const Investments = () => {
 
   const fetchPrice = async (ticker: string, type: string, period: string = "1M") => {
     if (!ticker) return;
-    const tickerKey = ticker.toUpperCase();
+    const yahooTicker = normalizeYahooTicker(ticker, type);
+    const tickerKey = yahooTicker;
     setPriceLoading(prev => ({ ...(prev), [tickerKey]: true }));
     setFetchingPrice(true);
     try {
@@ -449,8 +559,14 @@ const Investments = () => {
       const { range, interval } = mapping[period] || mapping["1M"];
 
       const response = await supabase.functions.invoke('fetch-stock-price', {
-        body: { ticker, type, range, interval }
+        body: { ticker: yahooTicker, type, range, interval }
       });
+
+      if (response.error) {
+        console.error('Price fetch error:', response.error);
+        toast.error(`Failed to fetch price for ${yahooTicker}`);
+        return;
+      }
 
       if (response.data?.success && response.data?.price) {
         handleInputChange('pricePerShare', response.data.price.toString());
@@ -463,7 +579,8 @@ const Investments = () => {
         setPriceData(prev => ({ ...(prev), [tickerKey]: { ...(prev[tickerKey] || {}), latest: entry, [period]: entry } }));
         toast.success(`Fetched price: $${response.data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
       } else {
-        toast.error('Failed to fetch price - check ticker symbol');
+        const details = response.data?.error || 'Price not found';
+        toast.error(`Failed to fetch price: ${details}`);
       }
     } catch (error: any) {
       console.error('Error fetching price:', error);
@@ -630,11 +747,13 @@ const Investments = () => {
       ticker: "",
       shares: "",
       pricePerShare: "",
+      amountInvested: "",
       currentValue: "",
       monthlyContribution: "",
       annualReturn: "",
       yearsRemaining: "10",
     });
+    setLastEdited(null);
     setFormType("index_fund");
     setSourceAccountId("");
   };
@@ -711,7 +830,7 @@ const Investments = () => {
   // Calculate historical return and volatility from actual price data for a specific asset
   const calculateAssetSpecificParameters = (investment: Investment): { expectedReturn: number; volatility: number } | null => {
     if ((investment.type === 'individual_stock' || investment.type === 'crypto') && investment.ticker_symbol) {
-      const tickerKey = investment.ticker_symbol.toUpperCase();
+      const tickerKey = getYahooTickerKey(investment);
       const history = priceData[tickerKey]?.[FIXED_PERIOD]?.history;
       
       if (history && history.length >= 20) {
@@ -803,23 +922,35 @@ const Investments = () => {
 
   const openEditDialog = (investment: Investment) => {
     setSelectedInvestment(investment);
+    const currentValueString = investment.current_value.toString();
+    const pricePerShareString = investment.purchase_price_per_share?.toString() || "";
+    let sharesString = investment.shares_owned?.toString() || "";
+    if (!sharesString && pricePerShareString) {
+      const price = parseFloat(pricePerShareString);
+      const value = parseFloat(currentValueString);
+      if (!isNaN(price) && price > 0 && !isNaN(value) && value > 0) {
+        sharesString = (value / price).toFixed(6);
+      }
+    }
     setFormData({
       name: investment.name,
       ticker: investment.ticker_symbol || "",
-      shares: investment.shares_owned?.toString() || "",
-      pricePerShare: investment.purchase_price_per_share?.toString() || "",
-      currentValue: investment.current_value.toString(),
+      shares: sharesString,
+      pricePerShare: pricePerShareString,
+      amountInvested: currentValueString,
+      currentValue: currentValueString,
       monthlyContribution: investment.monthly_contribution.toString(),
       annualReturn: investment.annual_return_pct.toString(),
       yearsRemaining: investment.years_remaining.toString(),
     });
+    setLastEdited("amount");
     setFormType(investment.type === 'savings' ? 'other' : investment.type);
     setEditDialogOpen(true);
   };
 
   // Calculate future value using Monte Carlo simulation for accurate projections
-  const calculateFutureValue = (investment: Investment) => {
-    const liveValue = getLiveValue(investment);
+  const calculateFutureValue = (investment: Investment, liveValueOverride?: number) => {
+    const liveValue = liveValueOverride ?? getLiveValue(investment);
     const PV = liveValue; // Present Value - current investment value
     const pmt = Number(investment.monthly_contribution); // Monthly contribution
     const years = Number(investment.years_remaining); // Years to project
@@ -859,7 +990,7 @@ const Investments = () => {
       expectedReturn,
       volatility,
       years,
-      10000
+      SIMULATION_COUNT
     );
     
     // Return precise value rounded to cents
@@ -896,7 +1027,7 @@ const Investments = () => {
   // Calculate live current value for stocks/crypto with high precision
   const getLiveValue = (inv: Investment): number => {
     if ((inv.type === "individual_stock" || inv.type === "crypto") && inv.ticker_symbol && inv.shares_owned) {
-      const tickerKey = inv.ticker_symbol.toUpperCase();
+      const tickerKey = getYahooTickerKey(inv);
       const tickerEntry = priceData[tickerKey];
       const currentPrice = tickerEntry?.latest?.price || tickerEntry?.["1M"]?.price;
       if (currentPrice && !isNaN(currentPrice) && currentPrice > 0) {
@@ -910,17 +1041,38 @@ const Investments = () => {
     return isNaN(storedValue) ? 0 : storedValue;
   };
 
-  const totalCurrentValue = investments.reduce((sum, inv) => {
-    const value = getLiveValue(inv);
-    return Math.round((sum + value) * 100) / 100;
-  }, 0);
-  
-  const totalFutureValue = investments.reduce((sum, inv) => {
-    const liveValue = getLiveValue(inv);
-    const invWithLiveValue = { ...inv, current_value: liveValue };
-    const futureValue = calculateFutureValue(invWithLiveValue);
-    return Math.round((sum + futureValue) * 100) / 100;
-  }, 0);
+  const derivedInvestments = useMemo(() => {
+    return investments.map((investment) => {
+      const liveValue = getLiveValue(investment);
+      const futureValue = calculateFutureValue(investment, liveValue);
+      const tickerKey = getYahooTickerKey(investment);
+      const currentPeriod = FIXED_PERIOD;
+      const hasChart = !!(
+        investment.ticker_symbol && priceData[tickerKey]?.[currentPeriod]?.history?.length > 0
+      );
+
+      return {
+        investment,
+        liveValue,
+        futureValue,
+        gain: futureValue - liveValue,
+        tickerKey,
+        hasChart,
+      };
+    });
+  }, [investments, priceData]);
+
+  const totalCurrentValue = useMemo(() => {
+    return derivedInvestments.reduce((sum, item) => {
+      return Math.round((sum + item.liveValue) * 100) / 100;
+    }, 0);
+  }, [derivedInvestments]);
+
+  const totalFutureValue = useMemo(() => {
+    return derivedInvestments.reduce((sum, item) => {
+      return Math.round((sum + item.futureValue) * 100) / 100;
+    }, 0);
+  }, [derivedInvestments]);
 
   // Advanced Portfolio Risk Analysis - constantly updated with live values
   const analyzePortfolioRisk = () => {
@@ -1241,7 +1393,7 @@ const Investments = () => {
     };
   };
 
-  const riskAnalysis = analyzePortfolioRisk();
+  const riskAnalysis = useMemo(() => analyzePortfolioRisk(), [investments, priceData, totalCurrentValue]);
 
   
 
@@ -1580,14 +1732,7 @@ const Investments = () => {
             </div>
           </div>
           <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-4"}>
-          {investments.map((investment) => {
-            const futureValue = calculateFutureValue(investment);
-            const liveValue = getLiveValue(investment);
-            const gain = futureValue - liveValue;
-            const currentPeriod = FIXED_PERIOD;
-            const tickerKey = investment.ticker_symbol?.toUpperCase();
-            const hasChart = !!(investment.ticker_symbol && priceData[tickerKey]?.[currentPeriod]?.history?.length > 0);
-
+          {derivedInvestments.map(({ investment, futureValue, liveValue, gain, tickerKey, hasChart }) => {
             return (
               <Card key={investment.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card ${viewMode === "list" ? "max-w-full" : ""}`}>
                 <CardHeader>
@@ -1602,7 +1747,7 @@ const Investments = () => {
                           {investment.type.replace(/_/g, ' ')}
                         </Badge>
                         {investment.ticker_symbol && (
-                          <span className="text-xs font-mono">{investment.ticker_symbol}</span>
+                          <span className="text-xs font-mono">{getYahooTickerKey(investment)}</span>
                         )}
                       </CardDescription>
                     </div>
@@ -1642,88 +1787,94 @@ const Investments = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {viewMode === "grid" && hasChart && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <RefreshCw className="w-3 h-3" />
-                        Updates every 60 sec
+                  <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
+                    <div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        Current Value
+                        <span className="text-xs">(Live)</span>
                       </div>
-                      <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
-                    </div>
-                    <PerformanceChart 
-                      data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
-                      title={`${FIXED_PERIOD} Performance (Live)`}
-                      ticker={investment.ticker_symbol!}
-                      isLoading={!!priceLoading[tickerKey!]}
-                    />
-                  </div>
-                  )}
-                  
-                    <div className={viewMode === "list" ? "grid grid-cols-2 md:grid-cols-4 gap-4" : "grid grid-cols-2 gap-4"}>
-                      <div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          Current Value
-                          <span className="text-xs">(Live)</span>
-                        </div>
-                        <div className="text-xl font-bold">${formatCurrency(liveValue)}</div>
-                        {investment.shares_owned && (
-                          <div className="text-xs text-muted-foreground">
-                            {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
-                          </div>
-                        )}
-                        {priceData[tickerKey!]?.latest?.change24h !== undefined && (
-                          <div className={`text-xs font-medium ${
-                            priceData[tickerKey!].latest.change24h >= 0 ? 'text-success' : 'text-destructive'
-                          }`}>
-                            {priceData[tickerKey!].latest.change24h >= 0 ? '↑' : '↓'} {Math.abs(priceData[tickerKey!].latest.change24h).toFixed(2)}% today
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          Future Value
-                          <span className="text-xs font-semibold text-primary">({investment.years_remaining} {investment.years_remaining === 1 ? 'year' : 'years'})</span>
-                        </div>
-                        <div className="text-xl font-bold text-success">${formatCurrency(futureValue)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          +${formatCurrency(gain)} ({((gain / liveValue) * 100).toFixed(1)}% total gain)
-                        </div>
-                        <div className="text-xs text-primary font-medium mt-0.5">
-                          @ {getEffectiveReturn(investment).toFixed(2)}% annually
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={viewMode === "list" ? "grid grid-cols-2 md:grid-cols-4 gap-4" : "grid grid-cols-2 gap-4"}>
-                      {/* Only show monthly contribution for types that support ongoing contributions */}
-                      {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
-                        <div>
-                          <div className="text-muted-foreground">Monthly Contribution</div>
-                          <div className="font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
-                          </div>
+                      <div className="text-xl font-bold">${formatCurrency(liveValue)}</div>
+                      {priceData[tickerKey!]?.latest?.change24h !== undefined && (
+                        <div className={`text-xs font-medium ${
+                          priceData[tickerKey!].latest.change24h >= 0 ? 'text-success' : 'text-destructive'
+                        }`}>
+                          {priceData[tickerKey!].latest.change24h >= 0 ? '↑' : '↓'} {Math.abs(priceData[tickerKey!].latest.change24h).toFixed(2)}% today
                         </div>
                       )}
-
-                      {/* Show effective return rate being used */}
-                      <div>
-                        <div className="text-muted-foreground">
-                          Expected Return (Monte Carlo)
-                        </div>
-                        <div className="font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
-                        {calculateAssetSpecificParameters(investment) ? (
-                          <div className="text-xs text-success mt-0.5">
-                            ✓ Based on {investment.ticker_symbol?.toUpperCase()} historical data
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            Based on {investment.type.replace(/_/g, ' ')} average
-                          </div>
-                        )}
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        Future Value
+                        <span className="text-xs font-semibold text-primary">({investment.years_remaining} {investment.years_remaining === 1 ? 'year' : 'years'})</span>
+                      </div>
+                      <div className="text-xl font-bold text-success">${formatCurrency(futureValue)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        +${formatCurrency(gain)} ({((gain / liveValue) * 100).toFixed(1)}% total gain)
                       </div>
                     </div>
+                  </div>
+
+                  <Accordion type="single" collapsible>
+                    <AccordionItem value={`details-${investment.id}`}>
+                      <AccordionTrigger className="text-sm">Show details</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          {hasChart && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <RefreshCw className="w-3 h-3" />
+                                  Updates every 60 sec
+                                </div>
+                                <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
+                              </div>
+                              <PerformanceChart 
+                                data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
+                                title={`${FIXED_PERIOD} Performance (Live)`}
+                                ticker={investment.ticker_symbol!}
+                                isLoading={!!priceLoading[tickerKey!]}
+                              />
+                            </div>
+                          )}
+
+                          {investment.shares_owned && (
+                            <div>
+                              <div className="text-sm text-muted-foreground">Holdings</div>
+                              <div className="text-sm">
+                                {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
+                            {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
+                              <div>
+                                <div className="text-sm text-muted-foreground">Monthly Contribution</div>
+                                <div className="text-sm font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
+                                </div>
+                              </div>
+                            )}
+
+                            <div>
+                              <div className="text-sm text-muted-foreground">Expected Return (Monte Carlo)</div>
+                              <div className="text-sm font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
+                              {calculateAssetSpecificParameters(investment) ? (
+                                <div className="text-xs text-success mt-0.5">
+                                  ✓ Based on {getYahooTickerKey(investment)} historical data
+                                </div>
+                              ) : (
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  Based on {investment.type.replace(/_/g, ' ')} average
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </CardContent>
               </Card>
             );

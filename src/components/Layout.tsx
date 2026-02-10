@@ -3,18 +3,17 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { 
-  LayoutDashboard, 
-  Receipt, 
-  Landmark, 
-  Target, 
-  TrendingUp, 
-  Lightbulb, 
+  BarChart3,
+  CreditCard,
+  Landmark,
+  LineChart,
   LogOut,
   Menu,
-  X,
-  Wallet,
+  Scale,
   Settings as SettingsIcon,
-  Activity
+  Target,
+  TrendingUp,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Session } from "@supabase/supabase-js";
@@ -54,13 +53,13 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Receipt, label: "Transactions", path: "/transactions" },
+    { icon: LineChart, label: "Dashboard", path: "/dashboard" },
+    { icon: CreditCard, label: "Transactions", path: "/transactions" },
     { icon: Landmark, label: "Accounts", path: "/accounts" },
     { icon: Target, label: "Goals", path: "/goals" },
     { icon: TrendingUp, label: "Investments", path: "/investments" },
-    { icon: Activity, label: "Risk", path: "/risk" },
-    { icon: Lightbulb, label: "Recommendations", path: "/recommendations" },
+    { icon: Scale, label: "Risk", path: "/risk" },
+    { icon: BarChart3, label: "Recommendations", path: "/recommendations" },
     { icon: SettingsIcon, label: "Settings", path: "/settings" },
   ];
 
@@ -91,7 +90,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center border border-border shadow-glow">
               <div className="w-8 h-8 rounded-full bg-gradient-wealth flex items-center justify-center">
-                <Wallet className="h-4 w-4 text-white" />
+                <Landmark className="h-4 w-4 text-white" />
               </div>
             </div>
             <div className="flex flex-col flex-1 min-w-0">
@@ -147,7 +146,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center border border-border shadow-glow">
               <div className="w-9 h-9 rounded-full bg-gradient-wealth flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-white" />
+                <Landmark className="h-5 w-5 text-white" />
               </div>
             </div>
             <div className="flex flex-col flex-1 min-w-0">

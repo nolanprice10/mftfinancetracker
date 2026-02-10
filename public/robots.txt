@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://myfinancetracker.app/sitemap.xml
+Sitemap: https://nolanprice10.github.io/mftfinancetracker/sitemap.xml

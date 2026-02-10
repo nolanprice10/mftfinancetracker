@@ -17,129 +17,81 @@ export interface Theme {
 
 export const themes: Theme[] = [
   {
-    id: "emerald-gold",
-    name: "Sage & Champagne",
-    description: "Timeless old money elegance",
+    id: "classic-estate",
+    name: "Classic Estate",
+    description: "Restrained, institutional, and timeless",
     locked: false,
     colors: {
-      primary: "145 25 55", // Soft sage green
-      primaryForeground: "39 15 8",
-      secondary: "45 30 85",
-      accent: "45 40 70",
-      background: "39 30 98", // Cream background
-      card: "39 25 96",
-      gradient: "linear-gradient(135deg, #b4c7a4 0%, #a8ba96 50%, #9aac89 100%)"
+      primary: "210 47% 23%", // Navy
+      primaryForeground: "39 50% 90%", // Cream
+      secondary: "31 20% 57%", // Taupe
+      accent: "0 44% 34%", // Burgundy
+      background: "39 50% 90%", // Cream
+      card: "39 50% 90%",
+      gradient: "linear-gradient(135deg, #1F3B57 0%, #274C3B 55%, #A8937D 100%)"
     }
   },
   {
-    id: "navy-silver",
-    name: "Dusty Blue & Pearl",
-    description: "Refined aristocratic charm",
+    id: "library-study",
+    name: "Library Study",
+    description: "Quiet focus with academic heritage",
     locked: false,
     colors: {
-      primary: "210 25 60", // Dusty blue
-      primaryForeground: "210 8 15",
-      secondary: "220 15 85",
-      accent: "215 20 75",
-      background: "220 20 96", // Pearl white
-      card: "220 15 94",
-      gradient: "linear-gradient(135deg, #8fa4b8 0%, #7d95ab 50%, #6b869e 100%)"
+      primary: "0 0% 17%", // Charcoal
+      primaryForeground: "40 23% 95%", // Off-white
+      secondary: "41 42% 59%", // Antique gold
+      accent: "88 18% 35%", // Moss green
+      background: "40 23% 95%", // Off-white
+      card: "35 30% 79%", // Warm beige
+      gradient: "linear-gradient(135deg, #2B2B2B 0%, #5B6A4A 55%, #C2A66B 100%)"
     }
   },
   {
-    id: "burgundy-cream",
-    name: "Mauve & Ivory",
-    description: "Vintage romantic luxury",
+    id: "coastal-club",
+    name: "Coastal Club",
+    description: "Maritime tradition and quiet refinement",
     locked: true,
     requiredReward: 'custom_themes',
     colors: {
-      primary: "330 30 55", // Soft mauve
-      primaryForeground: "30 10 12",
-      secondary: "340 25 75",
-      accent: "330 35 65",
-      background: "40 35 97", // Warm ivory
-      card: "40 30 95",
-      gradient: "linear-gradient(135deg, #c4a4a7 0%, #b89599 50%, #ac868a 100%)"
+      primary: "182 45% 22%", // Deep teal
+      primaryForeground: "46 37% 85%", // Oat
+      secondary: "40 29% 69%", // Sand
+      accent: "31 16% 48%", // Driftwood
+      background: "46 37% 85%", // Oat
+      card: "40 29% 69%", // Sand
+      gradient: "linear-gradient(135deg, #1F4F51 0%, #60707A 55%, #C7B89A 100%)"
     }
   },
   {
-    id: "forest-amber",
-    name: "Moss & Cashmere",
-    description: "Understated natural wealth",
+    id: "winter-manor",
+    name: "Winter Manor",
+    description: "Midnight blues and heritage woods",
     locked: true,
     requiredReward: 'custom_themes',
     colors: {
-      primary: "95 25 50", // Soft moss
-      primaryForeground: "45 12 10",
-      secondary: "40 30 80",
-      accent: "90 30 60",
-      background: "45 25 96", // Cashmere beige
-      card: "45 20 94",
-      gradient: "linear-gradient(135deg, #a5b496 0%, #96a788 50%, #879a7a 100%)"
+      primary: "221 51% 16%", // Midnight blue
+      primaryForeground: "34 30% 89%", // Linen
+      secondary: "35 25% 61%", // Oxford tan
+      accent: "14 37% 30%", // Mahogany
+      background: "34 30% 89%", // Linen
+      card: "34 30% 89%",
+      gradient: "linear-gradient(135deg, #14213D 0%, #6A3E31 55%, #B49F82 100%)"
     }
   },
   {
-    id: "royal-purple",
-    name: "Lavender & Silk",
-    description: "Regal pastel prestige",
-    locked: true,
-    requiredReward: 'custom_themes',
-    colors: {
-      primary: "270 30 65", // Soft lavender
-      primaryForeground: "270 10 15",
-      secondary: "280 20 80",
-      accent: "265 35 70",
-      background: "280 25 97", // Silky white
-      card: "280 20 95",
-      gradient: "linear-gradient(135deg, #b8a8c9 0%, #a898bb 50%, #9888ad 100%)"
-    }
-  },
-  {
-    id: "slate-teal",
-    name: "Seafoam & Linen",
-    description: "Coastal old money",
+    id: "academic-tradition",
+    name: "Academic Tradition",
+    description: "Ink, paper, and formal discipline",
     locked: true,
     requiredReward: 'all_features',
     colors: {
-      primary: "170 25 60", // Soft seafoam
-      primaryForeground: "170 10 12",
-      secondary: "180 20 82",
-      accent: "165 30 65",
-      background: "180 18 96", // Natural linen
-      card: "180 15 94",
-      gradient: "linear-gradient(135deg, #9bb8b3 0%, #8aaba6 50%, #799e99 100%)"
-    }
-  },
-  {
-    id: "bronze-black",
-    name: "Taupe & Gold",
-    description: "Muted sophistication",
-    locked: true,
-    requiredReward: 'all_features',
-    colors: {
-      primary: "35 20 55", // Soft taupe
-      primaryForeground: "35 8 10",
-      secondary: "45 25 75",
-      accent: "40 30 65",
-      background: "35 15 96", // Warm off-white
-      card: "35 12 94",
-      gradient: "linear-gradient(135deg, #b8a894 0%, #ab9b87 50%, #9e8e7a 100%)"
-    }
-  },
-  {
-    id: "crimson-gold",
-    name: "Blush & Champagne",
-    description: "Delicate opulence",
-    locked: true,
-    requiredReward: 'all_features',
-    colors: {
-      primary: "350 30 70", // Soft blush
-      primaryForeground: "350 10 15",
-      secondary: "45 35 85",
-      accent: "355 35 75",
-      background: "45 25 97", // Champagne
-      card: "45 20 95",
-      gradient: "linear-gradient(135deg, #d4b8b8 0%, #c8abab 50%, #bc9e9e 100%)"
+      primary: "0 0% 10%", // Ink black
+      primaryForeground: "0 0% 100%", // Paper white
+      secondary: "36 37% 63%", // Sepia
+      accent: "0 100% 27%", // Deep red
+      background: "0 0% 100%", // Paper white
+      card: "0 0% 100%",
+      gradient: "linear-gradient(135deg, #1A1A1A 0%, #4A4A4A 55%, #C3A77E 100%)"
     }
   }
 ];

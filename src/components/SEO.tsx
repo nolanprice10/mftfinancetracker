@@ -16,7 +16,7 @@ export const SEO = ({
   canonicalUrl
 }: SEOProps) => {
   const fullTitle = `${title} | MyFinanceTracker`;
-  const siteUrl = "https://myfinancetracker.app";
+  const siteUrl = "https://nolanprice10.github.io/mftfinancetracker";
   const fullCanonicalUrl = canonicalUrl ? `${siteUrl}${canonicalUrl}` : siteUrl;
 
   return (

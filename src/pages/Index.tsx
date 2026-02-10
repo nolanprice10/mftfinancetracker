@@ -6,17 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import InvestmentCalculator from "@/components/InvestmentCalculator";
 import { SEO } from "@/components/SEO";
 import { 
-  Wallet, 
-  TrendingUp, 
-  Target, 
-  PieChart, 
-  BarChart3, 
-  Lightbulb,
-  Star,
-  Quote,
   ArrowRight,
+  BarChart3,
+  Calculator,
   CheckCircle2,
-  Calculator
+  LineChart,
+  PieChart,
+  Quote,
+  Star,
+  Target,
+  Wallet
 } from "lucide-react";
 
 const Index = () => {
@@ -82,8 +81,8 @@ const Index = () => {
   return (
     <div className="min-h-screen relative overflow-hidden">
       <SEO 
-        title="Free Investment Calculator & Portfolio Tracker"
-        description="Track your wealth with institutional-grade analytics. Free investment calculator, compound interest projections, and portfolio tracking. Quant-backed personal finance made simple."
+        title="Capital Allocation Under Uncertainty"
+        description="A quant-driven finance toolkit focused on how capital is allocated under uncertainty and how quantitative models inform real market decisions."
         canonicalUrl="/"
       />
       {/* Same elegant background as other pages */}
@@ -153,21 +152,20 @@ const Index = () => {
               <span className="text-sm font-medium">Try our free investment calculator below ↓</span>
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-wealth text-white shadow-glow">
-              <TrendingUp className="h-4 w-4" />
+              <LineChart className="h-4 w-4" />
               <span className="text-sm font-semibold">Quant Backed</span>
             </div>
           </div>
           
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-            <span className="text-foreground">Free </span>
+            <span className="text-foreground">Capital Allocation </span>
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Investment Calculator
+              Under Uncertainty
             </span>
-            <span className="text-foreground"> & Portfolio Tracker</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Stop opening 5 different apps to answer this simple question. MyFinanceTracker shows <strong>your complete net worth</strong> across all accounts, investments, and goals in <strong>one unified dashboard</strong>. Built with the same quantitative finance math used by Wall Street professionals.
+            This website centers on how capital is allocated under uncertainty and how quantitative models inform real market decisions. Use the tools below to explore risk, return, and time horizons with the same quantitative thinking used in professional markets.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
@@ -199,6 +197,83 @@ const Index = () => {
         </div>
         
         <InvestmentCalculator />
+      </section>
+
+      {/* Personal Focus Section */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <Card className="border-border/60 shadow-elegant">
+          <CardContent className="p-8 sm:p-10 space-y-8">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold">Who I am and what this site is for</h2>
+              <p className="text-lg text-muted-foreground">
+                I study how capital is allocated under uncertainty and how quantitative models inform real market decisions. This site is my focused lab for building, testing, and iterating on those ideas.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Who I am</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>High school junior with a strong quantitative lean.</li>
+                  <li>I think in systems, incentives, and numbers.</li>
+                  <li>Self-directed, skeptical of surface-level achievements.</li>
+                  <li>Long-term payoff over short-term praise.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">How I think</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>I reverse-engineer outcomes and look for causal explanations.</li>
+                  <li>I value signal over noise and dislike scattered effort.</li>
+                  <li>I learn fastest by building, testing, and iterating.</li>
+                  <li>I default to saving and reinvesting resources.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Interests</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>Quantitative finance, applied mathematics, and capital allocation.</li>
+                  <li>Business models that scale, data, analytics, and measurable results.</li>
+                  <li>Technology as leverage, not novelty.</li>
+                  <li>Personal finance and wealth-building frameworks.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Constraints</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>Limited formal exposure to economics so far.</li>
+                  <li>Limited coding experience relative to ambition.</li>
+                  <li>Competing extracurricular signals that risk dilution.</li>
+                  <li>High standards for myself.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Goals</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>Earn admission to a top-tier business or quantitative program.</li>
+                  <li>Build a narrow, coherent profile in math, finance, and decision-making.</li>
+                  <li>Develop real skill, not resume padding.</li>
+                  <li>Multiply capital over time and achieve financial independence.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold">Strategy and risk profile</h3>
+                <ul className="space-y-2 text-muted-foreground">
+                  <li>Concentrate effort and build proof through outputs.</li>
+                  <li>Prefer solo or small-team work where attribution is clear.</li>
+                  <li>Use competition and benchmarks to validate skill.</li>
+                  <li>Accept short-term loss for long-term gain and think probabilistically.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-gradient-to-r from-emerald-50/80 via-amber-50/40 to-transparent p-5">
+              <p className="text-base font-semibold text-foreground">
+                Core trait: future-focused, optimizing for leverage, and determined to be dangerous with numbers.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Social Proof Section */}

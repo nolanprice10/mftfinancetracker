@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare, Gift, Copy, Check, Users, Palette, Sparkles } from "lucide-react";
+import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare, Gift, Copy, Check, Users, Palette, Sparkles, Landmark, Percent, Scale, Globe, LineChart } from "lucide-react";
 import { themes, getFreeThemes, getLockedThemes } from "@/lib/themes";
 import { useTheme } from "@/hooks/useTheme";
 import { useRewards } from "@/hooks/useRewards";
@@ -743,6 +743,36 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                <p className="text-sm font-semibold text-foreground">
+                  Main theme and purpose
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  This site is a focused lab for studying how capital is allocated under uncertainty and how quantitative models inform real market decisions.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 text-sm text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <Landmark className="h-4 w-4 text-primary mt-0.5" />
+                    <span>Capital allocation, markets, and incentives.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Percent className="h-4 w-4 text-primary mt-0.5" />
+                    <span>Quantitative models, signal, and measurement.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Scale className="h-4 w-4 text-primary mt-0.5" />
+                    <span>Long-term compounding over short-term noise.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Globe className="h-4 w-4 text-primary mt-0.5" />
+                    <span>Focused direction, not scattered effort.</span>
+                  </div>
+                  <div className="flex items-start gap-2 sm:col-span-2">
+                    <LineChart className="h-4 w-4 text-primary mt-0.5" />
+                    <span>High school junior building real skill through projects and measurable results.</span>
+                  </div>
+                </div>
+              </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Mail className="h-5 w-5 text-primary" />

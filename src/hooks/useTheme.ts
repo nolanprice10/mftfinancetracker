@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getThemeById } from '@/lib/themes';
 
+const defaultThemeId = 'classic-estate';
+
 export const useTheme = () => {
-  const [currentTheme, setCurrentTheme] = useState<string>('emerald-gold');
+  const [currentTheme, setCurrentTheme] = useState<string>(defaultThemeId);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,6 +22,8 @@ export const useTheme = () => {
           applyTheme(savedTheme);
           setCurrentTheme(savedTheme);
         }
+        applyTheme(defaultThemeId);
+        setCurrentTheme(defaultThemeId);
         setLoading(false);
         return;
       }
@@ -35,6 +39,9 @@ export const useTheme = () => {
       if (themeValue) {
         applyTheme(themeValue);
         setCurrentTheme(themeValue);
+      } else {
+        applyTheme(defaultThemeId);
+        setCurrentTheme(defaultThemeId);
       }
     } catch (error) {
       console.error('Failed to load theme:', error);

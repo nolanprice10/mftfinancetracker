@@ -2,6 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getThemeById } from '@/lib/themes';
 
+const defaultThemeId = 'classic-estate';
+
 const applyTheme = (themeId: string) => {
   const theme = getThemeById(themeId);
   if (!theme) return;
@@ -25,6 +27,8 @@ export const initializeTheme = async () => {
       const savedTheme = localStorage.getItem('theme');
       if (savedTheme) {
         applyTheme(savedTheme);
+      } else {
+        applyTheme(defaultThemeId);
       }
       return;
     }
@@ -38,6 +42,8 @@ export const initializeTheme = async () => {
     const themeValue = (profile as any)?.theme;
     if (themeValue) {
       applyTheme(themeValue);
+    } else {
+      applyTheme(defaultThemeId);
     }
   } catch (error) {
     console.error('Failed to initialize theme:', error);

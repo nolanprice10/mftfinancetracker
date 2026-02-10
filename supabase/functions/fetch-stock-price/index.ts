@@ -62,7 +62,19 @@ serve(async (req) => {
     // Use provided range/interval if passed (e.g., range=1d,5d,1mo,3mo,1y and interval=5m,15m,1d)
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${queryTicker}?interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}`
 
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MyFinanceTracker/1.0; +https://nolanprice10.github.io/mftfinancetracker/)',
+        'Accept': 'application/json,text/plain,*/*'
+      }
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      return new Response(
+        JSON.stringify({ error: `Yahoo response ${response.status}`, success: false, details: text }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+      )
+    }
     const data = await response.json()
     
     if (data.chart?.result?.[0]?.meta?.regularMarketPrice) {
@@ -83,69 +95,8 @@ serve(async (req) => {
       // Ensure history is sorted ascending by date to match Yahoo's chart ordering
       history.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-      // If Yahoo returned insufficient history, attempt fallbacks:
-      // - For crypto: try CoinGecko market_chart
-      // - For stocks or if CoinGecko fails: synthesize a reasonable history
+      // If Yahoo returned insufficient history, synthesize a reasonable history
       if (history.length < 2) {
-        if (type === 'crypto') {
-          try {
-            // Map common symbols to CoinGecko ids
-            const cgMapping: Record<string, string> = {
-              bitcoin: 'bitcoin',
-              btc: 'bitcoin',
-              ethereum: 'ethereum',
-              eth: 'ethereum',
-              cardano: 'cardano',
-              ada: 'cardano',
-              dogecoin: 'dogecoin',
-              doge: 'dogecoin',
-              litecoin: 'litecoin',
-              ltc: 'litecoin',
-              tether: 'tether',
-              usdt: 'tether'
-            }
-
-            const lower = ticker.toLowerCase()
-            const cgId = cgMapping[lower] || (lower.includes('-') ? lower.split('-')[0] : lower)
-
-            // Map Yahoo/period range to days for CoinGecko
-            const rangeToDays: Record<string, number> = { '1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '1y': 365 }
-            const days = rangeToDays[range] || 30
-
-            const cgUrl = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(cgId)}/market_chart?vs_currency=usd&days=${days}`
-            const cgResp = await fetch(cgUrl)
-            if (cgResp.ok) {
-              const cgData = await cgResp.json()
-              // cgData.prices is array of [timestamp_ms, price]
-              if (Array.isArray(cgData.prices) && cgData.prices.length > 0) {
-                history = cgData.prices.map((p: any) => ({ date: new Date(p[0]).toISOString(), price: Number(p[1].toFixed(2)) }))
-                history.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                // compute change24h from last two points if available
-                const last = history[history.length - 1]
-                const prev = history[history.length - 2]
-                const computedPrice = last ? last.price : price
-                const computedChange = prev ? ((computedPrice - prev.price) / prev.price) * 100 : change
-
-                return new Response(
-                  JSON.stringify({
-                    ticker: ticker.toUpperCase(),
-                    price: Number((computedPrice || price).toFixed(2)),
-                    change24h: Number((computedChange || 0).toFixed(2)),
-                    currency: 'USD',
-                    history,
-                    success: true,
-                    source: 'coingecko'
-                  }),
-                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-              }
-            }
-          } catch (cgErr) {
-            // fall through to synthesize
-            console.error('CoinGecko fallback failed:', cgErr)
-          }
-        }
-
         // Synthesize history if we still don't have data
         try {
           const points = 20
