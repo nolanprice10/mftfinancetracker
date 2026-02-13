@@ -1703,12 +1703,23 @@ const Investments = () => {
 
               {/* Recommendations */}
               <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2">Risk Analysis & Recommendations:</div>
-                <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                  {riskAnalysis.recommendations.map((rec, idx) => (
-                    <li key={idx} className={rec.includes('URGENT') || rec.includes('CRITICAL') || rec.includes('WARNING') ? 'text-destructive font-semibold' : ''}>{rec}</li>
-                  ))}
-                </ul>
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="risk-recommendations" className="border-none">
+                    <AccordionTrigger className="text-sm font-medium">
+                      <span>Risk Analysis & Recommendations</span>
+                      <Badge variant="secondary" className="ml-auto">
+                        {riskAnalysis.recommendations.length}
+                      </Badge>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+                        {riskAnalysis.recommendations.map((rec, idx) => (
+                          <li key={idx} className={rec.includes('URGENT') || rec.includes('CRITICAL') || rec.includes('WARNING') ? 'text-destructive font-semibold' : ''}>{rec}</li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             </CardContent>
           </Card>
