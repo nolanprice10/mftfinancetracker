@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "version": ">= 5.0.0"
+  },
   "build": {
     "development": {
       "distribution": "internal",
@@ -22,7 +25,8 @@
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "ios": {}
     }
   },
   "submit": {
