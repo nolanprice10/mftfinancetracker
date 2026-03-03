@@ -1,4 +1,5 @@
-import { supabase } from './supabaseClient';
+// NOTE: This service requires database migrations to be run first
+// See: supabase/migrations/20251220000000_add_email_retention_system.sql
 
 export interface ProbabilityChange {
   goalName: string;
@@ -11,53 +12,11 @@ export interface ProbabilityChange {
 
 /**
  * Calculate probability changes from previous month to current
+ * NOTE: Requires probability_history table from migration
  */
-export async function calculateProbabilityChanges(userId: string) {
-  try {
-    // Get all user's goals with their current probabilities
-    const { data: goals, error: goalsError } = await supabase
-      .from('goals')
-      .select('id, name, current_amount, target_amount, end_date')
-      .eq('user_id', userId);
-
-    if (goalsError) throw goalsError;
-    if (!goals || goals.length === 0) return [];
-
-    const changes: ProbabilityChange[] = [];
-    const today = new Date();
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const previousMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-
-    for (const goal of goals) {
-      // Calculate current probability
-      const currentProb = calculateGoalProbability(goal.current_amount, goal.target_amount);
-
-      // Get previous month's probability from history
-      const { data: history } = await supabase
-        .from('probability_history')
-        .select('probability_value')
-        .eq('goal_id', goal.id)
-        .eq('year_month', previousMonthStart.toISOString().split('T')[0])
-        .single();
-
-      const previousProb = history?.probability_value || null;
-      const change = previousProb !== null ? currentProb - previousProb : 0;
-
-      changes.push({
-        goalName: goal.name,
-        currentProbability: currentProb,
-        previousProbability: previousProb,
-        change,
-        trend: change > 2 ? 'up' : change < -2 ? 'down' : 'stable',
-        changePercentage: previousProb !== null ? `${change > 0 ? '+' : ''}${change.toFixed(1)}%` : 'N/A'
-      });
-    }
-
-    return changes;
-  } catch (error) {
-    console.error('Error calculating probability changes:', error);
-    return [];
-  }
+export async function calculateProbabilityChanges(userId: string): Promise<ProbabilityChange[]> {
+  // TODO: Enable when migration is applied
+  return [];
 }
 
 /**
@@ -90,102 +49,43 @@ export function getActionableImprovement(
 
 /**
  * Store probability history for the month
+ * NOTE: Requires probability_history table from migration
  */
-export async function storeProbabilityHistory(userId: string, goalId: string, probability: number) {
-  const today = new Date();
-  const yearMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-
-  try {
-    const { error } = await supabase
-      .from('probability_history')
-      .upsert(
-        {
-          user_id: userId,
-          goal_id: goalId,
-          probability_value: probability,
-          year_month: yearMonth,
-          calculated_at: new Date().toISOString()
-        },
-        {
-          onConflict: 'user_id,goal_id,year_month'
-        }
-      );
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error storing probability history:', error);
-    return false;
-  }
+export async function storeProbabilityHistory(userId: string, goalId: string, probability: number): Promise<boolean> {
+  // TODO: Enable when migration is applied
+  return false;
 }
 
 /**
  * Log email event for tracking
+ * NOTE: Requires email_events table from migration
  */
 export async function logEmailEvent(
   userId: string,
   emailType: 'monthly_digest' | 'probability_change' | 'actionable_improvement' | 'reengagement',
   goalId?: string,
   metadata?: Record<string, any>
-) {
-  try {
-    const { error } = await supabase
-      .from('email_events')
-      .insert({
-        user_id: userId,
-        email_type: emailType,
-        goal_id: goalId,
-        status: 'sent',
-        metadata,
-        sent_at: new Date().toISOString()
-      });
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error logging email event:', error);
-    return false;
-  }
+): Promise<boolean> {
+  // TODO: Enable when migration is applied
+  return false;
 }
 
 /**
  * Update user's last email sent date
+ * NOTE: Requires last_email_sent_date column in profiles table
  */
-export async function updateLastEmailSentDate(userId: string) {
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ last_email_sent_date: new Date().toISOString() })
-      .eq('id', userId);
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error updating last email sent date:', error);
-    return false;
-  }
+export async function updateLastEmailSentDate(userId: string): Promise<boolean> {
+  // TODO: Enable when migration is applied
+  return false;
 }
 
 /**
  * Get users who should receive emails today
+ * NOTE: Requires email preference columns in profiles table
  */
-export async function getUsersForMonthlyDigest() {
-  try {
-    const today = new Date().getDate();
-
-    const { data: users, error } = await supabase
-      .from('profiles')
-      .select('id, name, email')
-      .eq('receive_email_updates', true)
-      .eq('email_verified', true)
-      .eq('monthly_digest_day', today);
-
-    if (error) throw error;
-    return users || [];
-  } catch (error) {
-    console.error('Error fetching users for monthly digest:', error);
-    return [];
-  }
+export async function getUsersForMonthlyDigest(): Promise<any[]> {
+  // TODO: Enable when migration is applied
+  return [];
 }
 
 /**
