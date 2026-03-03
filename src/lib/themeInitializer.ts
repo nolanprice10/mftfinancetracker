@@ -9,11 +9,12 @@ const applyTheme = (themeId: string) => {
   if (!theme) return;
 
   const root = document.documentElement;
-  Object.entries(theme.colors).forEach(([key, value]) => {
-    if (key !== 'gradient') {
-      root.style.setProperty(`--${key}`, value);
-    }
-  });
+  root.style.setProperty('--primary', theme.colors.primary);
+  root.style.setProperty('--primary-foreground', theme.colors.primaryForeground);
+  root.style.setProperty('--secondary', theme.colors.secondary);
+  root.style.setProperty('--accent', theme.colors.accent);
+  root.style.removeProperty('--background');
+  root.style.removeProperty('--card');
 
   root.style.setProperty('--gradient-wealth', theme.colors.gradient);
   root.style.setProperty('--gradient-primary', theme.colors.gradient);

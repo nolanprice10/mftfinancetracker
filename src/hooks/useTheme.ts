@@ -16,33 +16,21 @@ export const useTheme = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // Load from localStorage for non-authenticated users
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-          applyTheme(savedTheme);
-          setCurrentTheme(savedTheme);
-        }
-        applyTheme(defaultThemeId);
-        setCurrentTheme(defaultThemeId);
-        setLoading(false);
+        const savedTheme = localStorage.getItem('theme') || defaultThemeId;
+        applyTheme(savedTheme);
+        setCurrentTheme(savedTheme);
         return;
       }
 
-      // Load from database for authenticated users
       const { data: profile } = await supabase
         .from('profiles')
         .select('theme')
         .eq('id', user.id)
         .single();
 
-      const themeValue = (profile as any)?.theme;
-      if (themeValue) {
-        applyTheme(themeValue);
-        setCurrentTheme(themeValue);
-      } else {
-        applyTheme(defaultThemeId);
-        setCurrentTheme(defaultThemeId);
-      }
+      const themeValue = (profile as any)?.theme || defaultThemeId;
+      applyTheme(themeValue);
+      setCurrentTheme(themeValue);
     } catch (error) {
       console.error('Failed to load theme:', error);
     } finally {
@@ -55,13 +43,14 @@ export const useTheme = () => {
     if (!theme) return;
 
     const root = document.documentElement;
-    Object.entries(theme.colors).forEach(([key, value]) => {
-      if (key !== 'gradient') {
-        root.style.setProperty(`--${key}`, value);
-      }
-    });
+    root.style.setProperty('--primary', theme.colors.primary);
+    root.style.setProperty('--primary-foreground', theme.colors.primaryForeground);
+    root.style.setProperty('--secondary', theme.colors.secondary);
+    root.style.setProperty('--accent', theme.colors.accent);
 
-    // Update gradient variable
+    root.style.removeProperty('--background');
+    root.style.removeProperty('--card');
+
     root.style.setProperty('--gradient-wealth', theme.colors.gradient);
     root.style.setProperty('--gradient-primary', theme.colors.gradient);
   };

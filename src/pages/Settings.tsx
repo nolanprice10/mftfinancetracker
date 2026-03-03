@@ -43,7 +43,13 @@ const Settings = () => {
   useEffect(() => {
     fetchUserData();
     fetchReferralData();
-    const isDark = document.documentElement.classList.contains('dark');
+
+    const savedPreference = localStorage.getItem('darkMode');
+    const isDark =
+      savedPreference === 'true' ||
+      (savedPreference === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    document.documentElement.classList.toggle('dark', isDark);
     setDarkMode(isDark);
   }, []);
 

@@ -11,9 +11,11 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
+import { ProbabilityShareCard } from "@/components/ProbabilityShareCard";
 import { useRewards } from "@/hooks/useRewards";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClass } from "@/lib/probability";
+import { calculatePercentile } from "@/lib/percentile";
 
 interface Account {
   id: string;
@@ -265,64 +267,74 @@ const Dashboard = () => {
             </div>
           </div>
         ) : probabilityResult && primaryGoal ? (
-          <div className={`border-2 rounded-2xl p-8 shadow-xl ${getProbabilityBgClass(probabilityResult.probability)}`}>
-            <div className="text-center space-y-4">
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Your Financial Probability
-              </p>
-              <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(probabilityResult.probability)}`}>
-                {Math.round(probabilityResult.probability)}%
+          <>
+            <div className={`border-2 rounded-2xl p-8 shadow-xl ${getProbabilityBgClass(probabilityResult.probability)}`}>
+              <div className="text-center space-y-4">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                  Your Financial Probability
+                </p>
+                <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(probabilityResult.probability)}`}>
+                  {Math.round(probabilityResult.probability)}%
+                </div>
+                <p className="text-xl md:text-2xl font-semibold">
+                  Chance of hitting your goal: {primaryGoal.name}
+                </p>
+                <p className="text-muted-foreground">
+                  Target: ${Number(primaryGoal.target_amount).toLocaleString()} by{" "}
+                  {new Date(primaryGoal.end_date).toLocaleDateString()}
+                </p>
               </div>
-              <p className="text-xl md:text-2xl font-semibold">
-                Chance of hitting your goal: {primaryGoal.name}
-              </p>
-              <p className="text-muted-foreground">
-                Target: ${Number(primaryGoal.target_amount).toLocaleString()} by{" "}
-                {new Date(primaryGoal.end_date).toLocaleDateString()}
-              </p>
-            </div>
 
-            {/* THE ONE LEVER */}
-            {probabilityResult.probability < 75 && (
-              <div className="mt-8 pt-6 border-t border-current/20">
-                <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <AlertCircle className="h-5 w-5" />
-                    <p className="font-semibold text-lg">What to do</p>
+              {/* THE ONE LEVER */}
+              {probabilityResult.probability < 75 && (
+                <div className="mt-8 pt-6 border-t border-current/20">
+                  <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <AlertCircle className="h-5 w-5" />
+                      <p className="font-semibold text-lg">What to do</p>
+                    </div>
+                    <p className="text-2xl md:text-3xl font-bold">
+                      Increase monthly savings by ${probabilityResult.recommendedIncrease.toLocaleString()}
+                    </p>
+                    <p className="text-muted-foreground mt-2">
+                      This brings you to 75% probability
+                    </p>
                   </div>
-                  <p className="text-2xl md:text-3xl font-bold">
-                    Increase monthly savings by ${probabilityResult.recommendedIncrease.toLocaleString()}
-                  </p>
-                  <p className="text-muted-foreground mt-2">
-                    This brings you to 75% probability
-                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {probabilityResult.probability >= 75 && (
-              <div className="mt-8 pt-6 border-t border-current/20">
-                <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
-                  <p className="text-xl font-semibold text-success">
-                    ✓ You're on track! Keep your current savings rate.
-                  </p>
+              {probabilityResult.probability >= 75 && (
+                <div className="mt-8 pt-6 border-t border-current/20">
+                  <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
+                    <p className="text-xl font-semibold text-success">
+                      ✓ You're on track! Keep your current savings rate.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Action Button */}
-            <div className="mt-6 text-center">
-              <Button
-                onClick={scrollToRecommendation}
-                variant="outline"
-                size="lg"
-                className="font-semibold"
-              >
-                What should I change?
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
+              {/* Action Button */}
+              <div className="mt-6 text-center">
+                <Button
+                  onClick={scrollToRecommendation}
+                  variant="outline"
+                  size="lg"
+                  className="font-semibold"
+                >
+                  What should I change?
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+
+            {/* SHARING CARD - Make it easy to share */}
+            <ProbabilityShareCard 
+              probability={Math.round(probabilityResult.probability)}
+              goalName={primaryGoal.name}
+              percentile={calculatePercentile(probabilityResult.probability)}
+              referralCode={referralCode}
+            />
+          </>
         ) : (
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-2xl p-8 shadow-glow">
             <div className="text-center space-y-4">

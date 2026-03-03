@@ -10,11 +10,13 @@ import {
   BarChart3,
   Calculator,
   CheckCircle2,
+  Lightbulb,
   LineChart,
   PieChart,
   Quote,
   Star,
   Target,
+  TrendingUp,
   Wallet
 } from "lucide-react";
 
@@ -25,21 +27,21 @@ const Index = () => {
 
   const testimonials = [
     {
-      name: "Dr. James Patterson",
-      role: "Quantitative Analyst, Hedge Fund",
-      content: "As a quant, I'm impressed by the mathematical rigor behind the analytics. The portfolio optimization and risk metrics are institutional-grade.",
+      name: "Alex Turner",
+      role: "Software Engineer, 28",
+      content: "I was stressed about my down payment goal until I ran the numbers. Now I know exactly what I need to do each month. No more guessing.",
       rating: 5
     },
     {
-      name: "Sarah Chen",
-      role: "Data Scientist & Investor",
-      content: "Finally, a personal finance tool that respects my intelligence. The data-driven insights are what I'd expect from professional trading platforms.",
+      name: "Jordan Lee",
+      role: "Marketing Manager, 26",
+      content: "Shared my probability with my partner and it sparked the best money conversation we've had. We're now aligned and actually excited about our goal.",
       rating: 5
     },
     {
-      name: "Michael Rodriguez",
-      role: "Freelance Developer",
-      content: "The compound interest calculator alone is worth it. Clean interface with the sophistication I need to manage multiple income streams.",
+      name: "Casey Martinez",
+      role: "Product Manager, 30",
+      content: "Finally, a finance tool that gives me one clear number. 68% chance of hitting my goal. Now I know exactly what to change.",
       rating: 5
     }
   ];
@@ -81,8 +83,8 @@ const Index = () => {
   return (
     <div className="min-h-screen relative overflow-hidden">
       <SEO 
-        title="Capital Allocation Under Uncertainty"
-        description="A quant-driven finance toolkit focused on how capital is allocated under uncertainty and how quantitative models inform real market decisions."
+        title="Will You Hit Your Financial Goal? Get Certainty in 30 Seconds"
+        description="MyFinanceTracker tells you the exact probability of hitting your financial goal. No guessing, no advice—just data. For young professionals earning $60k+."
         canonicalUrl="/"
       />
       {/* Same elegant background as other pages */}
@@ -147,25 +149,22 @@ const Index = () => {
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
         <div className="text-center space-y-6">
           <div className="flex justify-center gap-3 mb-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-              <Calculator className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Try our free investment calculator below ↓</span>
-            </div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-wealth text-white shadow-glow">
-              <LineChart className="h-4 w-4" />
-              <span className="text-sm font-semibold">Quant Backed</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <span className="text-sm font-medium">Trusted by young professionals</span>
             </div>
           </div>
           
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-            <span className="text-foreground">Capital Allocation </span>
+            <span className="text-foreground">Will you hit your goal? </span>
             <span className="bg-gradient-primary bg-clip-text text-transparent">
-              Under Uncertainty
+              Get certainty in 30 seconds
             </span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            This website centers on how capital is allocated under uncertainty and how quantitative models inform real market decisions. Use the tools below to explore risk, return, and time horizons with the same quantitative thinking used in professional markets.
+            Answer 3 quick questions. Get one clear number: your probability of success.
+            <br/>No guessing. No advice. Just data.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
@@ -174,9 +173,9 @@ const Index = () => {
               onClick={() => navigate("/auth")}
               className="bg-gradient-wealth text-lg px-8 py-6 shadow-elegant"
             >
-              Start Tracking Free <ArrowRight className="ml-2 h-5 w-5" />
+              Calculate Your Probability <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <p className="text-sm text-muted-foreground">No credit card required</p>
+            <p className="text-sm text-muted-foreground">Free • No credit card • Takes 30 seconds</p>
           </div>
         </div>
       </section>
@@ -199,77 +198,65 @@ const Index = () => {
         <InvestmentCalculator />
       </section>
 
-      {/* Personal Focus Section */}
+      {/* Value Prop Section */}
       <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <Card className="border-border/60 shadow-elegant">
           <CardContent className="p-8 sm:p-10 space-y-8">
             <div className="space-y-3">
-              <h2 className="text-3xl font-bold">Who I am and what this site is for</h2>
+              <h2 className="text-3xl font-bold">For young professionals. With real goals.</h2>
               <p className="text-lg text-muted-foreground">
-                I study how capital is allocated under uncertainty and how quantitative models inform real market decisions. This site is my focused lab for building, testing, and iterating on those ideas.
+                You're 22–32, earning $60k+, and you're serious about hitting a financial goal. Down payment. Emergency fund. Dream vacation.
               </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Who I am</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>High school junior with a strong quantitative lean.</li>
-                  <li>I think in systems, incentives, and numbers.</li>
-                  <li>Self-directed, skeptical of surface-level achievements.</li>
-                  <li>Long-term payoff over short-term praise.</li>
-                </ul>
+              <div className="space-y-3 p-4 rounded-lg bg-primary/5">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  You want certainty
+                </h3>
+                <p className="text-muted-foreground">
+                  Not motivational advice. Not tips. One clear number: what's your actual probability?
+                </p>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">How I think</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>I reverse-engineer outcomes and look for causal explanations.</li>
-                  <li>I value signal over noise and dislike scattered effort.</li>
-                  <li>I learn fastest by building, testing, and iterating.</li>
-                  <li>I default to saving and reinvesting resources.</li>
-                </ul>
+              
+              <div className="space-y-3 p-4 rounded-lg bg-primary/5">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  You want to know what to do
+                </h3>
+                <p className="text-muted-foreground">
+                  Exact action. "Increase savings by $180/month" beats "save more money."
+                </p>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Interests</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>Quantitative finance, applied mathematics, and capital allocation.</li>
-                  <li>Business models that scale, data, analytics, and measurable results.</li>
-                  <li>Technology as leverage, not novelty.</li>
-                  <li>Personal finance and wealth-building frameworks.</li>
-                </ul>
+
+              <div className="space-y-3 p-4 rounded-lg bg-primary/5">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  You want to share it
+                </h3>
+                <p className="text-muted-foreground">
+                  "I'm in the top 70% of users—here's my probability" sparks real conversations.
+                </p>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Constraints</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>Limited formal exposure to economics so far.</li>
-                  <li>Limited coding experience relative to ambition.</li>
-                  <li>Competing extracurricular signals that risk dilution.</li>
-                  <li>High standards for myself.</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Goals</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>Earn admission to a top-tier business or quantitative program.</li>
-                  <li>Build a narrow, coherent profile in math, finance, and decision-making.</li>
-                  <li>Develop real skill, not resume padding.</li>
-                  <li>Multiply capital over time and achieve financial independence.</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-xl font-semibold">Strategy and risk profile</h3>
-                <ul className="space-y-2 text-muted-foreground">
-                  <li>Concentrate effort and build proof through outputs.</li>
-                  <li>Prefer solo or small-team work where attribution is clear.</li>
-                  <li>Use competition and benchmarks to validate skill.</li>
-                  <li>Accept short-term loss for long-term gain and think probabilistically.</li>
-                </ul>
+
+              <div className="space-y-3 p-4 rounded-lg bg-primary/5">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  You want simplicity
+                </h3>
+                <p className="text-muted-foreground">
+                  Not advanced features. One answer in 30 seconds.
+                </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border/60 bg-gradient-to-r from-emerald-50/80 via-amber-50/40 to-transparent p-5">
-              <p className="text-base font-semibold text-foreground">
-                Core trait: future-focused, optimizing for leverage, and determined to be dangerous with numbers.
+            <div className="rounded-xl border border-success/20 bg-success/5 p-6">
+              <p className="text-lg font-semibold text-foreground mb-2">
+                "Am I going to hit my goal?"
+              </p>
+              <p className="text-muted-foreground">
+                That's the only question that matters. MyFinanceTracker answers it.
               </p>
             </div>
           </CardContent>

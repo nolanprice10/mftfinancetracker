@@ -14,6 +14,7 @@ import Investments from "./pages/Investments";
 import Recommendations from "./pages/Recommendations";
 import Settings from "./pages/Settings";
 import Risk from "./pages/Risk";
+import Compare from "./pages/Compare";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/risk" element={<Risk />} />
+            <Route path="/compare" element={<Compare />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

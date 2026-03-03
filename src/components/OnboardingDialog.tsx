@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Target, Check } from "lucide-react";
+import { Target, Check, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface OnboardingDialogProps {
@@ -15,10 +15,11 @@ interface OnboardingDialogProps {
 export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    monthlyIncome: "5000",
-    monthlySpending: "3500",
-    goalAmount: "10000",
-    goalMonths: "12"
+    monthlyIncome: "6000",
+    monthlySpending: "4000",
+    goalAmount: "25000",
+    goalMonths: "24",
+    goalName: "Down payment"
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,14 +51,15 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
       const monthlySpending = parseFloat(formData.monthlySpending) || 0;
       const monthlySavings = monthlyIncome - monthlySpending;
       const goalAmount = parseFloat(formData.goalAmount) || 0;
-      const goalMonths = parseInt(formData.goalMonths) || 12;
+      const goalMonths = parseInt(formData.goalMonths) || 24;
+      const goalName = formData.goalName || "Savings Goal";
 
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + goalMonths);
 
       await supabase.from("goals").insert({
         user_id: user.id,
-        name: "Savings Goal",
+        name: goalName,
         target_amount: goalAmount,
         current_amount: 0,
         start_date: new Date().toISOString().split("T")[0],
@@ -73,7 +75,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
         steps_completed: ["quick-setup"],
       });
 
-      toast.success("Setup complete!");
+      toast.success("Setup complete! Let's see your odds.");
       onOpenChange(false);
       window.location.reload();
     } catch (error: any) {
@@ -89,31 +91,44 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
-            <div className="p-4 rounded-full bg-gradient-primary">
-              <Target className="h-8 w-8 text-primary-foreground" />
+            <div className="p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10">
+              <TrendingUp className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <DialogTitle className="text-2xl text-center">Let's get started</DialogTitle>
+          <DialogTitle className="text-2xl text-center">Will you hit your goal?</DialogTitle>
           <DialogDescription className="text-center">
-            Answer 3 quick questions to see if you're on track
+            Get certainty in 30 seconds. No guessing, no advice—just numbers.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="income">Income per month</Label>
+            <Label htmlFor="goal">What's your goal?</Label>
+            <Input
+              id="goal"
+              type="text"
+              placeholder="e.g., Down payment, Emergency fund"
+              value={formData.goalName}
+              onChange={(e) => setFormData({...formData, goalName: e.target.value})}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="income">Monthly take-home</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
               <Input
                 id="income"
                 type="number"
-                placeholder="5000"
+                placeholder="6000"
                 className="pl-7"
                 value={formData.monthlyIncome}
                 onChange={(e) => setFormData({...formData, monthlyIncome: e.target.value})}
                 required
               />
             </div>
+            <p className="text-xs text-muted-foreground">After taxes</p>
           </div>
 
           <div className="space-y-2">
@@ -123,7 +138,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
               <Input
                 id="spending"
                 type="number"
-                placeholder="3500"
+                placeholder="4000"
                 className="pl-7"
                 value={formData.monthlySpending}
                 onChange={(e) => setFormData({...formData, monthlySpending: e.target.value})}
@@ -133,31 +148,31 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="goal">One goal you have</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="goal"
-                  type="number"
-                  placeholder="10000"
-                  className="pl-7"
-                  value={formData.goalAmount}
-                  onChange={(e) => setFormData({...formData, goalAmount: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="relative">
-                <Input
-                  type="number"
-                  placeholder="12"
-                  value={formData.goalMonths}
-                  onChange={(e) => setFormData({...formData, goalMonths: e.target.value})}
-                  required
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">months</span>
-              </div>
+            <Label htmlFor="goal-amount">Goal amount</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                id="goal-amount"
+                type="number"
+                placeholder="25000"
+                className="pl-7"
+                value={formData.goalAmount}
+                onChange={(e) => setFormData({...formData, goalAmount: e.target.value})}
+                required
+              />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="goal-months">Timeline (months)</Label>
+            <Input
+              id="goal-months"
+              type="number"
+              placeholder="24"
+              value={formData.goalMonths}
+              onChange={(e) => setFormData({...formData, goalMonths: e.target.value})}
+              required
+            />
           </div>
 
           <Button 
@@ -166,20 +181,21 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
             disabled={submitting}
           >
             {submitting ? (
-              "Setting up..."
+              "Calculating..."
             ) : (
               <>
                 <Check className="h-4 w-4 mr-2" />
-                Show me my probability
+                Calculate My Probability
               </>
             )}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            Takes 10 seconds • See results immediately
+            Takes 30 seconds • See your number immediately
           </p>
         </form>
       </DialogContent>
     </Dialog>
   );
 };
+
