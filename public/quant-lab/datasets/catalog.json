@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-03-06T00:00:00.000Z",
+  "datasets": [
+    {
+      "id": "equities_sp500_proxy",
+      "name": "S&P 500 Proxy Daily OHLCV",
+      "assetClass": "Equities",
+      "frequency": "Daily",
+      "description": "Cleaned daily OHLCV bars representing a broad-market US equity proxy.",
+      "tags": ["equities", "sp500", "daily", "ohlcv"],
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "lastUpdated": "2026-03-01",
+          "source": "Public market data sample derived from educational use feeds",
+          "preprocessingSteps": [
+            "Normalized date format to ISO-8601 (YYYY-MM-DD)",
+            "Sorted rows by date ascending",
+            "Removed duplicate date rows",
+            "Forward-filled missing close values and recalculated open/high/low consistency checks"
+          ],
+          "missingValuesHandled": "Forward-fill for close; rows with missing date removed",
+          "schema": ["date", "open", "high", "low", "close", "volume"],
+          "rowCount": 30,
+          "apiPath": "quant-lab/datasets/equities_sp500_proxy/v1/data.json",
+          "downloads": {
+            "csv": "quant-lab/datasets/equities_sp500_proxy/v1/data.csv",
+            "json": "quant-lab/datasets/equities_sp500_proxy/v1/data.json"
+          }
+        }
+      ]
+    },
+    {
+      "id": "crypto_btc_daily",
+      "name": "BTC-USD Daily OHLCV",
+      "assetClass": "Crypto",
+      "frequency": "Daily",
+      "description": "Deterministic crypto sample for momentum and risk metric tutorials.",
+      "tags": ["crypto", "bitcoin", "daily", "ohlcv"],
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "lastUpdated": "2026-03-01",
+          "source": "Aggregated exchange candles for educational usage",
+          "preprocessingSteps": [
+            "Converted timestamps to UTC dates",
+            "Dropped rows with zero volume anomalies",
+            "Winsorized high/low outliers at 1st and 99th percentile",
+            "Validated OHLC constraints (high >= open/close, low <= open/close)"
+          ],
+          "missingValuesHandled": "Linear interpolation for single-day gaps; multi-day gaps excluded",
+          "schema": ["date", "open", "high", "low", "close", "volume"],
+          "rowCount": 30,
+          "apiPath": "quant-lab/datasets/crypto_btc_daily/v1/data.json",
+          "downloads": {
+            "csv": "quant-lab/datasets/crypto_btc_daily/v1/data.csv",
+            "json": "quant-lab/datasets/crypto_btc_daily/v1/data.json"
+          }
+        }
+      ]
+    },
+    {
+      "id": "economic_cpi_monthly",
+      "name": "US CPI Monthly Index",
+      "assetClass": "Economic",
+      "frequency": "Monthly",
+      "description": "Consumer Price Index sample aligned for macro trend analysis.",
+      "tags": ["economic", "cpi", "inflation", "macro"],
+      "versions": [
+        {
+          "version": "v1.0.0",
+          "lastUpdated": "2026-03-01",
+          "source": "FRED CPIAUCSL transformed for educational use",
+          "preprocessingSteps": [
+            "Converted period labels to first day of month",
+            "Backfilled missing points from neighboring months",
+            "Calculated synthetic OHLC bars from monthly level index",
+            "Stored deterministic volume placeholder for schema compatibility"
+          ],
+          "missingValuesHandled": "Backfill and forward-fill at monthly frequency",
+          "schema": ["date", "open", "high", "low", "close", "volume"],
+          "rowCount": 18,
+          "apiPath": "quant-lab/datasets/economic_cpi_monthly/v1/data.json",
+          "downloads": {
+            "csv": "quant-lab/datasets/economic_cpi_monthly/v1/data.csv",
+            "json": "quant-lab/datasets/economic_cpi_monthly/v1/data.json"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -135,6 +135,9 @@ const Index = () => {
             <span className="font-serif text-xl tracking-wider font-semibold">MyFinanceTracker</span>
           </div>
           <div className="flex gap-3">
+            <Button variant="outline" onClick={() => navigate("/quant-lab")}>
+              Quant Lab
+            </Button>
             <Button variant="ghost" onClick={() => navigate("/auth")}>
               Sign In
             </Button>

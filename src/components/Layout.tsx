@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { 
   BarChart3,
+  Beaker,
   CreditCard,
   Landmark,
   LineChart,
@@ -60,6 +61,7 @@ const Layout = ({ children }: LayoutProps) => {
     { icon: TrendingUp, label: "Investments", path: "/investments" },
     { icon: Scale, label: "Risk", path: "/risk" },
     { icon: BarChart3, label: "Recommendations", path: "/recommendations" },
+    { icon: Beaker, label: "Quant Lab", path: "/quant-lab" },
     { icon: SettingsIcon, label: "Settings", path: "/settings" },
   ];
 
