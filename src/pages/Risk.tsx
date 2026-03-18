@@ -36,6 +36,9 @@ interface InvestmentRecommendation {
   description: string;
 }
 
+type RiskLevel = "conservative" | "moderate" | "aggressive";
+type CapacityLevel = "low" | "medium" | "high";
+
 const riskQuestions: RiskQuestion[] = [
   {
     id: 1,
@@ -89,7 +92,7 @@ const riskQuestions: RiskQuestion[] = [
   },
 ];
 
-const investmentRecommendations = {
+const investmentRecommendations: Record<RiskLevel, InvestmentRecommendation[]> = {
   conservative: [
     { name: "Marcus by Goldman Sachs High-Yield Savings", ticker: "4.5% APY", allocation: "40%", description: "FDIC insured up to $250k, no minimums, daily compounding interest for emergency fund" },
     { name: "iShares 1-3 Year Treasury Bond ETF", ticker: "SHY", allocation: "30%", description: "Low-volatility government bonds, ideal for capital preservation with modest returns" },
@@ -112,6 +115,134 @@ const investmentRecommendations = {
     { name: "SPDR Gold Shares", ticker: "GLD", allocation: "8%", description: "Physical gold ETF as inflation hedge and portfolio diversifier during market uncertainty" },
     { name: "iShares Core U.S. Aggregate Bond ETF", ticker: "AGG", allocation: "7%", description: "Broad bond exposure for minimal stability during high-volatility growth periods" },
   ],
+};
+
+const riskRank: Record<RiskLevel, number> = {
+  conservative: 1,
+  moderate: 2,
+  aggressive: 3,
+};
+
+const capacityToRisk: Record<CapacityLevel, RiskLevel> = {
+  low: "conservative",
+  medium: "moderate",
+  high: "aggressive",
+};
+
+const tickerMinRisk: Record<string, RiskLevel> = {
+  "4.5% APY": "conservative",
+  "4.25% APY": "conservative",
+  SHY: "conservative",
+  VCIT: "conservative",
+  VIG: "conservative",
+  VOO: "conservative",
+  BND: "conservative",
+  VXUS: "conservative",
+  AGG: "conservative",
+  GLD: "moderate",
+  VNQ: "moderate",
+  VTI: "moderate",
+  EEM: "aggressive",
+  VBK: "aggressive",
+  QQQ: "aggressive",
+  ARKK: "aggressive",
+};
+
+const capacityDisallowedTickers: Record<CapacityLevel, string[]> = {
+  low: ["QQQ", "ARKK", "VBK", "EEM", "GLD", "VNQ"],
+  medium: ["ARKK"],
+  high: [],
+};
+
+const normalizeRisk = (value?: string): RiskLevel | null => {
+  if (value === "conservative" || value === "moderate" || value === "aggressive") return value;
+  return null;
+};
+
+const normalizeCapacity = (value?: string): CapacityLevel | null => {
+  if (value === "low" || value === "medium" || value === "high") return value;
+  return null;
+};
+
+const parseAllocation = (value: string) => {
+  const numeric = Number(String(value).replace("%", ""));
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const deriveRiskBudget = (
+  tolerance?: string,
+  capacity?: string,
+  recommended?: string
+): RiskLevel => {
+  const t = normalizeRisk(tolerance);
+  const c = normalizeCapacity(capacity);
+  const cRisk = c ? capacityToRisk[c] : null;
+  const r = normalizeRisk(recommended);
+  const candidates = [t, cRisk, r].filter(Boolean) as RiskLevel[];
+  if (!candidates.length) return "moderate";
+  return candidates.reduce((mostConservative, current) =>
+    riskRank[current] < riskRank[mostConservative] ? current : mostConservative
+  );
+};
+
+const buildConstrainedRecommendations = (
+  tolerance?: string,
+  capacity?: string,
+  recommended?: string
+) => {
+  const riskBudget = deriveRiskBudget(tolerance, capacity, recommended);
+  const capacityLevel = normalizeCapacity(capacity) || "medium";
+
+  const allowedFromAll = (Object.keys(investmentRecommendations) as RiskLevel[])
+    .flatMap((level) => investmentRecommendations[level])
+    .filter((rec) => {
+      const ticker = (rec.ticker || "").toUpperCase();
+      const minRisk = tickerMinRisk[ticker] || "conservative";
+      const blockedByCapacity = capacityDisallowedTickers[capacityLevel].includes(ticker);
+      return riskRank[minRisk] <= riskRank[riskBudget] && !blockedByCapacity;
+    });
+
+  const dedupedAllowed = allowedFromAll.filter((rec, index, arr) => {
+    const key = rec.ticker || rec.name;
+    return arr.findIndex((r) => (r.ticker || r.name) === key) === index;
+  });
+
+  const preferred = investmentRecommendations[riskBudget].filter((rec) => {
+    const key = rec.ticker || rec.name;
+    return dedupedAllowed.some((x) => (x.ticker || x.name) === key);
+  });
+
+  const fallback = dedupedAllowed.filter((rec) => {
+    const key = rec.ticker || rec.name;
+    return !preferred.some((x) => (x.ticker || x.name) === key);
+  });
+
+  const finalList = [...preferred, ...fallback].slice(0, 6);
+  if (!finalList.length) {
+    return {
+      riskBudget,
+      recommendations: investmentRecommendations.conservative,
+    };
+  }
+
+  const totalAlloc = finalList.reduce((sum, rec) => sum + parseAllocation(rec.allocation), 0);
+  const normalized = finalList.map((rec, index) => {
+    const raw = parseAllocation(rec.allocation);
+    const normalizedPct = totalAlloc > 0
+      ? (index === finalList.length - 1
+          ? Math.max(0, 100 - Math.round(((finalList.slice(0, -1).reduce((s, r) => s + (parseAllocation(r.allocation) / totalAlloc) * 100, 0)))))
+          : Math.round((raw / totalAlloc) * 100))
+      : Math.round(100 / finalList.length);
+    return {
+      ...rec,
+      allocation: `${normalizedPct}%`,
+    };
+  });
+
+  return {
+    riskBudget,
+    recommendations: normalized,
+  };
 };
 
 const Risk = () => {
@@ -477,7 +608,12 @@ const Risk = () => {
 
   if (step === "results" && riskProfile) {
     const RiskIcon = getRiskIcon(riskProfile.recommended_profile);
-    let recommendations = investmentRecommendations[riskProfile.recommended_profile as keyof typeof investmentRecommendations];
+    const constrained = buildConstrainedRecommendations(
+      riskProfile.risk_tolerance,
+      riskProfile.risk_capacity,
+      riskProfile.recommended_profile
+    );
+    let recommendations = constrained.recommendations;
     
     // Filter recommendations based on age (must be 18+ for brokerage/savings accounts)
     if (userAge !== null && userAge < 18) {
@@ -581,7 +717,7 @@ const Risk = () => {
                     Consider a custodial account (UGMA/UTMA) with a parent or guardian, or focus on building savings until you turn 18.
                   </span>
                 ) : (
-                  `Diversified portfolio tailored to your ${riskProfile.recommended_profile} risk profile`
+                  `Diversified portfolio constrained by tolerance (${riskProfile.risk_tolerance}), capacity (${riskProfile.risk_capacity}), and recommended profile (${riskProfile.recommended_profile}) — effective risk budget: ${constrained.riskBudget}`
                 )}
               </CardDescription>
             </CardHeader>

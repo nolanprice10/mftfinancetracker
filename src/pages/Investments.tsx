@@ -1120,61 +1120,72 @@ const Investments = () => {
       return vol + (assetVol * (pct / 100));
     }, 0);
 
-    // Correlation adjustments for diversification benefit
-    // Uncorrelated assets reduce overall portfolio risk
-    const correlationMatrix: Record<string, Record<string, number>> = {
-      crypto: { crypto: 1.0, individual_stock: 0.3, index_fund: 0.2, taxable_etf: 0.25, roth_ira: 0.2, savings: 0, other: 0.3 },
-      individual_stock: { crypto: 0.3, individual_stock: 1.0, index_fund: 0.85, taxable_etf: 0.8, roth_ira: 0.85, savings: 0, other: 0.5 },
-      index_fund: { crypto: 0.2, individual_stock: 0.85, index_fund: 1.0, taxable_etf: 0.9, roth_ira: 0.95, savings: 0, other: 0.6 },
-      taxable_etf: { crypto: 0.25, individual_stock: 0.8, index_fund: 0.9, taxable_etf: 1.0, roth_ira: 0.9, savings: 0, other: 0.6 },
-      roth_ira: { crypto: 0.2, individual_stock: 0.85, index_fund: 0.95, taxable_etf: 0.9, roth_ira: 1.0, savings: 0, other: 0.6 },
-      savings: { crypto: 0, individual_stock: 0, index_fund: 0, taxable_etf: 0, roth_ira: 0, savings: 1.0, other: 0 },
-      other: { crypto: 0.3, individual_stock: 0.5, index_fund: 0.6, taxable_etf: 0.6, roth_ira: 0.6, savings: 0, other: 1.0 }
-    };
-
-    // Calculate diversification benefit using correlation
-    let totalDiversificationBenefit = 0;
-    let pairCount = 0;
-    const types = Object.keys(percentages);
-    
-    for (let i = 0; i < types.length; i++) {
-      for (let j = i + 1; j < types.length; j++) {
-        const type1 = types[i];
-        const type2 = types[j];
-        const weight1 = percentages[type1] / 100;
-        const weight2 = percentages[type2] / 100;
-        const correlation = correlationMatrix[type1]?.[type2] || 0.5;
-        
-        // Lower correlation = better diversification
-        totalDiversificationBenefit += (1 - correlation) * weight1 * weight2;
-        pairCount++;
-      }
-    }
-
-    // COMPREHENSIVE DIVERSIFICATION: asset variety + correlation + volatility spread
+    // DIVERSIFICATION SCORE (VOLATILITY-ONLY):
+    // Uses per-asset volatility distribution only (no asset-type count, no correlation matrix)
+    // so multiple stocks can improve diversification when their volatility profiles differ.
     const numTypes = Object.keys(allocations).length;
-    const typesDiversification = Math.min(100, (numTypes / 6) * 100); // Max at 6 different types
-    const correlationBenefit = pairCount > 0 ? (totalDiversificationBenefit / pairCount) * 100 : 0;
     
-    // VOLATILITY DIVERSIFICATION - Critical for true risk management
-    // Maps each asset to its volatility characteristics
-    const volatilityByType = Object.entries(percentages).map(([type, pct]) => ({
-      type,
-      pct,
-      volatility: volatilityScores[type]?.volatility || 20
-    }));
-    
-    // Calculate weighted average volatility and spread
-    const weightedVolatility = volatilityByType.reduce((sum, v) => sum + (v.volatility * v.pct / 100), 0);
-    const volatilities = volatilityByType.map(v => v.volatility);
+    const volatilityByAsset = investments
+      .map((investment) => {
+        const liveValue = getLiveValue(investment);
+        if (liveValue <= 0 || totalValue <= 0) return null;
+
+        const userSpecifiedReturn = Number(investment.annual_return_pct);
+        const validUserReturn = !isNaN(userSpecifiedReturn) && userSpecifiedReturn > 0 && userSpecifiedReturn !== 7
+          ? userSpecifiedReturn
+          : undefined;
+
+        const assetSpecific = calculateAssetSpecificParameters(investment);
+        const fallbackParams = getAssetParameters(investment.type, validUserReturn);
+        const volatility = assetSpecific?.volatility || fallbackParams.volatility;
+
+        return {
+          id: investment.id,
+          name: investment.name,
+          ticker: investment.ticker_symbol || null,
+          type: investment.type,
+          pct: (liveValue / totalValue) * 100,
+          volatility,
+        };
+      })
+      .filter(Boolean) as Array<{ id: string; name: string; ticker: string | null; type: string; pct: number; volatility: number }>;
+
+    const modeledHoldingsCount = volatilityByAsset.filter((asset) => asset.pct > 0.1).length;
+
+    const weightedVolatility = volatilityByAsset.reduce((sum, asset) => sum + (asset.volatility * asset.pct / 100), 0);
+    const volatilities = volatilityByAsset.map(asset => asset.volatility);
     const minVol = Math.min(...volatilities);
     const maxVol = Math.max(...volatilities);
     const volRange = maxVol - minVol;
-    
-    // Volatility spread score: wider range = better diversification (0-100)
-    // Perfect spread: 0% (savings) to 80% (crypto) = 80 point range
-    const volatilitySpreadScore = Math.min(100, (volRange / 80) * 100);
-    
+
+    // Weighted dispersion of volatility across holdings
+    const weightedVolVariance = volatilityByAsset.reduce((sum, asset) => {
+      const weight = asset.pct / 100;
+      return sum + weight * Math.pow(asset.volatility - weightedVolatility, 2);
+    }, 0);
+    const weightedVolStd = Math.sqrt(Math.max(weightedVolVariance, 0));
+
+    const perAssetContributions = volatilityByAsset
+      .map((asset) => {
+        const weight = asset.pct / 100;
+        const varianceContribution = weight * Math.pow(asset.volatility - weightedVolatility, 2);
+        const contributionPct = weightedVolVariance > 0 ? (varianceContribution / weightedVolVariance) * 100 : 0;
+        return {
+          id: asset.id,
+          name: asset.name,
+          ticker: asset.ticker,
+          type: asset.type,
+          portfolioWeightPct: asset.pct,
+          assetVolatilityPct: asset.volatility,
+          varianceContribution,
+          contributionPct,
+        };
+      })
+      .sort((a, b) => b.contributionPct - a.contributionPct);
+
+    // Higher dispersion across holdings = better volatility diversification (capped 0-100)
+    const volatilitySpreadScore = Math.min(100, (weightedVolStd / 35) * 100);
+
     // Classify assets into volatility tiers for balance analysis
     let lowVolAllocation = 0;    // 0-10% volatility (savings, stable assets)
     let medLowVolAllocation = 0; // 11-18% volatility (bonds, stable funds)
@@ -1182,7 +1193,7 @@ const Investments = () => {
     let highVolAllocation = 0;   // 31-50% volatility (individual stocks)
     let extremeVolAllocation = 0; // 51%+ volatility (crypto, speculative)
     
-    volatilityByType.forEach(({ pct, volatility }) => {
+    volatilityByAsset.forEach(({ pct, volatility }) => {
       if (volatility <= 10) lowVolAllocation += pct;
       else if (volatility <= 18) medLowVolAllocation += pct;
       else if (volatility <= 30) medVolAllocation += pct;
@@ -1216,15 +1227,11 @@ const Investments = () => {
     }
     
     // Volatility diversification: combines spread, tier balance, penalties, and bonuses
-    const rawVolDiversification = (volatilitySpreadScore * 0.35 + tierDiversityScore * 0.65);
+    const rawVolDiversification = (volatilitySpreadScore * 0.45 + tierDiversityScore * 0.55);
     const volatilityDiversification = Math.max(0, Math.min(100, rawVolDiversification - balancePenalty + stabilityBonus));
-    
-    // FINAL DIVERSIFICATION SCORE
-    // Asset types (25%) + Correlation (25%) + Volatility spread (50%)
-    // Volatility gets HIGHEST weight - it's the most important risk factor
-    const diversificationScore = Math.round(
-      (typesDiversification * 0.25 + correlationBenefit * 0.25 + volatilityDiversification * 0.50) * 100
-    ) / 100;
+
+    // FINAL DIVERSIFICATION SCORE (volatility-only)
+    const diversificationScore = Math.round(volatilityDiversification * 100) / 100;
 
     // Concentration risk analysis
     const sortedAllocations = Object.entries(percentages).sort(([,a], [,b]) => b - a);
@@ -1397,6 +1404,18 @@ const Investments = () => {
         high: highVolAllocation,
         extreme: extremeVolAllocation,
         tierCount: meaningfulTiers
+      },
+      diversificationBreakdown: {
+        modeledHoldingsCount,
+        weightedVolatility,
+        weightedVolStd,
+        volatilitySpreadScore,
+        tierDiversityScore,
+        balancePenalty,
+        stabilityBonus,
+        rawVolDiversification,
+        finalScore: volatilityDiversification,
+        perAssetContributions,
       }
     };
   };
@@ -1597,12 +1616,47 @@ const Investments = () => {
                     Diversification
                     <InfoButton 
                       title="Diversification"
-                      content="Don't put all your eggs in one basket! This score shows how spread out your money is across different types of investments and risk levels. Higher = safer. We look at asset variety (stocks vs bonds), how they move together (correlation), and most importantly (50% weight), whether you're mixing safe and risky stuff properly."
+                      content="Volatility-only score: this measures how well your holdings are spread across different volatility levels. It does not use asset-type count or correlation anymore. Higher means your risk is distributed better across low/medium/high volatility buckets."
                     />
                   </div>
                   <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
                   <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
-                  <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.numAssetClasses} asset types</div>
+                  <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.diversificationBreakdown.modeledHoldingsCount} holdings modeled by volatility</div>
+                  <Accordion type="single" collapsible className="mt-2">
+                    <AccordionItem value="diversification-explainer" className="border-none">
+                      <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline">
+                        Why this score is {riskAnalysis.diversificationScore.toFixed(0)}%
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground space-y-1">
+                          <div>Volatility spread score: {riskAnalysis.diversificationBreakdown.volatilitySpreadScore.toFixed(1)}%</div>
+                          <div>Tier diversity score: {riskAnalysis.diversificationBreakdown.tierDiversityScore.toFixed(1)}%</div>
+                          <div>Weighted volatility std dev: {riskAnalysis.diversificationBreakdown.weightedVolStd.toFixed(1)}%</div>
+                          <div>Penalties/bonuses: -{riskAnalysis.diversificationBreakdown.balancePenalty.toFixed(1)} +{riskAnalysis.diversificationBreakdown.stabilityBonus.toFixed(1)}</div>
+                          <div className="pt-1 font-medium text-foreground">Final volatility diversification score: {riskAnalysis.diversificationBreakdown.finalScore.toFixed(1)}%</div>
+                          <div className="pt-2 font-medium text-foreground">Each asset contribution</div>
+                          <div className="max-h-44 overflow-auto space-y-1 pr-1">
+                            {riskAnalysis.diversificationBreakdown.perAssetContributions.map((asset) => (
+                              <div key={asset.id} className="flex items-start justify-between gap-2 border-t border-border/40 pt-1">
+                                <div className="min-w-0">
+                                  <div className="text-foreground truncate">
+                                    {asset.name}
+                                    {asset.ticker ? ` (${asset.ticker.toUpperCase()})` : ""}
+                                  </div>
+                                  <div>
+                                    Weight {asset.portfolioWeightPct.toFixed(1)}% • Vol {asset.assetVolatilityPct.toFixed(1)}%
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0 text-foreground">
+                                  {asset.contributionPct.toFixed(1)}%
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground flex items-center gap-1">
