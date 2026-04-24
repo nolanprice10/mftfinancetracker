@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, ArrowUpDown } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { InfoButton } from "@/components/InfoButton";
 import { SEO } from "@/components/SEO";
 import { useState, useEffect, useMemo } from "react";
@@ -16,6 +16,7 @@ import { EditTransactionDialog } from "@/components/EditTransactionDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useFormInput } from "@/hooks/useFormInput";
+import { ImportTransactionsDialog } from "@/components/ImportTransactionsDialog";
 
 interface Transaction {
   id: string;
@@ -257,113 +258,116 @@ const Transactions = () => {
             <h1 className="text-3xl font-bold mb-2">Transaction Tracking</h1>
             <p className="text-muted-foreground">Track your income and expenses</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Transaction
-              </Button>
-            </DialogTrigger>
-            <DialogContent
-              disableFocusTrap
-              disableOutsidePointerEvents={false}
-            >
-              <DialogHeader>
-                <DialogTitle>Add Transaction</DialogTitle>
-                <DialogDescription>Record a new income or expense</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label>Type</Label>
-                    <InfoButton
-                      title="Transaction Type"
-                      content="Income = money coming in (salary, gifts, side hustles). Expense = money going out (bills, shopping, food). Choose the right type to accurately track where your money comes from and goes. This helps you see spending patterns and make better financial decisions."
-                    />
-                  </div>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Account</Label>
-                  <Select value={accountId} onValueChange={setAccountId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Amount</Label>
-                  <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label>Category</Label>
-                    <InfoButton
-                      title="Transaction Categories"
-                      content="Categories help you understand spending habits. For example, tracking 'Food & Dining' separately from 'Entertainment' shows exactly where your money goes. Pick the category that best fits - you can always adjust later. Good categorization reveals opportunities to save money."
-                    />
-                  </div>
-                  <Select value={category} onValueChange={setCategory} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {type === "income" ? (
-                        <>
-                          <SelectItem value="Salary">Salary</SelectItem>
-                          <SelectItem value="Freelance">Freelance</SelectItem>
-                          <SelectItem value="Investment Returns">Investment Returns</SelectItem>
-                          <SelectItem value="Business Income">Business Income</SelectItem>
-                          <SelectItem value="Gifts">Gifts</SelectItem>
-                          <SelectItem value="Other Income">Other Income</SelectItem>
-                        </>
-                      ) : (
-                        <>
-                          <SelectItem value="Housing">Housing</SelectItem>
-                          <SelectItem value="Transportation">Transportation</SelectItem>
-                          <SelectItem value="Food & Dining">Food & Dining</SelectItem>
-                          <SelectItem value="Utilities">Utilities</SelectItem>
-                          <SelectItem value="Healthcare">Healthcare</SelectItem>
-                          <SelectItem value="Entertainment">Entertainment</SelectItem>
-                          <SelectItem value="Shopping">Shopping</SelectItem>
-                          <SelectItem value="Personal Care">Personal Care</SelectItem>
-                          <SelectItem value="Education">Education</SelectItem>
-                          <SelectItem value="Insurance">Insurance</SelectItem>
-                          <SelectItem value="Debt Payment">Debt Payment</SelectItem>
-                          <SelectItem value="Savings">Savings</SelectItem>
-                          <SelectItem value="Other Expense">Other Expense</SelectItem>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (optional)</Label>
-                  <Input placeholder="Add details..." {...notesInput} />
-                </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Adding..." : "Add Transaction"}
+          <div className="flex items-center gap-2">
+            <ImportTransactionsDialog accounts={accounts} onSuccess={fetchData} />
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Transaction
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent
+                disableFocusTrap
+                disableOutsidePointerEvents={false}
+              >
+                <DialogHeader>
+                  <DialogTitle>Add Transaction</DialogTitle>
+                  <DialogDescription>Record a new income or expense</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <Label>Type</Label>
+                      <InfoButton
+                        title="Transaction Type"
+                        content="Income = money coming in (salary, gifts, side hustles). Expense = money going out (bills, shopping, food). Choose the right type to accurately track where your money comes from and goes. This helps you see spending patterns and make better financial decisions."
+                      />
+                    </div>
+                    <Select value={type} onValueChange={setType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="income">Income</SelectItem>
+                        <SelectItem value="expense">Expense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Account</Label>
+                    <Select value={accountId} onValueChange={setAccountId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <Label>Category</Label>
+                      <InfoButton
+                        title="Transaction Categories"
+                        content="Categories help you understand spending habits. For example, tracking 'Food & Dining' separately from 'Entertainment' shows exactly where your money goes. Pick the category that best fits - you can always adjust later. Good categorization reveals opportunities to save money."
+                      />
+                    </div>
+                    <Select value={category} onValueChange={setCategory} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {type === "income" ? (
+                          <>
+                            <SelectItem value="Salary">Salary</SelectItem>
+                            <SelectItem value="Freelance">Freelance</SelectItem>
+                            <SelectItem value="Investment Returns">Investment Returns</SelectItem>
+                            <SelectItem value="Business Income">Business Income</SelectItem>
+                            <SelectItem value="Gifts">Gifts</SelectItem>
+                            <SelectItem value="Other Income">Other Income</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="Housing">Housing</SelectItem>
+                            <SelectItem value="Transportation">Transportation</SelectItem>
+                            <SelectItem value="Food & Dining">Food & Dining</SelectItem>
+                            <SelectItem value="Utilities">Utilities</SelectItem>
+                            <SelectItem value="Healthcare">Healthcare</SelectItem>
+                            <SelectItem value="Entertainment">Entertainment</SelectItem>
+                            <SelectItem value="Shopping">Shopping</SelectItem>
+                            <SelectItem value="Personal Care">Personal Care</SelectItem>
+                            <SelectItem value="Education">Education</SelectItem>
+                            <SelectItem value="Insurance">Insurance</SelectItem>
+                            <SelectItem value="Debt Payment">Debt Payment</SelectItem>
+                            <SelectItem value="Savings">Savings</SelectItem>
+                            <SelectItem value="Other Expense">Other Expense</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes (optional)</Label>
+                    <Input placeholder="Add details..." {...notesInput} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Adding..." : "Add Transaction"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {transactions.length > 0 && (
