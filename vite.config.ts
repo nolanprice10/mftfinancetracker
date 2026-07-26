@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    chunkSizeWarningLimit: 2000,
+  },
   base: mode === "production" ? "/mftfinancetracker/" : "/",
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

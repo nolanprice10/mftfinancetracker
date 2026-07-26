@@ -15,7 +15,7 @@ export interface ProbabilityChange {
  * NOTE: Requires probability_history table from migration
  */
 export async function calculateProbabilityChanges(userId: string): Promise<ProbabilityChange[]> {
-  // TODO: Enable when migration is applied
+  // Stubbed until the required email retention migrations are enabled.
   return [];
 }
 
@@ -52,7 +52,7 @@ export function getActionableImprovement(
  * NOTE: Requires probability_history table from migration
  */
 export async function storeProbabilityHistory(userId: string, goalId: string, probability: number): Promise<boolean> {
-  // TODO: Enable when migration is applied
+  // Stubbed until the required email retention migrations are enabled.
   return false;
 }
 
@@ -64,9 +64,9 @@ export async function logEmailEvent(
   userId: string,
   emailType: 'monthly_digest' | 'probability_change' | 'actionable_improvement' | 'reengagement',
   goalId?: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<boolean> {
-  // TODO: Enable when migration is applied
+  // Stubbed until the required email retention migrations are enabled.
   return false;
 }
 
@@ -75,7 +75,7 @@ export async function logEmailEvent(
  * NOTE: Requires last_email_sent_date column in profiles table
  */
 export async function updateLastEmailSentDate(userId: string): Promise<boolean> {
-  // TODO: Enable when migration is applied
+  // Stubbed until the required email retention migrations are enabled.
   return false;
 }
 
@@ -83,8 +83,8 @@ export async function updateLastEmailSentDate(userId: string): Promise<boolean> 
  * Get users who should receive emails today
  * NOTE: Requires email preference columns in profiles table
  */
-export async function getUsersForMonthlyDigest(): Promise<any[]> {
-  // TODO: Enable when migration is applied
+export async function getUsersForMonthlyDigest(): Promise<unknown[]> {
+  // Stubbed until the required email retention migrations are enabled.
   return [];
 }
 

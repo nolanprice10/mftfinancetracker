@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { transactionSchema } from "@/lib/validation";
 
 type ParsedRow = Record<string, unknown>;
 
@@ -192,6 +191,8 @@ export function ImportTransactionsDialog({ accounts, onSuccess }: ImportTransact
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Please sign in again");
+
+      const { transactionSchema } = await import("@/lib/validation");
 
       const rows = await getRowsFromSource();
       if (rows.length === 0) throw new Error("No rows found in the selected source");

@@ -51,7 +51,8 @@ const Dashboard = () => {
   
   const recommendationRef = useRef<HTMLDivElement>(null);
   
-  const { hasAllThemesUnlocked } = useRewards();
+  const { hasAllFeatures } = useRewards();
+  const hasAllThemesUnlocked = hasAllFeatures();
 
   useEffect(() => {
     fetchData();
@@ -91,9 +92,9 @@ const Dashboard = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from("profiles")
+        .from("user_referral_codes")
         .select("referral_code")
-        .eq("id", user.id)
+        .eq("user_id", user.id)
         .single();
 
       if (data?.referral_code) {

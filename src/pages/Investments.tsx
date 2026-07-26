@@ -57,6 +57,8 @@ interface InvestmentFormProps {
   handleInputChange: (field: keyof any, value: string) => void;
   fetchPrice: (ticker: string, type: string) => void;
   fetchingPrice: boolean;
+  normalizeCryptoInput: (value: string) => string;
+  setLastEdited: (value: "shares" | "amount" | null) => void;
   onSubmit: (e: React.FormEvent) => void;
   buttonText: string;
   submitting?: boolean;
@@ -72,6 +74,8 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   handleInputChange,
   fetchPrice,
   fetchingPrice,
+  normalizeCryptoInput,
+  setLastEdited,
   onSubmit,
   buttonText,
   submitting,
@@ -1523,6 +1527,8 @@ const Investments = () => {
                   handleInputChange={handleInputChange}
                   fetchPrice={fetchPrice}
                   fetchingPrice={fetchingPrice}
+                  normalizeCryptoInput={normalizeCryptoInput}
+                  setLastEdited={setLastEdited}
                   onSubmit={handleSubmit}
                   buttonText="Add Investment"
                   submitting={submitting}
@@ -1989,6 +1995,8 @@ const Investments = () => {
                     handleInputChange={handleInputChange}
                     fetchPrice={fetchPrice}
                     fetchingPrice={fetchingPrice}
+                    normalizeCryptoInput={normalizeCryptoInput}
+                    setLastEdited={setLastEdited}
                     onSubmit={handleSubmit}
                     buttonText="Add Investment"
                     submitting={submitting}
@@ -2019,6 +2027,8 @@ const Investments = () => {
               handleInputChange={handleInputChange}
               fetchPrice={fetchPrice}
               fetchingPrice={fetchingPrice}
+              normalizeCryptoInput={normalizeCryptoInput}
+              setLastEdited={setLastEdited}
               onSubmit={handleEdit}
               buttonText="Update Investment"
               submitting={submitting}

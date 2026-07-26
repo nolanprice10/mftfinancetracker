@@ -8,12 +8,19 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "display_override": ["window-controls-overlay", "tabbed", "standalone", "minimal-ui", "browser"],
   "orientation": "any",
   "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "categories": ["finance", "productivity", "education"],
   "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.mftfinancetracker.app"
+    }
+  ],
+  "iarc_rating_id": "IARC-PROVISIONAL-UNRATED",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -40,6 +47,7 @@
       "src": "screenshots/dashboard-narrow.png",
       "sizes": "720x1280",
       "type": "image/png",
+      "form_factor": "narrow",
       "label": "Mobile dashboard overview"
     }
   ],
@@ -68,6 +76,51 @@
   ],
   "launch_handler": {
     "client_mode": "focus-existing"
+  },
+  "scope_extensions": [
+    {
+      "origin": "https://myfinancetracker.app"
+    },
+    {
+      "origin": "https://nolanprice10.github.io"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./transactions?import=1",
+      "accept": {
+        "text/csv": [".csv"],
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+      },
+      "launch_type": "multiple-clients"
+    }
+  ],
+  "share_target": {
+    "action": "./transactions?share=1",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "widgets": [
+    {
+      "name": "Quick Add Transaction",
+      "short_name": "Quick Add",
+      "description": "Capture expenses quickly from your desktop widget surface.",
+      "tag": "quick-add-transaction",
+      "ms_ac_template": "widgets/quick-add-transaction.json",
+      "data": "./transactions?widget=1"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "note_taking": {
+    "new_note_url": "./transactions?note=1"
   },
   "protocol_handlers": [
     {

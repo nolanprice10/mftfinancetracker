@@ -158,7 +158,7 @@ const Settings = () => {
       (window as any).gtag('event', 'share', {
         method: 'copy_link',
         content_type: 'referral',
-        successful_referrals: successfulReferrals
+        successful_referrals: referralCount
       });
     }
   };
