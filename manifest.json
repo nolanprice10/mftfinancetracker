@@ -1,0 +1,41 @@
+{
+  "background_color": "#ffffff",
+  "description": "Explore how capital is allocated under uncertainty and how quantitative models inform real market decisions. A quant-driven finance toolkit with practical insights.",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "MyFinanceTracker",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "MyFinanceTracker",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/d5ueX6bSSFP88pUlY4aTBJeKlXo1/uploads/1762136862282-IMG_1360.jpeg",
+      "type": "image/jpeg",
+      "sizes": "330x329",
+      "isSquare": false,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": true,
+      "width": 330,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    },
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/d5ueX6bSSFP88pUlY4aTBJeKlXo1/social-images/social-1762136875706-IMG_1359.jpeg",
+      "type": "image/jpeg",
+      "sizes": "1024x682",
+      "isSquare": false,
+      "isPng": false,
+      "isWebp": false,
+      "isJpg": true,
+      "width": 1024,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
+    }
+  ],
+  "id": "mftfinancetracker"
+}
