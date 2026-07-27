@@ -5,6 +5,7 @@ const PERIODIC_SYNC_TAG = "mft-periodic-data-sync";
 const APP_SHELL_PATHS = [
   "",
   "index.html",
+  "offline.html",
   "manifest.json",
   "icons/icon-192.png",
   "icons/icon-512.png",
@@ -38,11 +39,15 @@ async function refreshAppShell() {
 
   await Promise.all(
     APP_SHELL_PATHS.map(async (path) => {
-      const url = inScopeUrl(path);
-      const response = await fetch(url, { cache: "no-store" });
+      try {
+        const url = inScopeUrl(path);
+        const response = await fetch(url, { cache: "no-store" });
 
-      if (response.ok) {
-        await cache.put(url, response.clone());
+        if (response.ok) {
+          await cache.put(url, response.clone());
+        }
+      } catch {
+        // Ignore individual shell refresh failures so the rest of the cycle can continue.
       }
     })
   );
@@ -62,13 +67,28 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      await cache.addAll([
+      const shellUrls = [
         inScopeUrl(""),
         inScopeUrl("index.html"),
+        inScopeUrl("offline.html"),
         inScopeUrl("manifest.json"),
         inScopeUrl("icons/icon-192.png"),
         inScopeUrl("icons/icon-512.png"),
-      ]);
+      ];
+
+      await Promise.all(
+        shellUrls.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: "no-store" });
+
+            if (response.ok) {
+              await cache.put(url, response.clone());
+            }
+          } catch {
+            // Ignore individual precache failures so install still succeeds.
+          }
+        })
+      );
       await self.skipWaiting();
     })()
   );

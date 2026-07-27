@@ -60,6 +60,20 @@ const Dashboard = () => {
     loadReferralCode();
   }, []);
 
+  useEffect(() => {
+    const handlePwaRefresh = () => {
+      fetchData();
+      checkOnboarding();
+      loadReferralCode();
+    };
+
+    window.addEventListener("mft:pwa-refresh", handlePwaRefresh);
+
+    return () => {
+      window.removeEventListener("mft:pwa-refresh", handlePwaRefresh);
+    };
+  }, []);
+
   const scrollToRecommendation = () => {
     recommendationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };

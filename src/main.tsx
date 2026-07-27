@@ -71,6 +71,19 @@ async function registerPwaBackgroundFeatures() {
   }
 }
 
+function isPwaRefreshMessage(message: unknown) {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+
+  const messageType = (message as { type?: string }).type;
+  return (
+    messageType === "PWA_DATA_SYNC_COMPLETE" ||
+    messageType === "PWA_PERIODIC_SYNC_COMPLETE" ||
+    messageType === "PWA_PUSH_RECEIVED"
+  );
+}
+
 initializeDarkMode();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
@@ -83,8 +96,8 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 }
 
 navigator.serviceWorker?.addEventListener("message", (event) => {
-  if (event.data?.type === "PWA_DATA_SYNC_COMPLETE" || event.data?.type === "PWA_PERIODIC_SYNC_COMPLETE") {
-    window.location.reload();
+  if (isPwaRefreshMessage(event.data)) {
+    window.dispatchEvent(new CustomEvent("mft:pwa-refresh", { detail: event.data }));
   }
 });
 
