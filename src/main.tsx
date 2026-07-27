@@ -16,15 +16,77 @@ const initializeDarkMode = () => {
   document.documentElement.classList.toggle("dark", shouldUseDark);
 };
 
+const periodicSyncTag = "mft-periodic-data-sync";
+const backgroundSyncTag = "mft-data-sync";
+
+function base64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    outputArray[index] = rawData.charCodeAt(index);
+  }
+
+  return outputArray;
+}
+
+async function registerPwaBackgroundFeatures() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+
+  if ("sync" in registration) {
+    await registration.sync.register(backgroundSyncTag).catch((error) => {
+      console.warn("Background sync registration failed:", error);
+    });
+  }
+
+  if ("periodicSync" in registration) {
+    await registration.periodicSync
+      .register(periodicSyncTag, { minInterval: 6 * 60 * 60 * 1000 })
+      .catch((error) => {
+        console.warn("Periodic background sync registration failed:", error);
+      });
+  }
+
+  const pushPublicKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY;
+
+  if (pushPublicKey && "PushManager" in window && Notification.permission === "granted") {
+    const existingSubscription = await registration.pushManager.getSubscription();
+
+    if (!existingSubscription) {
+      await registration.pushManager
+        .subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64ToUint8Array(pushPublicKey),
+        })
+        .catch((error) => {
+          console.warn("Push subscription failed:", error);
+        });
+    }
+  }
+}
+
 initializeDarkMode();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
+      .then(() => registerPwaBackgroundFeatures())
       .catch((error) => console.error("Service worker registration failed:", error));
   });
 }
+
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  if (event.data?.type === "PWA_DATA_SYNC_COMPLETE" || event.data?.type === "PWA_PERIODIC_SYNC_COMPLETE") {
+    window.location.reload();
+  }
+});
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
