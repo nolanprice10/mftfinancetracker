@@ -65,6 +65,10 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      if ("navigationPreload" in self.registration) {
+        await self.registration.navigationPreload.enable();
+      }
+
       const cacheKeys = await caches.keys();
       await Promise.all(
         cacheKeys
@@ -141,6 +145,12 @@ self.addEventListener("notificationclick", (event) => {
 async function handleNavigationRequest(event) {
   const cache = await caches.open(APP_SHELL_CACHE);
   const cachedPage = await cache.match(toCacheUrl("./index.html"));
+  const preloadResponse = await event.preloadResponse;
+
+  if (preloadResponse) {
+    await cacheResponse(APP_SHELL_CACHE, event.request, preloadResponse);
+    return preloadResponse;
+  }
 
   try {
     const networkResponse = await fetch(event.request);
@@ -172,6 +182,28 @@ async function handleStaticAssetRequest(event) {
   return networkFetch.catch(async () => cache.match(event.request));
 }
 
+async function handleDataRequest(event) {
+  const cache = await caches.open(RUNTIME_CACHE);
+
+  try {
+    const networkResponse = await fetch(event.request);
+    if (networkResponse.ok) {
+      await cacheResponse(RUNTIME_CACHE, event.request, networkResponse);
+    }
+    return networkResponse;
+  } catch {
+    const cached = await cache.match(event.request);
+    if (cached) {
+      return cached;
+    }
+
+    return new Response(JSON.stringify({ offline: true }), {
+      headers: { "Content-Type": "application/json" },
+      status: 503,
+    });
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
     return;
@@ -182,6 +214,16 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate") {
     event.respondWith(handleNavigationRequest(event));
+    return;
+  }
+
+  if (sameOrigin && event.request.destination === "document") {
+    event.respondWith(handleNavigationRequest(event));
+    return;
+  }
+
+  if (sameOrigin && requestUrl.pathname.endsWith(".json")) {
+    event.respondWith(handleDataRequest(event));
     return;
   }
 
