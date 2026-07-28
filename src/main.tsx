@@ -25,7 +25,9 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+    const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+      updateViaCache: "none",
+    });
 
     registration.addEventListener("updatefound", () => {
       const installingWorker = registration.installing;
@@ -122,8 +124,7 @@ function isPwaRefreshMessage(message: unknown) {
 initializeDarkMode();
 
 const shouldRegisterServiceWorker =
-  "serviceWorker" in navigator &&
-  (import.meta.env.PROD || window.location.hostname === "localhost");
+  "serviceWorker" in navigator && window.isSecureContext;
 
 if (shouldRegisterServiceWorker) {
   window.addEventListener("load", () => {

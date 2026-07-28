@@ -1,0 +1,131 @@
+{
+  "id": "mftfinancetracker",
+  "name": "MyFinanceTracker",
+  "short_name": "MyFinanceTracker",
+  "description": "Explore how capital is allocated under uncertainty and how quantitative models inform real market decisions. A quant-driven finance toolkit with practical insights.",
+  "lang": "en-US",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["tabbed", "window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "categories": ["finance", "productivity", "education"],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.mftfinancetracker.app"
+    }
+  ],
+  "iarc_rating_id": "IARC-13+",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "./screenshots/dashboard-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop dashboard overview"
+    },
+    {
+      "src": "./screenshots/dashboard-narrow.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile dashboard overview"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your finance dashboard",
+      "url": "./dashboard",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Transactions",
+      "short_name": "Transactions",
+      "description": "Review transactions quickly",
+      "url": "./transactions",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Quant Lab",
+      "short_name": "Quant Lab",
+      "description": "Open quantitative models",
+      "url": "./quant-lab",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "scope_extensions": [
+    {
+      "origin": "https://myfinancetracker.app"
+    },
+    {
+      "origin": "https://nolanprice10.github.io"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./transactions?import=1",
+      "accept": {
+        "text/csv": [".csv"],
+        "application/vnd.ms-excel": [".xls"],
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]
+      },
+      "launch_type": "multiple-clients"
+    }
+  ],
+  "share_target": {
+    "action": "./transactions?share=1",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "widgets": [
+    {
+      "name": "Quick Add Transaction",
+      "short_name": "Quick Add",
+      "description": "Capture expenses quickly from your desktop widget surface.",
+      "tag": "quick-add-transaction",
+      "ms_ac_template": "widgets/quick-add-transaction.json",
+      "data": "./transactions?widget=1"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "note_taking": {
+    "new_note_url": "./transactions?note=1"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+mft",
+      "url": "./?open=%s"
+    }
+  ]
+}

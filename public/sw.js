@@ -7,6 +7,7 @@ const APP_SHELL_URLS = [
   "./index.html",
   "./offline.html",
   "./manifest.json",
+  "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];
@@ -16,7 +17,7 @@ function toCacheUrl(path) {
 }
 
 async function cacheResponse(cacheName, request, response) {
-  if (!response || !response.ok || response.type === "opaque") {
+  if (!response || (!response.ok && response.type !== "opaque")) {
     return;
   }
 
@@ -227,7 +228,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (sameOrigin && ["script", "style", "image", "font", "manifest"].includes(event.request.destination)) {
+  if (["script", "style", "image", "font", "manifest"].includes(event.request.destination)) {
     event.respondWith(handleStaticAssetRequest(event));
   }
 });
