@@ -25,9 +25,18 @@ async function registerServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
-      updateViaCache: "none",
-    });
+    let registration: ServiceWorkerRegistration;
+
+    try {
+      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+        updateViaCache: "none",
+      });
+    } catch {
+      // Compatibility fallback for environments expecting service-worker.js.
+      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`, {
+        updateViaCache: "none",
+      });
+    }
 
     registration.addEventListener("updatefound", () => {
       const installingWorker = registration.installing;
