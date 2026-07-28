@@ -19,6 +19,41 @@ const initializeDarkMode = () => {
 const periodicSyncTag = "mft-periodic-data-sync";
 const backgroundSyncTag = "mft-data-sync";
 
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+
+    registration.addEventListener("updatefound", () => {
+      const installingWorker = registration.installing;
+      if (!installingWorker) {
+        return;
+      }
+
+      installingWorker.addEventListener("statechange", () => {
+        if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+          window.dispatchEvent(new CustomEvent("mft:sw-updated"));
+        }
+      });
+    });
+
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!reloaded) {
+        reloaded = true;
+        window.location.reload();
+      }
+    });
+
+    await registerPwaBackgroundFeatures();
+  } catch (error) {
+    console.error("Service worker registration failed:", error);
+  }
+}
+
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -86,12 +121,13 @@ function isPwaRefreshMessage(message: unknown) {
 
 initializeDarkMode();
 
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+const shouldRegisterServiceWorker =
+  "serviceWorker" in navigator &&
+  (import.meta.env.PROD || window.location.hostname === "localhost");
+
+if (shouldRegisterServiceWorker) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js`)
-      .then(() => registerPwaBackgroundFeatures())
-      .catch((error) => console.error("Service worker registration failed:", error));
+    registerServiceWorker();
   });
 }
 

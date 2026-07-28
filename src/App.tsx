@@ -17,6 +17,7 @@ import Risk from "./pages/Risk";
 import Compare from "./pages/Compare";
 import QuantLab from "./pages/QuantLab";
 import NotFound from "./pages/NotFound";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -24,25 +25,27 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/accounts" element={<Accounts />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/investments" element={<Investments />} />
-            <Route path="/recommendations" element={<Recommendations />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/risk" element={<Risk />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/quant-lab" element={<QuantLab />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/goals" element={<Goals />} />
+              <Route path="/investments" element={<Investments />} />
+              <Route path="/recommendations" element={<Recommendations />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/risk" element={<Risk />} />
+              <Route path="/compare" element={<Compare />} />
+              <Route path="/quant-lab" element={<QuantLab />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   </HelmetProvider>

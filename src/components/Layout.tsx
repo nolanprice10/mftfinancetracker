@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Session } from "@supabase/supabase-js";
+import FinanceAssistant from "@/components/FinanceAssistant";
 
 interface LayoutProps {
   children: ReactNode;
@@ -197,6 +198,7 @@ const Layout = ({ children }: LayoutProps) => {
           {children}
         </div>
       </main>
+      <FinanceAssistant />
     </div>
   );
 };

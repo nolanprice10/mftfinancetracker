@@ -1,53 +1,42 @@
-const CACHE_NAME = "mft-cache-v3";
-const OFFLINE_HTML = "index.html";
-const DATA_SYNC_TAG = "mft-data-sync";
-const PERIODIC_SYNC_TAG = "mft-periodic-data-sync";
-const APP_SHELL_PATHS = [
-  "",
-  "index.html",
-  "offline.html",
-  "manifest.json",
-  "icons/icon-192.png",
-  "icons/icon-512.png",
-  "dashboard",
-  "transactions",
-  "accounts",
-  "goals",
-  "investments",
-  "recommendations",
-  "settings",
-  "risk",
-  "compare",
-  "quant-lab",
+const CACHE_VERSION = "mft-cache-v5";
+const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+const OFFLINE_PAGE = "./offline.html";
+const APP_SHELL_URLS = [
+  "./",
+  "./index.html",
+  "./offline.html",
+  "./manifest.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
 ];
 
-function inScopeUrl(path) {
+function toCacheUrl(path) {
   return new URL(path, self.registration.scope).toString();
 }
 
-async function cacheResponse(request, response) {
+async function cacheResponse(cacheName, request, response) {
   if (!response || !response.ok || response.type === "opaque") {
     return;
   }
 
-  const cache = await caches.open(CACHE_NAME);
+  const cache = await caches.open(cacheName);
   await cache.put(request, response.clone());
 }
 
-async function refreshAppShell() {
-  const cache = await caches.open(CACHE_NAME);
+async function precacheAppShell() {
+  const cache = await caches.open(APP_SHELL_CACHE);
+  const precacheUrls = APP_SHELL_URLS.map((path) => toCacheUrl(path));
 
   await Promise.all(
-    APP_SHELL_PATHS.map(async (path) => {
+    precacheUrls.map(async (url) => {
       try {
-        const url = inScopeUrl(path);
         const response = await fetch(url, { cache: "no-store" });
-
         if (response.ok) {
           await cache.put(url, response.clone());
         }
       } catch {
-        // Ignore individual shell refresh failures so the rest of the cycle can continue.
+        // Continue even if one asset cannot be fetched right now.
       }
     })
   );
@@ -59,36 +48,15 @@ async function broadcast(message) {
 }
 
 async function handleRefreshCycle(message) {
-  await refreshAppShell();
+  await precacheAppShell();
   await broadcast(message);
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const shellUrls = [
-        inScopeUrl(""),
-        inScopeUrl("index.html"),
-        inScopeUrl("offline.html"),
-        inScopeUrl("manifest.json"),
-        inScopeUrl("icons/icon-192.png"),
-        inScopeUrl("icons/icon-512.png"),
-      ];
-
-      await Promise.all(
-        shellUrls.map(async (url) => {
-          try {
-            const response = await fetch(url, { cache: "no-store" });
-
-            if (response.ok) {
-              await cache.put(url, response.clone());
-            }
-          } catch {
-            // Ignore individual precache failures so install still succeeds.
-          }
-        })
-      );
+      await precacheAppShell();
+      await caches.open(RUNTIME_CACHE);
       await self.skipWaiting();
     })()
   );
@@ -97,25 +65,31 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      if ("navigationPreload" in self.registration) {
-        await self.registration.navigationPreload.enable();
-      }
-
-      const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+      const cacheKeys = await caches.keys();
+      await Promise.all(
+        cacheKeys
+          .filter((key) => key !== APP_SHELL_CACHE && key !== RUNTIME_CACHE)
+          .map((key) => caches.delete(key))
+      );
       await self.clients.claim();
     })()
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("sync", (event) => {
-  if (event.tag === DATA_SYNC_TAG) {
+  if (event.tag === "mft-data-sync") {
     event.waitUntil(handleRefreshCycle({ type: "PWA_DATA_SYNC_COMPLETE" }));
   }
 });
 
 self.addEventListener("periodicsync", (event) => {
-  if (event.tag === PERIODIC_SYNC_TAG) {
+  if (event.tag === "mft-periodic-data-sync") {
     event.waitUntil(handleRefreshCycle({ type: "PWA_PERIODIC_SYNC_COMPLETE" }));
   }
 });
@@ -134,10 +108,10 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "MyFinanceTracker update";
   const options = {
     body: payload.body || "Fresh data is ready in your tracker.",
-    icon: inScopeUrl("icons/icon-192.png"),
-    badge: inScopeUrl("icons/icon-192.png"),
+    icon: toCacheUrl("./icons/icon-192.png"),
+    badge: toCacheUrl("./icons/icon-192.png"),
     data: {
-      url: payload.url || inScopeUrl(""),
+      url: payload.url || toCacheUrl("./"),
     },
   };
 
@@ -151,51 +125,42 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-
-  const targetUrl = event.notification.data?.url || inScopeUrl("");
+  const targetUrl = event.notification.data?.url || toCacheUrl("./");
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       const existingClient = clients.find((client) => client.url === targetUrl || client.url.startsWith(targetUrl));
-
       if (existingClient) {
         return existingClient.focus();
       }
-
       return self.clients.openWindow(targetUrl);
     })
   );
 });
 
 async function handleNavigationRequest(event) {
-  const preloadResponse = await event.preloadResponse;
-
-  if (preloadResponse) {
-    event.waitUntil(cacheResponse(event.request, preloadResponse));
-    return preloadResponse;
-  }
+  const cache = await caches.open(APP_SHELL_CACHE);
+  const cachedPage = await cache.match(toCacheUrl("./index.html"));
 
   try {
     const networkResponse = await fetch(event.request);
-    event.waitUntil(cacheResponse(event.request, networkResponse));
+    if (networkResponse.ok) {
+      await cacheResponse(APP_SHELL_CACHE, event.request, networkResponse);
+    }
     return networkResponse;
   } catch {
-    const cache = await caches.open(CACHE_NAME);
-    const cachedPage = await cache.match(event.request);
-    if (cachedPage) {
-      return cachedPage;
-    }
-
-    return cache.match(inScopeUrl(OFFLINE_HTML));
+    return cachedPage || (await cache.match(OFFLINE_PAGE));
   }
 }
 
-async function handleAssetRequest(event) {
-  const cache = await caches.open(CACHE_NAME);
+async function handleStaticAssetRequest(event) {
+  const cache = await caches.open(RUNTIME_CACHE);
   const cached = await cache.match(event.request);
 
   const networkFetch = fetch(event.request).then((response) => {
-    event.waitUntil(cacheResponse(event.request, response));
+    if (response.ok) {
+      event.waitUntil(cacheResponse(RUNTIME_CACHE, event.request, response));
+    }
     return response;
   });
 
@@ -220,7 +185,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (sameOrigin && ["script", "style", "image", "font"].includes(event.request.destination)) {
-    event.respondWith(handleAssetRequest(event));
+  if (sameOrigin && ["script", "style", "image", "font", "manifest"].includes(event.request.destination)) {
+    event.respondWith(handleStaticAssetRequest(event));
   }
 });

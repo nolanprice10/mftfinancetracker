@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useFormInput } from "@/hooks/useFormInput";
 import { ImportTransactionsDialog } from "@/components/ImportTransactionsDialog";
+import { getGoalAllocationRecommendation } from "@/lib/goalAllocation";
 
 interface Transaction {
   id: string;
@@ -34,9 +35,18 @@ interface Account {
   name: string;
 }
 
+interface Goal {
+  id: string;
+  name: string;
+  current_amount: number;
+  target_amount: number;
+  end_date: string;
+}
+
 const Transactions = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [lastSubmission, setLastSubmission] = useState<{timestamp: number, hash: string} | null>(null);
@@ -63,13 +73,15 @@ const Transactions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [transactionsRes, accountsRes] = await Promise.all([
+      const [transactionsRes, accountsRes, goalsRes] = await Promise.all([
         supabase.from("transactions").select("*, accounts(name)").eq("user_id", user.id).order("date", { ascending: false }),
         supabase.from("accounts").select("id, name").eq("user_id", user.id),
+        supabase.from("goals").select("id, name, current_amount, target_amount, end_date").eq("user_id", user.id),
       ]);
 
       if (transactionsRes.data) setTransactions(transactionsRes.data);
       if (accountsRes.data) setAccounts(accountsRes.data);
+      if (goalsRes.data) setGoals(goalsRes.data as Goal[]);
     } catch (error) {
       toast.error("Failed to load transactions");
     } finally {
@@ -110,6 +122,9 @@ const Transactions = () => {
       }
 
       const validated = validationResult.data;
+      const allocationRecommendation = validated.type === "income"
+        ? getGoalAllocationRecommendation({ incomingAmount: validated.amount, goals })
+        : null;
       
       // Create hash of transaction data for deduplication
       const txHash = `${validated.account_id}-${validated.type}-${validated.amount}-${validated.category}-${validated.date}`;
@@ -177,7 +192,7 @@ const Transactions = () => {
       setAccountId("");
       setDate(new Date().toISOString().split("T")[0]);
       
-      toast.success("Transaction added successfully");
+      toast.success(allocationRecommendation ? `Added! ${allocationRecommendation.message}` : "Transaction added successfully");
       await fetchData();
     } catch (error: any) {
       toast.error(error.message || "Failed to add transaction");
@@ -245,6 +260,15 @@ const Transactions = () => {
 
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
+  const amountValue = Number.parseFloat(amountInput.value) || 0;
+  const allocationRecommendation = useMemo(() => {
+    if (type !== "income" || amountValue <= 0 || goals.length === 0) {
+      return null;
+    }
+
+    return getGoalAllocationRecommendation({ incomingAmount: amountValue, goals });
+  }, [amountValue, type, goals]);
+
   return (
     <Layout>
       <SEO 
@@ -310,6 +334,13 @@ const Transactions = () => {
                   <div className="space-y-2">
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" placeholder="0.00" {...amountInput} required />
+                    {allocationRecommendation && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground">Best use of this money</p>
+                        <p className="mt-1">{allocationRecommendation.message}</p>
+                        <p className="mt-2 text-xs text-primary">Suggested focus: {allocationRecommendation.goalName}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-1">
