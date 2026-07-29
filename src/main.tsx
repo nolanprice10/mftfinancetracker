@@ -28,12 +28,12 @@ async function registerServiceWorker() {
     let registration: ServiceWorkerRegistration;
 
     try {
-      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`, {
         updateViaCache: "none",
       });
     } catch {
-      // Compatibility fallback for environments expecting service-worker.js.
-      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}service-worker.js`, {
+      // Fallback for environments that still use sw.js directly.
+      registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
         updateViaCache: "none",
       });
     }
