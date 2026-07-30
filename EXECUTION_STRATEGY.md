@@ -29,7 +29,7 @@
 
 ---
 
-## 📋 DISTRIBUTION STRATEGY
+## 📋 TODO: DISTRIBUTION STRATEGY
 
 ### Week 1: Build Credibility (NO LINKS)
 
@@ -169,7 +169,7 @@ gtag('event', 'goal_created', {
 
 ---
 
-## 📊 RETENTION & FEEDBACK LOOPS
+## 📊 TODO: RETENTION & FEEDBACK LOOPS
 
 ### Retention Triggers
 
