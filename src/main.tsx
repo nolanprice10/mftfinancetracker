@@ -19,6 +19,34 @@ const initializeDarkMode = () => {
 const periodicSyncTag = "mft-periodic-data-sync";
 const backgroundSyncTag = "mft-data-sync";
 
+type WindowControlsOverlay = {
+  visible: boolean;
+  getTitlebarAreaRect: () => DOMRect;
+  addEventListener: (type: "geometrychange", listener: () => void) => void;
+  removeEventListener: (type: "geometrychange", listener: () => void) => void;
+};
+
+function syncWindowControlsOverlay() {
+  const overlay = (navigator as Navigator & { windowControlsOverlay?: WindowControlsOverlay }).windowControlsOverlay;
+
+  if (!overlay) {
+    return;
+  }
+
+  const updateOverlayMetrics = () => {
+    const titlebarArea = overlay.getTitlebarAreaRect();
+    const root = document.documentElement;
+
+    root.classList.toggle("window-controls-overlay-active", overlay.visible);
+    root.style.setProperty("--titlebar-area-height", overlay.visible ? `${titlebarArea.height}px` : "0px");
+    root.style.setProperty("--titlebar-area-width", overlay.visible ? `${titlebarArea.width}px` : "0px");
+    root.style.setProperty("--titlebar-area-x", overlay.visible ? `${titlebarArea.x}px` : "0px");
+  };
+
+  updateOverlayMetrics();
+  overlay.addEventListener("geometrychange", updateOverlayMetrics);
+}
+
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     return;
@@ -131,6 +159,7 @@ function isPwaRefreshMessage(message: unknown) {
 }
 
 initializeDarkMode();
+syncWindowControlsOverlay();
 
 const shouldRegisterServiceWorker =
   "serviceWorker" in navigator && window.isSecureContext;

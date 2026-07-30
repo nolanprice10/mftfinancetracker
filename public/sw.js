@@ -1,4 +1,4 @@
-const CACHE_VERSION = "mft-cache-v5";
+const CACHE_VERSION = "mft-cache-v6";
 const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_PAGE = "./offline.html";
@@ -10,6 +10,8 @@ const APP_SHELL_URLS = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./screenshots/dashboard-wide.png",
+  "./screenshots/dashboard-narrow.png",
 ];
 
 function toCacheUrl(path) {

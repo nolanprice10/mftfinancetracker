@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --titlebar-area-height: 0px;
+  --titlebar-area-width: 0px;
+  --titlebar-area-x: 0px;
+}
+
 body {
   font-family: "Caslon", "Adobe Caslon Pro", "Big Caslon", "Libre Caslon Text", "Times New Roman", serif;
 }
@@ -199,6 +205,14 @@ All colors MUST be HSL.
   textarea,
   select {
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .window-controls-overlay-active .window-controls-overlay-header {
+    top: var(--titlebar-area-height);
+  }
+
+  .window-controls-overlay-active .window-controls-overlay-shell {
+    padding-top: calc(5rem + var(--titlebar-area-height));
   }
 
   /* Luxurious fade-in animation */

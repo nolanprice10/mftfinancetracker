@@ -88,7 +88,7 @@ const Layout = ({ children }: LayoutProps) => {
       </div>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border window-controls-overlay-header">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-card flex items-center justify-center border border-border shadow-glow">
@@ -193,7 +193,7 @@ const Layout = ({ children }: LayoutProps) => {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen pt-20 lg:pt-0 relative z-10">
+      <main className="lg:ml-64 min-h-screen pt-20 lg:pt-0 relative z-10 window-controls-overlay-shell">
         <div className="p-4 lg:p-8">
           {children}
         </div>
