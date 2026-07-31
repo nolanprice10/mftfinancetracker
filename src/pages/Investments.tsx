@@ -87,6 +87,12 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
 }) => {
   const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
   const isSimpleRothAdd = formMode === "add" && formType === "roth_ira";
+  const shouldAskForTicker = ["roth_ira", "taxable_etf", "index_fund", "individual_stock", "crypto"].includes(formType);
+  const tickerFieldLabel = formType === "roth_ira"
+    ? "What are you investing in?"
+    : formType === "taxable_etf" || formType === "index_fund"
+      ? "Fund or ticker"
+      : "Symbol";
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -133,6 +139,30 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         </Select>
       </div>
       {/* No savings investment type — APY handled via Accounts, not Investments */}
+
+      {shouldAskForTicker && (
+        <div className="space-y-2">
+          <Label>{tickerFieldLabel}</Label>
+          <Input
+            placeholder={formType === "roth_ira" ? "Example: SPY, VOO, AAPL" : "Example: SPY"}
+            value={formData.ticker}
+            onChange={(e) => {
+              const rawValue = e.target.value;
+              const value = formType === "crypto"
+                ? normalizeCryptoInput(rawValue)
+                : rawValue.toUpperCase();
+              handleInputChange('ticker', value);
+            }}
+            autoComplete="off"
+            required={formType === "roth_ira" ? false : false}
+          />
+          {formType === "roth_ira" && (
+            <p className="text-xs text-muted-foreground">
+              Add the fund or ticker you’re using, like SPY or VOO.
+            </p>
+          )}
+        </div>
+      )}
 
       {isCryptoOrStock ? (
         <>
@@ -658,6 +688,7 @@ const Investments = () => {
       }
 
       const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      const isTickerTrackedInvestment = ["roth_ira", "taxable_etf", "index_fund", "individual_stock", "crypto"].includes(formType);
       const normalizedName = formData.name.trim() || (formType === "roth_ira" ? "Roth IRA" : "My Investment");
       
       const { investmentSchema } = await import("@/lib/validation");
@@ -668,7 +699,7 @@ const Investments = () => {
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
         annual_return_pct: formData.annualReturn ? parseFloat(formData.annualReturn) : 0,
         years_remaining: parseFloat(formData.yearsRemaining),
-        ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
+        ticker_symbol: isTickerTrackedInvestment ? formData.ticker || null : null,
         shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
@@ -727,6 +758,7 @@ const Investments = () => {
 
     try {
       const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      const isTickerTrackedInvestment = ["roth_ira", "taxable_etf", "index_fund", "individual_stock", "crypto"].includes(formType);
       const normalizedName = formData.name.trim() || (formType === "roth_ira" ? "Roth IRA" : "My Investment");
       
       const { investmentSchema } = await import("@/lib/validation");
@@ -737,7 +769,7 @@ const Investments = () => {
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
         annual_return_pct: formData.annualReturn ? parseFloat(formData.annualReturn) : 0,
         years_remaining: parseFloat(formData.yearsRemaining),
-        ticker_symbol: isCryptoOrStock ? formData.ticker || null : null,
+        ticker_symbol: isTickerTrackedInvestment ? formData.ticker || null : null,
         shares_owned: isCryptoOrStock && formData.shares ? parseFloat(formData.shares) : null,
         purchase_price_per_share: isCryptoOrStock && formData.pricePerShare ? parseFloat(formData.pricePerShare) : null
       });
