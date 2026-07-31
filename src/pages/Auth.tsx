@@ -10,6 +10,14 @@ import { toast } from "sonner";
 import { Wallet, Star, Quote, TrendingUp } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
+const buildAppRedirectUrl = (path: string) => {
+  const basePath = import.meta.env.BASE_URL || "/";
+  const normalizedBasePath = basePath.endsWith("/") ? basePath : `${basePath}/`;
+  const normalizedPath = path.replace(/^\/+/, "");
+
+  return new URL(`${normalizedBasePath}${normalizedPath}`, window.location.origin).toString();
+};
+
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -114,7 +122,7 @@ const Auth = () => {
         password,
         options: {
           data: { name: fullName },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: buildAppRedirectUrl("dashboard"),
         },
       });
 
@@ -215,12 +223,17 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`,
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail) {
+        throw new Error("Please enter your email address");
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: buildAppRedirectUrl("auth"),
       });
 
       if (error) throw error;
-      toast.success("Password reset email sent! Check your inbox.");
+      toast.success("If an account exists for this email, a reset link has been sent.");
       setShowForgotPassword(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to send reset email");
