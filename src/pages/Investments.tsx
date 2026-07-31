@@ -53,6 +53,7 @@ const NO_SOURCE_ACCOUNT = "__na__";
 interface InvestmentFormProps {
   formData: any;
   formType: string;
+  formMode: "add" | "edit";
   setFormType: (v: string) => void;
   sourceAccountId: string;
   setSourceAccountId: (v: string) => void;
@@ -70,6 +71,7 @@ interface InvestmentFormProps {
 const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   formData,
   formType,
+  formMode,
   setFormType,
   sourceAccountId,
   setSourceAccountId,
@@ -84,6 +86,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   submitting,
 }) => {
   const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+  const isSimpleRothAdd = formMode === "add" && formType === "roth_ira";
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -91,10 +94,10 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         <Label>Pay from (optional)</Label>
         <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
           <SelectTrigger>
-            <SelectValue placeholder="Choose an account or skip" />
+            <SelectValue placeholder="Choose an account or N/A" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_SOURCE_ACCOUNT}>Skip this</SelectItem>
+            <SelectItem value={NO_SOURCE_ACCOUNT}>N/A account (do not deduct funds)</SelectItem>
             {accounts.map(account => (
               <SelectItem key={account.id} value={account.id}>
                 {account.name} (${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
@@ -106,11 +109,10 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
       <div className="space-y-2">
         <Label>Name</Label>
         <Input
-          placeholder="What did you invest in?"
+          placeholder={formType === "roth_ira" ? "Roth IRA" : "What did you invest in?"}
           value={formData.name}
           onChange={(e) => handleInputChange('name', e.target.value)}
           autoComplete="off"
-          required
         />
       </div>
       <div className="space-y-2">
@@ -230,7 +232,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className={isSimpleRothAdd ? "space-y-2" : "grid grid-cols-2 gap-4"}>
             <div className="space-y-2">
               <Label>Current amount</Label>
               <Input
@@ -243,30 +245,34 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
                 required
               />
             </div>
+            {!isSimpleRothAdd && (
+              <div className="space-y-2">
+                <Label>Monthly add-on (optional)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="100"
+                  value={formData.monthlyContribution}
+                  onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            )}
+          </div>
+          {!isSimpleRothAdd && (
             <div className="space-y-2">
-              <Label>Monthly add-on (optional)</Label>
+              <Label>Years from now</Label>
               <Input
                 type="number"
-                step="0.01"
-                placeholder="100"
-                value={formData.monthlyContribution}
-                onChange={(e) => handleInputChange('monthlyContribution', e.target.value)}
+                step="0.5"
+                placeholder="10"
+                value={formData.yearsRemaining}
+                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
                 autoComplete="off"
+                required
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Years from now</Label>
-            <Input
-              type="number"
-              step="0.5"
-              placeholder="10"
-              value={formData.yearsRemaining}
-              onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
+          )}
         </>
       )}
 
@@ -289,6 +295,9 @@ const Investments = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addFundsDialogOpen, setAddFundsDialogOpen] = useState(false);
+  const [monthlyDialogOpen, setMonthlyDialogOpen] = useState(false);
+  const [monthlyContributionValue, setMonthlyContributionValue] = useState("");
+  const [savingMonthlyContribution, setSavingMonthlyContribution] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   // priceData structure: { [TICKER_UPPER]: { latest: PriceData, [periodKey]: PriceData } }
   const [priceData, setPriceData] = useState<Record<string, Record<string, PriceData>>>({});
@@ -646,10 +655,11 @@ const Investments = () => {
       }
 
       const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      const normalizedName = formData.name.trim() || (formType === "roth_ira" ? "Roth IRA" : "My Investment");
       
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: formData.name,
+        name: normalizedName,
         type: formType,
         current_value: investmentAmount,
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
@@ -714,10 +724,11 @@ const Investments = () => {
 
     try {
       const isCryptoOrStock = formType === "individual_stock" || formType === "crypto";
+      const normalizedName = formData.name.trim() || (formType === "roth_ira" ? "Roth IRA" : "My Investment");
       
       const { investmentSchema } = await import("@/lib/validation");
       const validationResult = investmentSchema.safeParse({
-        name: formData.name,
+        name: normalizedName,
         type: formType,
         current_value: parseFloat(formData.currentValue),
         monthly_contribution: parseFloat(formData.monthlyContribution || "0"),
@@ -767,6 +778,47 @@ const Investments = () => {
       fetchInvestments();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete investment");
+    }
+  };
+
+  const openMonthlyContributionDialog = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setMonthlyContributionValue(Number(investment.monthly_contribution || 0).toString());
+    setMonthlyDialogOpen(true);
+  };
+
+  const saveMonthlyContribution = async () => {
+    if (!selectedInvestment) return;
+
+    const amount = parseFloat(monthlyContributionValue || "0");
+    if (isNaN(amount) || amount < 0) {
+      toast.error("Please enter a valid monthly amount");
+      return;
+    }
+
+    if (!submitRateLimiter.tryConsume("set-monthly-contribution")) {
+      const retryAfterMs = submitRateLimiter.getRetryAfterMs("set-monthly-contribution");
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      toast.error(`Too many attempts. Try again in ${retryAfterSeconds}s.`);
+      return;
+    }
+
+    setSavingMonthlyContribution(true);
+    try {
+      const { error } = await supabase
+        .from("investments")
+        .update({ monthly_contribution: amount })
+        .eq("id", selectedInvestment.id);
+
+      if (error) throw error;
+
+      toast.success("Monthly amount saved");
+      setMonthlyDialogOpen(false);
+      await fetchInvestments();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save monthly amount");
+    } finally {
+      setSavingMonthlyContribution(false);
     }
   };
 
@@ -1950,6 +2002,15 @@ const Investments = () => {
                                 <div className="text-xs text-muted-foreground mt-0.5">
                                   ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
                                 </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2"
+                                  onClick={() => openMonthlyContributionDialog(investment)}
+                                >
+                                  Set monthly amount
+                                </Button>
                               </div>
                             )}
 
@@ -2005,6 +2066,7 @@ const Investments = () => {
                   <InvestmentForm
                     formData={formData}
                     formType={formType}
+                    formMode="add"
                     setFormType={setFormType}
                     sourceAccountId={sourceAccountId}
                     setSourceAccountId={setSourceAccountId}
@@ -2037,6 +2099,7 @@ const Investments = () => {
             <InvestmentForm
               formData={formData}
               formType={formType}
+              formMode="edit"
               setFormType={setFormType}
               sourceAccountId={sourceAccountId}
               setSourceAccountId={setSourceAccountId}
@@ -2077,6 +2140,36 @@ const Investments = () => {
           accounts={accounts}
           onComplete={fetchInvestments}
         />
+
+        <Dialog open={monthlyDialogOpen} onOpenChange={setMonthlyDialogOpen}>
+          <DialogContent
+            disableFocusTrap
+            disableOutsidePointerEvents={false}
+            className="max-h-[90vh] overflow-y-auto"
+          >
+            <DialogHeader>
+              <DialogTitle>Set monthly amount</DialogTitle>
+              <DialogDescription>
+                Add how much you plan to put in each month.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Monthly amount</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={monthlyContributionValue}
+                  onChange={(e) => setMonthlyContributionValue(e.target.value)}
+                />
+              </div>
+              <Button type="button" className="w-full" disabled={savingMonthlyContribution} onClick={saveMonthlyContribution}>
+                {savingMonthlyContribution ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
