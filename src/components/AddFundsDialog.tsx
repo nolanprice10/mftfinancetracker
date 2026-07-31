@@ -3,9 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createInMemoryRateLimiter } from "@/lib/rateLimit";
 
 interface Account {
   id: string;
@@ -36,6 +37,7 @@ export const AddFundsDialog = ({ open, onOpenChange, investment, accounts, onCom
   const [sourceAccountId, setSourceAccountId] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const addFundsRateLimiter = useMemo(() => createInMemoryRateLimiter(3, 10000), []);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -56,6 +58,13 @@ export const AddFundsDialog = ({ open, onOpenChange, investment, accounts, onCom
   const handleAddFunds = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!addFundsRateLimiter.tryConsume("add-funds")) {
+      const retryAfterMs = addFundsRateLimiter.getRetryAfterMs("add-funds");
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      toast.error(`Too many attempts. Try again in ${retryAfterSeconds}s.`);
+      return;
+    }
 
     if (submitting) return;
 
@@ -137,7 +146,7 @@ export const AddFundsDialog = ({ open, onOpenChange, investment, accounts, onCom
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent disableFocusTrap disableOutsidePointerEvents={false}>
+      <DialogContent disableFocusTrap disableOutsidePointerEvents={false} className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Funds to Investment</DialogTitle>
           <DialogDescription>

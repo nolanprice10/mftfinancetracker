@@ -5,10 +5,64 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX_REQUESTS = 45
+const requestLog = new Map<string, number[]>()
+
+const getRequesterKey = (req: Request) => {
+  const forwardedFor = req.headers.get('x-forwarded-for') || req.headers.get('X-Forwarded-For')
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim()
+  }
+
+  const realIp = req.headers.get('x-real-ip') || req.headers.get('X-Real-IP')
+  if (realIp) {
+    return realIp
+  }
+
+  return 'unknown'
+}
+
+const consumeRateLimit = (key: string) => {
+  const now = Date.now()
+  const existing = requestLog.get(key) || []
+  const active = existing.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS)
+
+  if (active.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - active[0])
+    requestLog.set(key, active)
+    return { allowed: false, retryAfterMs: Math.max(0, retryAfterMs) }
+  }
+
+  active.push(now)
+  requestLog.set(key, active)
+  return { allowed: true, retryAfterMs: 0 }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
+  }
+
+  const requesterKey = getRequesterKey(req)
+  const rateLimit = consumeRateLimit(requesterKey)
+  if (!rateLimit.allowed) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(rateLimit.retryAfterMs / 1000))
+    return new Response(
+      JSON.stringify({
+        error: `Rate limit exceeded. Retry in ${retryAfterSeconds}s.`,
+        success: false,
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfterSeconds),
+        },
+        status: 429,
+      },
+    )
   }
 
   try {

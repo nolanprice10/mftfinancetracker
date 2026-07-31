@@ -71,7 +71,7 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-x-hidden">
       {/* Clean background with subtle texture */}
       <div className="fixed inset-0 bg-background -z-10"></div>
       <div

@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { InfoButton } from "@/components/InfoButton";
 import { AddFundsDialog } from "@/components/AddFundsDialog";
+import { createInMemoryRateLimiter } from "@/lib/rateLimit";
 
 interface Investment {
   id: string;
@@ -412,6 +413,9 @@ const Investments = () => {
   const [formType, setFormType] = useState("index_fund");
   const [sourceAccountId, setSourceAccountId] = useState("");
   const [fetchingPrice, setFetchingPrice] = useState(false);
+  const submitRateLimiter = useMemo(() => createInMemoryRateLimiter(3, 10000), []);
+  const priceFetchRateLimiter = useMemo(() => createInMemoryRateLimiter(8, 15000), []);
+  const refreshRateLimiter = useMemo(() => createInMemoryRateLimiter(2, 10000), []);
 
   useEffect(() => {
     fetchInvestments();
@@ -557,6 +561,14 @@ const Investments = () => {
 
   const refreshPrices = async () => {
     if (investments.length === 0) return;
+
+    if (!refreshRateLimiter.tryConsume("refresh-prices")) {
+      const retryAfterMs = refreshRateLimiter.getRetryAfterMs("refresh-prices");
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      toast.error(`Price refresh is rate-limited. Try again in ${retryAfterSeconds}s.`);
+      return;
+    }
+
     setRefreshing(true);
     const promises = investments
       .filter(inv => inv.ticker_symbol && (inv.type === "individual_stock" || inv.type === "crypto"))
@@ -576,6 +588,14 @@ const Investments = () => {
     if (!ticker) return;
     const yahooTicker = normalizeYahooTicker(ticker, type);
     const tickerKey = yahooTicker;
+
+    if (!priceFetchRateLimiter.tryConsume(`manual-price-${tickerKey}`)) {
+      const retryAfterMs = priceFetchRateLimiter.getRetryAfterMs(`manual-price-${tickerKey}`);
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      toast.error(`Too many price requests for ${tickerKey}. Try again in ${retryAfterSeconds}s.`);
+      return;
+    }
+
     setPriceLoading(prev => ({ ...(prev), [tickerKey]: true }));
     setFetchingPrice(true);
     try {
@@ -608,6 +628,13 @@ const Investments = () => {
       const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (!submitRateLimiter.tryConsume("add-investment")) {
+          const retryAfterMs = submitRateLimiter.getRetryAfterMs("add-investment");
+          const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+          toast.error(`Too many attempts. Try again in ${retryAfterSeconds}s.`);
+          return;
+        }
 
         if (submitting) return;
         setSubmitting(true);

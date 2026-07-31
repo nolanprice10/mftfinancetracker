@@ -18,6 +18,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useFormInput } from "@/hooks/useFormInput";
 import { ImportTransactionsDialog } from "@/components/ImportTransactionsDialog";
 import { getGoalAllocationRecommendation } from "@/lib/goalAllocation";
+import { createInMemoryRateLimiter } from "@/lib/rateLimit";
 
 interface Transaction {
   id: string;
@@ -63,6 +64,7 @@ const Transactions = () => {
   
   const amountInput = useFormInput("");
   const notesInput = useFormInput("");
+  const submitRateLimiter = useMemo(() => createInMemoryRateLimiter(4, 10000), []);
 
   useEffect(() => {
     fetchData();
@@ -92,6 +94,13 @@ const Transactions = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!submitRateLimiter.tryConsume("add-transaction")) {
+      const retryAfterMs = submitRateLimiter.getRetryAfterMs("add-transaction");
+      const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+      toast.error(`Too many attempts. Try again in ${retryAfterSeconds}s.`);
+      return;
+    }
     
     console.log('🔍 Form submitted, submitting state:', submitting);
     
@@ -294,6 +303,7 @@ const Transactions = () => {
               <DialogContent
                 disableFocusTrap
                 disableOutsidePointerEvents={false}
+                className="max-h-[90vh] overflow-y-auto"
               >
                 <DialogHeader>
                   <DialogTitle>Add Transaction</DialogTitle>
