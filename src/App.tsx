@@ -15,7 +15,6 @@ import Recommendations from "./pages/Recommendations";
 import Settings from "./pages/Settings";
 import Risk from "./pages/Risk";
 import Compare from "./pages/Compare";
-import QuantLab from "./pages/QuantLab";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -41,7 +40,6 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/risk" element={<Risk />} />
               <Route path="/compare" element={<Compare />} />
-              <Route path="/quant-lab" element={<QuantLab />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
