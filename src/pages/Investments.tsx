@@ -261,7 +261,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           </div>
           {!isSimpleRothAdd && (
             <div className="space-y-2">
-              <Label>Years from now</Label>
+              <Label>How long will you keep this invested?</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -271,6 +271,9 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
                 autoComplete="off"
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                A simple number like 5 or 10 works great for beginners.
+              </p>
             </div>
           )}
         </>

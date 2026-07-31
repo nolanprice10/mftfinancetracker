@@ -124,10 +124,10 @@ const InvestmentCalculator = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl">
           <TrendingUp className="h-6 w-6 text-primary" />
-          Compound Interest Calculator
+          Easy Investment Growth Calculator
         </CardTitle>
         <CardDescription>
-          Built using quantitative finance formulas. See your wealth growth by age {targetAge || "25"} with compounding returns.
+          See how your money could grow over time. This simple tool helps you estimate what your savings could look like later.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -135,7 +135,7 @@ const InvestmentCalculator = () => {
           <div className="space-y-2">
             <Label htmlFor="currentAge" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Your Current Age
+              Your age now
             </Label>
             <Input
               id="currentAge"
@@ -151,7 +151,7 @@ const InvestmentCalculator = () => {
           <div className="space-y-2">
             <Label htmlFor="targetAge" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Target Age
+              Your goal age
             </Label>
             <Input
               id="targetAge"
@@ -167,7 +167,7 @@ const InvestmentCalculator = () => {
           <div className="space-y-2">
             <Label htmlFor="initialInvestment" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Starting Amount
+              Money you start with
             </Label>
             <Input
               id="initialInvestment"
@@ -182,7 +182,7 @@ const InvestmentCalculator = () => {
           <div className="space-y-2">
             <Label htmlFor="monthlyInvestment" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              Monthly Investment
+              Monthly amount you add
             </Label>
             <Input
               id="monthlyInvestment"
@@ -197,7 +197,7 @@ const InvestmentCalculator = () => {
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="annualReturn" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
-              Expected Annual Return (%)
+              Expected yearly growth (%)
             </Label>
             <Input
               id="annualReturn"
@@ -210,7 +210,7 @@ const InvestmentCalculator = () => {
               step="0.1"
             />
             <p className="text-xs text-muted-foreground">
-              Historical S&P 500 average: ~10% | Conservative estimate: 6-8%
+              A common starting point is 7% to 10% for long-term investing.
             </p>
           </div>
         </div>
@@ -220,13 +220,13 @@ const InvestmentCalculator = () => {
           className="w-full bg-gradient-wealth text-lg py-6"
           size="lg"
         >
-          Calculate Future Value
+          See how it could grow
         </Button>
 
         {result !== null && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="p-6 rounded-lg bg-gradient-primary/10 border-2 border-primary/20">
-              <p className="text-sm text-muted-foreground mb-1">By age {targetAge}, you could have:</p>
+              <p className="text-sm text-muted-foreground mb-1">By {targetAge}, you could have:</p>
               <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 {formatCurrency(result)}
               </p>
@@ -234,11 +234,11 @@ const InvestmentCalculator = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-card border border-border">
-                <p className="text-xs text-muted-foreground mb-1">Total Contributed</p>
+                <p className="text-xs text-muted-foreground mb-1">Total you put in</p>
                 <p className="text-xl font-semibold">{formatCurrency(totalContributed)}</p>
               </div>
               <div className="p-4 rounded-lg bg-gradient-wealth/10 border border-primary/20">
-                <p className="text-xs text-muted-foreground mb-1">Investment Growth</p>
+                <p className="text-xs text-muted-foreground mb-1">Growth from investing</p>
                 <p className="text-xl font-semibold text-primary">+{formatCurrency(profit)}</p>
               </div>
             </div>
