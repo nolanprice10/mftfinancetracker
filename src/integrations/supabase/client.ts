@@ -4,6 +4,7 @@ import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 
 // Debug logging for production
 if (import.meta.env.MODE === 'production') {
@@ -13,22 +14,68 @@ if (import.meta.env.MODE === 'production') {
   console.log('🔧 Supabase key configured:', !!SUPABASE_PUBLISHABLE_KEY);
 }
 
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  const error = `Missing Supabase environment variables:
-    - VITE_SUPABASE_URL: ${SUPABASE_URL ? '✓ Set' : '✗ Missing'}
-    - VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY ? '✓ Set' : '✗ Missing'}
-  `;
-  console.error(error);
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+if (!isSupabaseConfigured) {
+  console.warn('Supabase environment variables are missing. Running in offline/demo mode.');
+}
+
+function createFallbackQueryBuilder() {
+  const builder = {
+    select: () => builder,
+    eq: () => builder,
+    order: () => builder,
+    limit: () => builder,
+    single: () => builder,
+    maybeSingle: () => builder,
+    in: () => builder,
+    insert: async () => ({ data: null, error: null }),
+    upsert: async () => ({ data: null, error: null }),
+    update: async () => ({ data: null, error: null }),
+    delete: () => builder,
+    then: (resolve: (value: { data: never[]; error: null }) => unknown) =>
+      Promise.resolve({ data: [], error: null }).then(resolve),
+    catch: (onRejected: (reason: unknown) => unknown) =>
+      Promise.resolve({ data: [], error: null }).catch(onRejected),
+    finally: (onFinally: () => void) => Promise.resolve({ data: [], error: null }).finally(onFinally),
+  } as any;
+
+  return builder;
+}
+
+function createFallbackSupabaseClient() {
+  const auth = {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    getUser: async () => ({ data: { user: null }, error: null }),
+    signUp: async () => ({ data: { user: null, session: null }, error: null }),
+    signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
+    resetPasswordForEmail: async () => ({ data: null, error: null }),
+    updateUser: async () => ({ data: { user: null }, error: null }),
+    signOut: async () => ({ error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+  };
+
+  return {
+    auth,
+    from: () => createFallbackQueryBuilder(),
+    channel: () => ({
+      on: () => ({
+        subscribe: async () => ({ error: null }),
+      }),
+    }),
+    removeChannel: () => undefined,
+  };
 }
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+export const supabase = isSupabaseConfigured
+  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
+  : createFallbackSupabaseClient();
+
+export const isSupabaseConfiguredFlag = isSupabaseConfigured;
