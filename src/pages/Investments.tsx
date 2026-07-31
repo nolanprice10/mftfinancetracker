@@ -88,13 +88,13 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label>Source Account (optional)</Label>
+        <Label>Pay from (optional)</Label>
         <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
           <SelectTrigger>
-            <SelectValue placeholder="Select account or N/A" />
+            <SelectValue placeholder="Choose an account or skip" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_SOURCE_ACCOUNT}>N/A (do not deduct from an account)</SelectItem>
+            <SelectItem value={NO_SOURCE_ACCOUNT}>Skip this</SelectItem>
             {accounts.map(account => (
               <SelectItem key={account.id} value={account.id}>
                 {account.name} (${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
@@ -104,9 +104,9 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>Investment Name</Label>
+        <Label>Name</Label>
         <Input
-          placeholder="e.g., Roth IRA, AAPL Stock, Bitcoin"
+          placeholder="What did you invest in?"
           value={formData.name}
           onChange={(e) => handleInputChange('name', e.target.value)}
           autoComplete="off"
@@ -114,17 +114,17 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label>Type</Label>
+        <Label>What kind is it?</Label>
         <Select value={formType} onValueChange={setFormType}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="roth_ira">Roth IRA</SelectItem>
-            <SelectItem value="taxable_etf">Taxable ETF</SelectItem>
-            <SelectItem value="index_fund">Index Fund</SelectItem>
-            <SelectItem value="individual_stock">Individual Stock</SelectItem>
-            <SelectItem value="crypto">Cryptocurrency</SelectItem>
+            <SelectItem value="roth_ira">Retirement account (Roth IRA)</SelectItem>
+            <SelectItem value="taxable_etf">ETF fund</SelectItem>
+            <SelectItem value="index_fund">Index fund</SelectItem>
+            <SelectItem value="individual_stock">Single stock</SelectItem>
+            <SelectItem value="crypto">Crypto</SelectItem>
             
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
@@ -137,9 +137,9 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
           <div className="space-y-2">
             <div className="flex gap-2">
               <div className="flex-1">
-                <Label>Ticker Symbol</Label>
+                <Label>Symbol</Label>
                 <Input
-                  placeholder={formType === "crypto" ? "e.g., BTC, ETH, BTC-USD" : "e.g., AAPL, MSFT, GOOGL"}
+                  placeholder={formType === "crypto" ? "Example: BTC" : "Example: AAPL"}
                   value={formData.ticker}
                   onChange={(e) => {
                     const rawValue = e.target.value;
@@ -159,17 +159,14 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
                   disabled={!formData.ticker || fetchingPrice}
                   variant="outline"
                 >
-                  {fetchingPrice ? "Fetching..." : "Get Price"}
+                  {fetchingPrice ? "Loading..." : "Fill Price"}
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Price from Yahoo Finance (use symbols like AAPL or BTC-USD)
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>{formType === "crypto" ? "Amount Owned" : "Shares Owned"}</Label>
+              <Label>{formType === "crypto" ? "How many do you own?" : "How many shares?"}</Label>
               <Input
                 type="number"
                 step="0.001"
@@ -184,11 +181,11 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Current Price per {formType === "crypto" ? "Unit" : "Share"}</Label>
+              <Label>Price right now</Label>
               <Input
                 type="number"
                 step="0.01"
-                placeholder="Auto-fetched"
+                placeholder="0.00"
                 value={formData.pricePerShare}
                 onChange={(e) => handleInputChange('pricePerShare', e.target.value)}
                 autoComplete="off"
@@ -198,7 +195,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Amount Invested ($)</Label>
+            <Label>Money you put in</Label>
             <Input
               type="number"
               step="0.01"
@@ -218,14 +215,13 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               }}
               autoComplete="off"
             />
-            <p className="text-xs text-muted-foreground">Optional: enter a dollar amount to auto-calculate shares.</p>
           </div>
           <div className="space-y-2">
-            <Label>Total Value</Label>
+            <Label>Current total</Label>
             <Input
               type="number"
               step="0.01"
-              placeholder="Calculated automatically"
+              placeholder="Auto-filled"
               value={formData.currentValue}
               disabled
             />
@@ -236,7 +232,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
         <>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Current Value</Label>
+              <Label>Current amount</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -248,7 +244,7 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               />
             </div>
             <div className="space-y-2">
-              <Label>Monthly Contribution</Label>
+              <Label>Monthly add-on (optional)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -259,31 +255,17 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Expected Annual Return (%) - Optional</Label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="Leave empty for historical average"
-                value={formData.annualReturn}
-                onChange={(e) => handleInputChange('annualReturn', e.target.value)}
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">If left empty, uses asset-specific historical averages</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Years to Project</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="10"
-                value={formData.yearsRemaining}
-                onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
-                autoComplete="off"
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Years from now</Label>
+            <Input
+              type="number"
+              step="0.5"
+              placeholder="10"
+              value={formData.yearsRemaining}
+              onChange={(e) => handleInputChange('yearsRemaining', e.target.value)}
+              autoComplete="off"
+              required
+            />
           </div>
         </>
       )}
@@ -411,7 +393,7 @@ const Investments = () => {
   const [lastEdited, setLastEdited] = useState<"shares" | "amount" | null>(null);
   
   const [formType, setFormType] = useState("index_fund");
-  const [sourceAccountId, setSourceAccountId] = useState("");
+  const [sourceAccountId, setSourceAccountId] = useState(NO_SOURCE_ACCOUNT);
   const [fetchingPrice, setFetchingPrice] = useState(false);
   const submitRateLimiter = useMemo(() => createInMemoryRateLimiter(3, 10000), []);
   const priceFetchRateLimiter = useMemo(() => createInMemoryRateLimiter(8, 15000), []);
@@ -802,7 +784,7 @@ const Investments = () => {
     });
     setLastEdited(null);
     setFormType("index_fund");
-    setSourceAccountId("");
+    setSourceAccountId(NO_SOURCE_ACCOUNT);
   };
 
   // Helper function to format currency with commas
@@ -1549,8 +1531,8 @@ const Investments = () => {
                 className="max-h-[90vh] overflow-y-auto"
               >
                 <DialogHeader>
-                  <DialogTitle>Add New Investment</DialogTitle>
-                  <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
+                  <DialogTitle>Add Investment</DialogTitle>
+                  <DialogDescription>Add the basics only.</DialogDescription>
                 </DialogHeader>
                 <InvestmentForm
                   formData={formData}
@@ -2017,8 +1999,8 @@ const Investments = () => {
                   className="max-h-[90vh] overflow-y-auto"
                 >
                   <DialogHeader>
-                    <DialogTitle>Add New Investment</DialogTitle>
-                    <DialogDescription>Track stocks, crypto, ETFs, and more</DialogDescription>
+                    <DialogTitle>Add Investment</DialogTitle>
+                    <DialogDescription>Add the basics only.</DialogDescription>
                   </DialogHeader>
                   <InvestmentForm
                     formData={formData}
