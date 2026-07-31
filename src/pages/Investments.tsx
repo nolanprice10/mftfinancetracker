@@ -47,6 +47,8 @@ interface PriceData {
   history: Array<{ date: string; price: number }>;
 }
 
+const NO_SOURCE_ACCOUNT = "__na__";
+
 interface InvestmentFormProps {
   formData: any;
   formType: string;
@@ -85,12 +87,13 @@ const InvestmentFormComponent: React.FC<InvestmentFormProps> = ({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label>Source Account (funds will be deducted)</Label>
+        <Label>Source Account (optional)</Label>
         <Select value={sourceAccountId} onValueChange={setSourceAccountId} required>
           <SelectTrigger>
-            <SelectValue placeholder="Select account" />
+            <SelectValue placeholder="Select account or N/A" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={NO_SOURCE_ACCOUNT}>N/A (do not deduct from an account)</SelectItem>
             {accounts.map(account => (
               <SelectItem key={account.id} value={account.id}>
                 {account.name} (${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
@@ -613,9 +616,12 @@ const Investments = () => {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          const sourceAccount = accounts.find(a => a.id === sourceAccountId);
-      if (!sourceAccount) {
-        toast.error("Invalid source account");
+      const shouldDeductFromAccount = sourceAccountId !== NO_SOURCE_ACCOUNT;
+      const sourceAccount = shouldDeductFromAccount
+        ? accounts.find(a => a.id === sourceAccountId)
+        : null;
+      if (shouldDeductFromAccount && !sourceAccount) {
+        toast.error("Select a source account or choose N/A");
         return;
       }
 
@@ -625,7 +631,7 @@ const Investments = () => {
         return;
       }
 
-      if (sourceAccount.balance < investmentAmount) {
+      if (sourceAccount && sourceAccount.balance < investmentAmount) {
         toast.error(`Insufficient funds. Account balance: $${sourceAccount.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         return;
       }
@@ -662,7 +668,7 @@ const Investments = () => {
         ticker_symbol: validated.ticker_symbol,
         shares_owned: validated.shares_owned,
         purchase_price_per_share: validated.purchase_price_per_share,
-        source_account_id: sourceAccountId,
+        source_account_id: shouldDeductFromAccount ? sourceAccountId : null,
         // no annual_apy stored from investments — savings are managed as Accounts
       };
 
@@ -671,13 +677,15 @@ const Investments = () => {
       const { error } = await supabase.from("investments").insert(investmentData);
       if (error) throw error;
 
-      // Deduct funds from source account
-      const { error: updateError } = await supabase
-        .from("accounts")
-        .update({ balance: sourceAccount.balance - investmentAmount })
-        .eq("id", sourceAccountId);
+      if (sourceAccount) {
+        // Deduct funds from source account only when a real account was selected.
+        const { error: updateError } = await supabase
+          .from("accounts")
+          .update({ balance: sourceAccount.balance - investmentAmount })
+          .eq("id", sourceAccountId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       toast.success("Investment added successfully");
       setDialogOpen(false);
