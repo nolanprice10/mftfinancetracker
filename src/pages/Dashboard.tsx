@@ -14,6 +14,7 @@ import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { ProbabilityShareCard } from "@/components/ProbabilityShareCard";
 import { useRewards } from "@/hooks/useRewards";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClass } from "@/lib/probability";
 import { calculatePercentile } from "@/lib/percentile";
 
@@ -48,6 +49,7 @@ const Dashboard = () => {
   const [referralCode, setReferralCode] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [goalView, setGoalView] = useState<string>("all");
   
   const recommendationRef = useRef<HTMLDivElement>(null);
   
@@ -73,6 +75,17 @@ const Dashboard = () => {
       window.removeEventListener("mft:pwa-refresh", handlePwaRefresh);
     };
   }, []);
+
+  useEffect(() => {
+    if (goals.length === 0) {
+      if (goalView !== "all") setGoalView("all");
+      return;
+    }
+
+    if (goalView !== "all" && !goals.some((goal) => goal.id === goalView)) {
+      setGoalView(goals[0].id);
+    }
+  }, [goals, goalView]);
 
   const scrollToRecommendation = () => {
     recommendationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -141,10 +154,21 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const now = new Date();
+      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const startOfNextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const startOfNextMonth = `${startOfNextMonthDate.getFullYear()}-${String(startOfNextMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
+
       const [accountsRes, goalsRes, transactionsRes, profileRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", user.id),
-        supabase.from("goals").select("*").eq("user_id", user.id).limit(3),
-        supabase.from("transactions").select("*").eq("user_id", user.id).order("date", { ascending: false }).limit(30),
+        supabase.from("goals").select("*").eq("user_id", user.id),
+        supabase
+          .from("transactions")
+          .select("amount,type,date")
+          .eq("user_id", user.id)
+          .gte("date", startOfMonth)
+          .lt("date", startOfNextMonth)
+          .order("date", { ascending: false }),
         supabase.from("profiles").select("name").eq("id", user.id).single(),
       ]);
 
@@ -178,32 +202,89 @@ const Dashboard = () => {
 
   const monthlyNet = monthlyIncome - monthlyExpenses;
 
-  // Calculate goal probability for primary goal
-  const primaryGoal = goals[0];
-  let probabilityResult = null;
-  let isPrimaryGoalExpired = false;
-  
-  if (primaryGoal) {
-    const endDate = new Date(primaryGoal.end_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const goalAnalyses = goals.map((goal) => {
+    const endDate = new Date(goal.end_date);
     endDate.setHours(0, 0, 0, 0);
-    const progress = (Number(primaryGoal.current_amount) / Number(primaryGoal.target_amount)) * 100;
-    isPrimaryGoalExpired = endDate < today && progress < 100;
-    
-    const monthsToGoal = Math.ceil(
-      (new Date(primaryGoal.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30)
+    const monthsToGoal = Math.max(
+      1,
+      Math.ceil((new Date(goal.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))
     );
-    
-    if (!isPrimaryGoalExpired) {
-      probabilityResult = calculateGoalProbability({
-        monthlyIncome: monthlyIncome || 0,
-        monthlySpending: monthlyExpenses || 0,
-        currentSavings: Number(primaryGoal.current_amount) || 0,
-        goalAmount: Number(primaryGoal.target_amount) || 0,
-        monthsToGoal: Math.max(1, monthsToGoal)
-      });
+    const targetAmount = Number(goal.target_amount) || 0;
+    const currentAmount = Number(goal.current_amount) || 0;
+    const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+    const isExpired = endDate < now && progress < 100;
+    const remainingAmount = Math.max(0, targetAmount - currentAmount);
+
+    return {
+      goal,
+      monthsToGoal,
+      targetAmount,
+      currentAmount,
+      progress,
+      isExpired,
+      remainingAmount,
+      probabilityResult: isExpired
+        ? null
+        : calculateGoalProbability({
+            monthlyIncome: monthlyIncome || 0,
+            monthlySpending: monthlyExpenses || 0,
+            currentSavings: currentAmount,
+            goalAmount: targetAmount,
+            monthsToGoal,
+          }),
+    };
+  });
+
+  const hasMultipleGoals = goals.length > 1;
+  const selectedAnalyses = goalView === "all"
+    ? goalAnalyses
+    : goalAnalyses.filter((analysis) => analysis.goal.id === goalView);
+
+  const isAllGoalsView = goalView === "all" && hasMultipleGoals;
+  const selectedGoalName = isAllGoalsView
+    ? "All Goals Combined"
+    : selectedAnalyses[0]?.goal.name || "Selected Goal";
+  const selectedTargetAmount = selectedAnalyses.reduce((sum, analysis) => sum + analysis.targetAmount, 0);
+  const selectedCurrentAmount = selectedAnalyses.reduce((sum, analysis) => sum + analysis.currentAmount, 0);
+  const selectedHasExpiredGoal = selectedAnalyses.some((analysis) => analysis.isExpired);
+  const selectedExpiredCount = selectedAnalyses.filter((analysis) => analysis.isExpired).length;
+
+  const selectedActiveAnalyses = selectedAnalyses.filter((analysis) => !analysis.isExpired);
+  let selectedProbability: number | null = null;
+  if (selectedActiveAnalyses.length > 0) {
+    if (isAllGoalsView) {
+      selectedProbability = selectedActiveAnalyses.reduce((combined, analysis) => {
+        const p = analysis.probabilityResult?.probability ?? 0;
+        return combined * (p / 100);
+      }, 1) * 100;
+    } else {
+      selectedProbability = selectedActiveAnalyses[0].probabilityResult?.probability ?? null;
     }
+  }
+
+  let monthsToGoalForPrimary = 1;
+  let requiredMonthlyAllocation = 0;
+  let additionalMonthlyAllocationNeeded = 0;
+  let allocationCoveragePercent = 100;
+  let cashAvailableForGoal = 0;
+
+  if (selectedActiveAnalyses.length > 0) {
+    monthsToGoalForPrimary = selectedActiveAnalyses.length === 1
+      ? selectedActiveAnalyses[0].monthsToGoal
+      : Math.max(...selectedActiveAnalyses.map((analysis) => analysis.monthsToGoal));
+
+    requiredMonthlyAllocation = selectedActiveAnalyses.reduce((sum, analysis) => {
+      return sum + (analysis.remainingAmount / analysis.monthsToGoal);
+    }, 0);
+
+    cashAvailableForGoal = Math.max(0, monthlyNet);
+    additionalMonthlyAllocationNeeded = Math.max(0, requiredMonthlyAllocation - cashAvailableForGoal);
+    allocationCoveragePercent = requiredMonthlyAllocation > 0
+      ? Math.min(100, (cashAvailableForGoal / requiredMonthlyAllocation) * 100)
+      : 100;
   }
 
   if (loading) {
@@ -230,9 +311,54 @@ const Dashboard = () => {
       />
       <OnboardingDialog open={showOnboarding} onOpenChange={setShowOnboarding} />
       <div className="space-y-6 animate-fade-in">
+
+        {hasMultipleGoals && (
+          <Card className="shadow-elegant border-border/50 bg-gradient-card">
+            <CardContent className="pt-6">
+              <div className="md:hidden">
+                <Select value={goalView} onValueChange={setGoalView}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose probability view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Goals</SelectItem>
+                    {goals.map((goal) => (
+                      <SelectItem key={goal.id} value={goal.id}>
+                        {goal.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="hidden md:flex md:flex-wrap items-center gap-2">
+                <Button
+                  variant={goalView === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGoalView("all")}
+                >
+                  All Goals
+                </Button>
+                {goals.map((goal) => (
+                  <Button
+                    key={goal.id}
+                    variant={goalView === goal.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setGoalView(goal.id)}
+                  >
+                    {goal.name}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Switch between each goal or view your probability of achieving every goal together.
+              </p>
+            </CardContent>
+          </Card>
+        )}
         
         {/* HERO OUTCOME - THE BIG ANSWER */}
-        {isPrimaryGoalExpired && primaryGoal ? (
+        {selectedHasExpiredGoal && selectedAnalyses.length > 0 ? (
           <div className="border-2 border-destructive rounded-2xl p-8 shadow-xl bg-gradient-to-br from-destructive/10 to-destructive/5">
             <div className="text-center space-y-4">
               <div className="text-6xl">⏰</div>
@@ -240,15 +366,17 @@ const Dashboard = () => {
                 Goal Deadline Passed
               </p>
               <h2 className="text-3xl md:text-4xl font-bold text-destructive">
-                {primaryGoal.name}
+                {selectedGoalName}
               </h2>
               <p className="text-muted-foreground">
-                Deadline was {new Date(primaryGoal.end_date).toLocaleDateString()}
+                {isAllGoalsView
+                  ? `${selectedExpiredCount} goal${selectedExpiredCount === 1 ? " has" : "s have"} passed the deadline without full completion.`
+                  : `Deadline was ${new Date(selectedAnalyses[0].goal.end_date).toLocaleDateString()}`}
               </p>
               <div className="text-2xl font-semibold">
-                ${Number(primaryGoal.current_amount).toLocaleString()} / ${Number(primaryGoal.target_amount).toLocaleString()}
+                ${selectedCurrentAmount.toLocaleString()} / ${selectedTargetAmount.toLocaleString()}
                 <span className="text-sm text-muted-foreground ml-2">
-                  ({((Number(primaryGoal.current_amount) / Number(primaryGoal.target_amount)) * 100).toFixed(1)}% reached)
+                  ({selectedTargetAmount > 0 ? ((selectedCurrentAmount / selectedTargetAmount) * 100).toFixed(1) : "0.0"}% reached)
                 </span>
               </div>
             </div>
@@ -281,44 +409,49 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        ) : probabilityResult && primaryGoal ? (
+        ) : selectedProbability !== null && selectedAnalyses.length > 0 ? (
           <>
-            <div className={`border-2 rounded-2xl p-8 shadow-xl ${getProbabilityBgClass(probabilityResult.probability)}`}>
+            <div className={`border-2 rounded-2xl p-8 shadow-xl ${getProbabilityBgClass(selectedProbability)}`}>
               <div className="text-center space-y-4">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                   Your Financial Probability
                 </p>
-                <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(probabilityResult.probability)}`}>
-                  {Math.round(probabilityResult.probability)}%
+                <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(selectedProbability)}`}>
+                  {Math.round(selectedProbability)}%
                 </div>
                 <p className="text-xl md:text-2xl font-semibold">
-                  Chance of hitting your goal: {primaryGoal.name}
+                  {isAllGoalsView ? "Chance of hitting all goals" : `Chance of hitting your goal: ${selectedGoalName}`}
                 </p>
                 <p className="text-muted-foreground">
-                  Target: ${Number(primaryGoal.target_amount).toLocaleString()} by{" "}
-                  {new Date(primaryGoal.end_date).toLocaleDateString()}
+                  Target: ${selectedTargetAmount.toLocaleString()}
+                  {isAllGoalsView
+                    ? " across all active goals"
+                    : ` by ${new Date(selectedAnalyses[0].goal.end_date).toLocaleDateString()}`}
                 </p>
               </div>
 
               {/* THE ONE LEVER */}
-              {probabilityResult.probability < 75 && (
+              {selectedProbability < 75 && (
                 <div className="mt-8 pt-6 border-t border-current/20">
-                  <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
+                  <div className="bg-background/60 backdrop-blur rounded-xl p-6 text-center space-y-3">
                     <div className="flex items-center justify-center gap-2 mb-3">
                       <AlertCircle className="h-5 w-5" />
                       <p className="font-semibold text-lg">What to do</p>
                     </div>
                     <p className="text-2xl md:text-3xl font-bold">
-                      Increase monthly savings by ${probabilityResult.recommendedIncrease.toLocaleString()}
+                      Close a monthly gap of ${Math.round(additionalMonthlyAllocationNeeded).toLocaleString()}
                     </p>
-                    <p className="text-muted-foreground mt-2">
-                      This brings you to 75% probability
+                    <p className="text-muted-foreground">
+                      Target allocation: ${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Suggested split: cut spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} and add ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} in extra monthly income.
                     </p>
                   </div>
                 </div>
               )}
 
-              {probabilityResult.probability >= 75 && (
+              {selectedProbability >= 75 && (
                 <div className="mt-8 pt-6 border-t border-current/20">
                   <div className="bg-background/50 backdrop-blur rounded-xl p-6 text-center">
                     <p className="text-xl font-semibold text-success">
@@ -344,9 +477,9 @@ const Dashboard = () => {
 
             {/* SHARING CARD - Make it easy to share */}
             <ProbabilityShareCard 
-              probability={Math.round(probabilityResult.probability)}
-              goalName={primaryGoal.name}
-              percentile={calculatePercentile(probabilityResult.probability)}
+              probability={Math.round(selectedProbability)}
+              goalName={selectedGoalName}
+              percentile={calculatePercentile(selectedProbability)}
               referralCode={referralCode}
             />
           </>
@@ -381,19 +514,19 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-muted/30 rounded-lg p-4">
+                <div className="bg-gradient-to-br from-background to-muted/40 border border-border/50 rounded-xl p-4 shadow-sm">
                   <p className="text-sm text-muted-foreground mb-1">Total Balance</p>
                   <p className="text-2xl font-bold">
                     ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="bg-muted/30 rounded-lg p-4">
+                <div className="bg-gradient-to-br from-success/10 to-success/5 border border-success/20 rounded-xl p-4 shadow-sm">
                   <p className="text-sm text-muted-foreground mb-1">Monthly Income</p>
                   <p className="text-2xl font-bold text-success">
                     ${monthlyIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <div className="bg-muted/30 rounded-lg p-4">
+                <div className="bg-gradient-to-br from-destructive/10 to-destructive/5 border border-destructive/20 rounded-xl p-4 shadow-sm">
                   <p className="text-sm text-muted-foreground mb-1">Monthly Expenses</p>
                   <p className="text-2xl font-bold text-destructive">
                     ${monthlyExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -401,23 +534,71 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {probabilityResult && (
+              {selectedProbability !== null && selectedAnalyses.length > 0 && (
                 <div className="bg-muted/30 rounded-lg p-4">
                   <p className="text-sm font-medium mb-3">Ways to improve your probability:</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>Reduce monthly spending by ${Math.round(probabilityResult.recommendedIncrease / 2).toLocaleString()} (easier than increasing income)</span>
+                      <span>Reduce monthly spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} (easier than increasing income)</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>Find a side income of ${Math.round(probabilityResult.recommendedIncrease / 2).toLocaleString()}/month</span>
+                      <span>Find a side income of ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()}/month</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
                       <span>Extend your goal timeline to reduce monthly pressure</span>
                     </li>
                   </ul>
+                </div>
+              )}
+
+              {selectedActiveAnalyses.length > 0 && (
+                <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 space-y-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Allocation plan for {selectedGoalName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Based on your current month totals and deadline
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Monthly target</p>
+                      <p className="text-lg font-bold">
+                        ${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Coverage from current surplus</span>
+                      <span>{Math.round(allocationCoveragePercent)}%</span>
+                    </div>
+                    <Progress value={allocationCoveragePercent} className="h-2.5" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">Available after expenses</p>
+                      <p className="text-base font-semibold text-success">
+                        ${cashAvailableForGoal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">Additional needed</p>
+                      <p className={`text-base font-semibold ${additionalMonthlyAllocationNeeded > 0 ? "text-destructive" : "text-success"}`}>
+                        ${additionalMonthlyAllocationNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-sm">
+                    {additionalMonthlyAllocationNeeded > 0
+                      ? `Action: free up or earn another $${additionalMonthlyAllocationNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month${isAllGoalsView ? " across your goal timelines." : ` for the next ${monthsToGoalForPrimary} month${monthsToGoalForPrimary === 1 ? "" : "s"}.`}`
+                      : `You're fully funded at your current pace. Keep allocating at least $${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month until the deadline.`}
+                  </div>
                 </div>
               )}
             </CardContent>
