@@ -39,6 +39,13 @@ interface Transaction {
   date: string;
 }
 
+interface AccountAllocationPlan {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  monthlyAmount: number;
+}
+
 const Dashboard = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -184,21 +191,16 @@ const Dashboard = () => {
   };
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
-  
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const monthlyTransactions = transactions.filter(t => {
-    const date = new Date(t.date);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-  });
 
-  const monthlyIncome = monthlyTransactions
-    .filter(t => t.type === "income")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-    
-  const monthlyExpenses = monthlyTransactions
-    .filter(t => t.type === "expense")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+  // Transactions are already month-scoped in fetchData; avoid re-filtering by Date parsing
+  // because YYYY-MM-DD parsing can shift by timezone and drop valid entries.
+  const monthlyIncome = transactions
+    .filter((t) => String(t.type).toLowerCase().trim() === "income")
+    .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+
+  const monthlyExpenses = transactions
+    .filter((t) => String(t.type).toLowerCase().trim() === "expense")
+    .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
   const monthlyNet = monthlyIncome - monthlyExpenses;
 
@@ -265,6 +267,10 @@ const Dashboard = () => {
     }
   }
 
+  if (selectedProbability !== null) {
+    selectedProbability = Math.max(1, selectedProbability);
+  }
+
   let monthsToGoalForPrimary = 1;
   let requiredMonthlyAllocation = 0;
   let additionalMonthlyAllocationNeeded = 0;
@@ -286,6 +292,45 @@ const Dashboard = () => {
       ? Math.min(100, (cashAvailableForGoal / requiredMonthlyAllocation) * 100)
       : 100;
   }
+
+  const allActiveAnalyses = goalAnalyses.filter((analysis) => !analysis.isExpired);
+  const allGoalsMonthlyRequirement = allActiveAnalyses.reduce((sum, analysis) => {
+    return sum + (analysis.remainingAmount / analysis.monthsToGoal);
+  }, 0);
+
+  const positiveBalanceAccounts = accounts.filter((account) => Number(account.balance) > 0);
+  const totalPositiveBalances = positiveBalanceAccounts.reduce((sum, account) => sum + Number(account.balance), 0);
+
+  const accountAllocationPlan: AccountAllocationPlan[] = (() => {
+    if (allGoalsMonthlyRequirement <= 0 || positiveBalanceAccounts.length === 0 || totalPositiveBalances <= 0) {
+      return [];
+    }
+
+    const targetCents = Math.round(allGoalsMonthlyRequirement * 100);
+    let remainingCents = targetCents;
+
+    return positiveBalanceAccounts
+      .map((account, index) => {
+        let centsForAccount = 0;
+        if (index === positiveBalanceAccounts.length - 1) {
+          centsForAccount = remainingCents;
+        } else {
+          const accountShare = Number(account.balance) / totalPositiveBalances;
+          centsForAccount = Math.min(remainingCents, Math.round(targetCents * accountShare));
+          remainingCents -= centsForAccount;
+        }
+
+        return {
+          accountId: account.id,
+          accountName: account.name,
+          accountType: account.type,
+          monthlyAmount: centsForAccount / 100,
+        };
+      })
+      .filter((entry) => entry.monthlyAmount > 0);
+  })();
+
+  const displayProbability = selectedProbability !== null ? Math.max(1, Math.round(selectedProbability)) : null;
 
   if (loading) {
     return (
@@ -417,7 +462,7 @@ const Dashboard = () => {
                   Your Financial Probability
                 </p>
                 <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(selectedProbability)}`}>
-                  {Math.round(selectedProbability)}%
+                  {displayProbability}%
                 </div>
                 <p className="text-xl md:text-2xl font-semibold">
                   {isAllGoalsView ? "Chance of hitting all goals" : `Chance of hitting your goal: ${selectedGoalName}`}
@@ -477,7 +522,7 @@ const Dashboard = () => {
 
             {/* SHARING CARD - Make it easy to share */}
             <ProbabilityShareCard 
-              probability={Math.round(selectedProbability)}
+              probability={displayProbability || 1}
               goalName={selectedGoalName}
               percentile={calculatePercentile(selectedProbability)}
               referralCode={referralCode}
@@ -598,6 +643,39 @@ const Dashboard = () => {
                     {additionalMonthlyAllocationNeeded > 0
                       ? `Action: free up or earn another $${additionalMonthlyAllocationNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month${isAllGoalsView ? " across your goal timelines." : ` for the next ${monthsToGoalForPrimary} month${monthsToGoalForPrimary === 1 ? "" : "s"}.`}`
                       : `You're fully funded at your current pace. Keep allocating at least $${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month until the deadline.`}
+                  </div>
+                </div>
+              )}
+
+              {allActiveAnalyses.length > 0 && accountAllocationPlan.length > 0 && (
+                <div className="rounded-xl border border-border/60 bg-background/60 p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Recommended monthly allocation between accounts</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Suggested split to fund all active goals on time
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">All-goal monthly target</p>
+                      <p className="text-base font-semibold">
+                        ${allGoalsMonthlyRequirement.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {accountAllocationPlan.map((entry) => (
+                      <div key={entry.accountId} className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium">{entry.accountName}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{entry.accountType}</p>
+                        </div>
+                        <p className="text-sm font-semibold">
+                          ${entry.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

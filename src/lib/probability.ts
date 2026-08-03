@@ -62,7 +62,7 @@ export function calculateGoalProbability(input: ProbabilityInput): ProbabilityRe
 
   // Laplace smoothing keeps estimates realistic and avoids hard 0%/100% edges.
   // With finite simulations, true probability is better represented as a range.
-  const probability = ((successCount + 1) / (iterations + 2)) * 100;
+  const probability = Math.max(1, ((successCount + 1) / (iterations + 2)) * 100);
 
   // Calculate recommended increase to reach 75% probability
   let recommendedIncrease = 0;

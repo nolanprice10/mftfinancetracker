@@ -23,8 +23,8 @@ export async function calculateProbabilityChanges(userId: string): Promise<Proba
  * Calculate goal probability using simplified Monte Carlo approach
  */
 export function calculateGoalProbability(current: number, target: number): number {
-  if (target <= 0) return 0;
-  return Math.min((current / target) * 100, 100);
+  if (target <= 0) return 100;
+  return Math.max(1, Math.min((current / target) * 100, 100));
 }
 
 /**
