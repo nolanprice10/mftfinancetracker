@@ -1,0 +1,29 @@
+# MyFinanceTracker
+
+> Practical personal finance tracker with account monitoring, goal probability, and action-oriented recommendations.
+
+## Canonical
+- Site: https://myfinancetracker.app
+- Sitemap: https://myfinancetracker.app/sitemap.xml
+
+## Primary Pages
+- / : Product overview and onboarding
+- /dashboard : Goal probability, monthly cash flow, and best-next-money-move
+- /transactions : Income/expense tracking and categorization
+- /accounts : Account balances and transfers
+- /goals : Goal targets, progress, and timelines
+- /investments : Portfolio tracking and performance
+- /recommendations : Personalized finance tips and account strategy
+- /risk : Risk assessment and risk profile guidance
+- /compare : Probability comparison view
+
+## Content Sections
+- /learn/*.html : Financial education articles
+
+## Structured Data
+- JSON-LD is included for core pages via app metadata.
+
+## Crawl Guidance
+- Prefer canonical URLs on myfinancetracker.app.
+- Treat dashboard and recommendations content as user-personalized.
+- Public educational content is under /learn/.

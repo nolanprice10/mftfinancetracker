@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async';
+import { DEFAULT_OG_IMAGE, SITE_NAME, buildCanonicalUrl } from '@/lib/site';
 
 interface SEOProps {
   title: string;
@@ -6,18 +7,34 @@ interface SEOProps {
   keywords?: string;
   ogImage?: string;
   canonicalUrl?: string;
+  structuredData?: Record<string, unknown>;
+  noIndex?: boolean;
 }
 
 export const SEO = ({ 
   title, 
   description, 
   keywords = "investment calculator, compound interest calculator, portfolio tracker, personal finance, wealth management, retirement planning, financial goals, quant finance",
-  ogImage = "https://storage.googleapis.com/gpt-engineer-file-uploads/d5ueX6bSSFP88pUlY4aTBJeKlXo1/social-images/social-1762136875706-IMG_1359.jpeg",
-  canonicalUrl
+  ogImage = DEFAULT_OG_IMAGE,
+  canonicalUrl,
+  structuredData,
+  noIndex = false,
 }: SEOProps) => {
-  const fullTitle = `${title} | MyFinanceTracker`;
-  const siteUrl = "https://nolanprice10.github.io/mftfinancetracker";
-  const fullCanonicalUrl = canonicalUrl ? `${siteUrl}${canonicalUrl}` : siteUrl;
+  const fullTitle = `${title} | ${SITE_NAME}`;
+  const fullCanonicalUrl = buildCanonicalUrl(canonicalUrl || "/");
+
+  const defaultStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: SITE_NAME,
+    applicationCategory: "FinanceApplication",
+    description,
+    url: fullCanonicalUrl,
+    image: ogImage,
+    inLanguage: "en",
+  };
+
+  const resolvedStructuredData = structuredData || defaultStructuredData;
 
   return (
     <Helmet>
@@ -26,6 +43,7 @@ export const SEO = ({
       <meta name="title" content={fullTitle} />
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
+      <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow"} />
       <link rel="canonical" href={fullCanonicalUrl} />
       
       {/* Open Graph / Facebook */}
@@ -42,6 +60,11 @@ export const SEO = ({
       <meta property="twitter:title" content={fullTitle} />
       <meta property="twitter:description" content={description} />
       <meta property="twitter:image" content={ogImage} />
+
+      {/* Structured Data */}
+      <script type="application/ld+json">
+        {JSON.stringify(resolvedStructuredData)}
+      </script>
     </Helmet>
   );
 };

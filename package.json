@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "cp -f dist/index.html dist/404.html && cp -f public/sitemap.xml dist/sitemap.xml",
+    "postbuild": "cp -f public/404.html dist/404.html && cp -f public/sitemap.xml dist/sitemap.xml && cp -f public/llms.txt dist/llms.txt",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
