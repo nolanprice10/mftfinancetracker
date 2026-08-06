@@ -493,15 +493,25 @@ const Dashboard = () => {
                       <AlertCircle className="h-5 w-5" />
                       <p className="font-semibold text-lg">Best next step</p>
                     </div>
-                    <p className="text-2xl md:text-3xl font-bold">
-                      Close a monthly gap of ${Math.round(additionalMonthlyAllocationNeeded).toLocaleString()}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Target allocation: ${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Simple plan: cut spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} and add ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} in extra income.
-                    </p>
+                    {transferRecommendation ? (
+                      <>
+                        <p className="text-2xl md:text-3xl font-bold">
+                          Move ${transferRecommendation.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from {transferRecommendation.fromAccountName} to {transferRecommendation.toAccountName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          This directly supports your {transferRecommendation.goalName} goal.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-2xl md:text-3xl font-bold">
+                          Close a monthly gap of ${Math.round(additionalMonthlyAllocationNeeded).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Simple plan: cut spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} and add ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} in extra income.
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
