@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { SEO } from "@/components/SEO";
+import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
 
 type RiskProfileType = "conservative" | "moderate" | "aggressive";
 type AssetClass = "equity_us" | "equity_intl" | "bonds" | "real_assets" | "alternatives" | "cash" | "other";
@@ -429,7 +430,18 @@ const Recommendations = () => {
         return daysAgo <= 90;
       });
 
-      const monthlyIncome = monthlyTransactions.filter(t => t.type === "income").reduce((sum, t) => sum + Number(t.amount), 0);
+      const isIncomeLikeTransaction = (tx: any) => {
+        const normalizedType = String(tx.type || "").toLowerCase().trim();
+        if (normalizedType === "income") return true;
+        if (normalizedType === "transfer") {
+          const categoryText = String(tx.category || "").toLowerCase().trim();
+          const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent)/.test(categoryText);
+          return !looksOutgoingTransfer;
+        }
+        return false;
+      };
+
+      const monthlyIncome = monthlyTransactions.filter(isIncomeLikeTransaction).reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
       const monthlyExpenses = monthlyTransactions.filter(t => t.type === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
       const avgMonthlyExpenses = last90Days.filter(t => t.type === "expense").reduce((sum, t) => sum + Number(t.amount), 0) / 3;
 
@@ -970,6 +982,40 @@ const Recommendations = () => {
           });
         }
       });
+
+      const transferRecommendation = getBestTransferRecommendation({
+        accounts,
+        goals,
+        monthlyIncome,
+        monthlyExpenses,
+      });
+
+      if (transferRecommendation) {
+        generatedRecs.unshift({
+          icon: DollarSign,
+          title: `Move $${transferRecommendation.amount.toFixed(0)} for ${transferRecommendation.goalName}`,
+          category: "Account Strategy",
+          summary: `Best transfer right now: ${transferRecommendation.fromAccountName} → ${transferRecommendation.toAccountName}`,
+          actionItems: [
+            {
+              title: `Transfer $${transferRecommendation.amount.toFixed(0)} now`,
+              description: `Move funds from ${transferRecommendation.fromAccountName} to ${transferRecommendation.toAccountName} to support ${transferRecommendation.goalName}.`,
+              savings: `Goal boost +$${transferRecommendation.amount.toFixed(0)}`,
+            },
+            {
+              title: "Automate this move",
+              description: `Set a repeating transfer of about $${Math.max(5, Math.round(transferRecommendation.amount / 4)).toFixed(0)}/week to stay consistent.`,
+            },
+            {
+              title: "Why this is the best move",
+              description: transferRecommendation.reason,
+              savings: `$${transferRecommendation.monthlyNeededForGoal.toFixed(0)}/mo target`,
+            },
+          ],
+          color: "text-success",
+          bgColor: "bg-success/10",
+        });
+      }
 
       setRecommendations(generatedRecs);
     } catch (error) {

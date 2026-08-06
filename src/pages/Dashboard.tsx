@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClass } from "@/lib/probability";
 import { calculatePercentile } from "@/lib/percentile";
+import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
 
 interface Account {
   id: string;
@@ -31,19 +32,14 @@ interface Goal {
   target_amount: number;
   current_amount: number;
   end_date: string;
+  account_id?: string | null;
 }
 
 interface Transaction {
   amount: number;
   type: string;
   date: string;
-}
-
-interface AccountAllocationPlan {
-  accountId: string;
-  accountName: string;
-  accountType: string;
-  monthlyAmount: number;
+  category?: string;
 }
 
 const Dashboard = () => {
@@ -171,7 +167,7 @@ const Dashboard = () => {
         supabase.from("goals").select("*").eq("user_id", user.id),
         supabase
           .from("transactions")
-          .select("amount,type,date")
+          .select("amount,type,date,category")
           .eq("user_id", user.id)
           .gte("date", startOfMonth)
           .lt("date", startOfNextMonth)
@@ -194,8 +190,22 @@ const Dashboard = () => {
 
   // Transactions are already month-scoped in fetchData; avoid re-filtering by Date parsing
   // because YYYY-MM-DD parsing can shift by timezone and drop valid entries.
+  const isIncomeLikeTransaction = (tx: Transaction) => {
+    const normalizedType = String(tx.type || "").toLowerCase().trim();
+    if (normalizedType === "income") return true;
+
+    // Some imported deposits are categorized as transfers. Count transfer-in as income.
+    if (normalizedType === "transfer") {
+      const categoryText = String(tx.category || "").toLowerCase().trim();
+      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent)/.test(categoryText);
+      return !looksOutgoingTransfer;
+    }
+
+    return false;
+  };
+
   const monthlyIncome = transactions
-    .filter((t) => String(t.type).toLowerCase().trim() === "income")
+    .filter(isIncomeLikeTransaction)
     .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
   const monthlyExpenses = transactions
@@ -292,6 +302,15 @@ const Dashboard = () => {
       ? Math.min(100, (cashAvailableForGoal / requiredMonthlyAllocation) * 100)
       : 100;
   }
+
+  const transferRecommendation = selectedActiveAnalyses.length > 0
+    ? getBestTransferRecommendation({
+        accounts,
+        goals: selectedActiveAnalyses.map((analysis) => analysis.goal),
+        monthlyIncome,
+        monthlyExpenses,
+      })
+    : null;
 
   const allActiveAnalyses = goalAnalyses.filter((analysis) => !analysis.isExpired);
   const allGoalsMonthlyRequirement = allActiveAnalyses.reduce((sum, analysis) => {
@@ -677,6 +696,18 @@ const Dashboard = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {transferRecommendation && (
+                <div className="rounded-xl border border-success/25 bg-gradient-to-br from-success/10 via-success/5 to-transparent p-5 space-y-2 shadow-sm">
+                  <p className="text-sm font-medium">Best money move this month</p>
+                  <p className="text-lg font-semibold text-success">
+                    Move ${transferRecommendation.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from {transferRecommendation.fromAccountName} to {transferRecommendation.toAccountName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    This supports your {transferRecommendation.goalName} goal. {transferRecommendation.reason}
+                  </p>
                 </div>
               )}
             </CardContent>
