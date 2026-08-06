@@ -69,7 +69,6 @@ export const PerformanceChart = ({ data, title, ticker, isLoading = false }: Per
   const isPositive = priceChange >= 0;
 
   const strokeColor = isPositive ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
-  const gradientId = `grad-${ticker}`;
 
   return (
     <Card className="shadow-elegant border-border/50 bg-gradient-card">
@@ -85,12 +84,6 @@ export const PerformanceChart = ({ data, title, ticker, isLoading = false }: Per
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={formattedData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.18} />
-                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.06} />
               <XAxis 
                 dataKey="date" 
@@ -119,7 +112,7 @@ export const PerformanceChart = ({ data, title, ticker, isLoading = false }: Per
                 labelFormatter={(label) => label}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Area type="monotone" dataKey="price" stroke={strokeColor} fill={`url(#${gradientId})`} fillOpacity={1} strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="price" stroke={strokeColor} fill={strokeColor} fillOpacity={0.12} strokeWidth={2} dot={false} />
               <Line 
                 type="monotone" 
                 dataKey="price" 

@@ -28,7 +28,7 @@ export const themes: Theme[] = [
       accent: "0 44% 34%", // Burgundy
       background: "39 50% 90%", // Cream
       card: "39 50% 90%",
-      gradient: "linear-gradient(135deg, #1F3B57 0%, #274C3B 55%, #A8937D 100%)"
+      gradient: "#1F3B57"
     }
   },
   {
@@ -43,7 +43,7 @@ export const themes: Theme[] = [
       accent: "88 18% 35%", // Moss green
       background: "40 23% 95%", // Off-white
       card: "35 30% 79%", // Warm beige
-      gradient: "linear-gradient(135deg, #2B2B2B 0%, #5B6A4A 55%, #C2A66B 100%)"
+      gradient: "#2B2B2B"
     }
   },
   {
@@ -59,7 +59,7 @@ export const themes: Theme[] = [
       accent: "31 16% 48%", // Driftwood
       background: "46 37% 85%", // Oat
       card: "40 29% 69%", // Sand
-      gradient: "linear-gradient(135deg, #1F4F51 0%, #60707A 55%, #C7B89A 100%)"
+      gradient: "#1F4F51"
     }
   },
   {
@@ -75,7 +75,7 @@ export const themes: Theme[] = [
       accent: "14 37% 30%", // Mahogany
       background: "34 30% 89%", // Linen
       card: "34 30% 89%",
-      gradient: "linear-gradient(135deg, #14213D 0%, #6A3E31 55%, #B49F82 100%)"
+      gradient: "#14213D"
     }
   },
   {
@@ -91,7 +91,7 @@ export const themes: Theme[] = [
       accent: "0 100% 27%", // Deep red
       background: "0 0% 100%", // Paper white
       card: "0 0% 100%",
-      gradient: "linear-gradient(135deg, #1A1A1A 0%, #4A4A4A 55%, #C3A77E 100%)"
+      gradient: "#1A1A1A"
     }
   }
 ];

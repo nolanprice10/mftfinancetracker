@@ -426,8 +426,8 @@ const Dashboard = () => {
           <div className="border-2 border-destructive rounded-2xl p-8 shadow-xl bg-gradient-to-br from-destructive/10 to-destructive/5">
             <div className="text-center space-y-4">
               <div className="text-6xl">⏰</div>
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Goal Deadline Passed
+              <p className="text-sm font-medium text-muted-foreground">
+                Deadline passed
               </p>
               <h2 className="text-3xl md:text-4xl font-bold text-destructive">
                 {selectedGoalName}
@@ -477,8 +477,8 @@ const Dashboard = () => {
           <>
             <div className={`border-2 rounded-2xl p-8 shadow-xl ${getProbabilityBgClass(selectedProbability)}`}>
               <div className="text-center space-y-4">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  Your Financial Probability
+                <p className="text-sm font-medium text-muted-foreground">
+                  Your goal probability
                 </p>
                 <div className={`text-7xl md:text-8xl font-bold ${getProbabilityTextClass(selectedProbability)}`}>
                   {displayProbability}%
@@ -500,7 +500,7 @@ const Dashboard = () => {
                   <div className="bg-background/60 backdrop-blur rounded-xl p-6 text-center space-y-3">
                     <div className="flex items-center justify-center gap-2 mb-3">
                       <AlertCircle className="h-5 w-5" />
-                      <p className="font-semibold text-lg">What to do</p>
+                      <p className="font-semibold text-lg">Best next step</p>
                     </div>
                     <p className="text-2xl md:text-3xl font-bold">
                       Close a monthly gap of ${Math.round(additionalMonthlyAllocationNeeded).toLocaleString()}
@@ -509,7 +509,7 @@ const Dashboard = () => {
                       Target allocation: ${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Suggested split: cut spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} and add ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} in extra monthly income.
+                      Simple plan: cut spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} and add ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} in extra income.
                     </p>
                   </div>
                 </div>
@@ -600,19 +600,19 @@ const Dashboard = () => {
 
               {selectedProbability !== null && selectedAnalyses.length > 0 && (
                 <div className="bg-muted/30 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-3">Ways to improve your probability:</p>
+                  <p className="text-sm font-medium mb-3">Simple ways to improve:</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>Reduce monthly spending by ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} (easier than increasing income)</span>
+                      <span>Cut spending by about ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} each month</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>Find a side income of ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()}/month</span>
+                      <span>Add side income of about ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()}/month</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>Extend your goal timeline to reduce monthly pressure</span>
+                      <span>Extend your goal date to lower monthly pressure</span>
                     </li>
                   </ul>
                 </div>
@@ -622,9 +622,9 @@ const Dashboard = () => {
                 <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 space-y-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium">Allocation plan for {selectedGoalName}</p>
+                      <p className="text-sm font-medium">Monthly plan for {selectedGoalName}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Based on your current month totals and deadline
+                        Based on this month and your deadline
                       </p>
                     </div>
                     <div className="text-right">
@@ -722,7 +722,7 @@ const Dashboard = () => {
               variant="outline"
               size="lg"
             >
-              See detailed breakdown
+              See details (optional)
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </div>

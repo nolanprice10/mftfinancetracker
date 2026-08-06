@@ -9,11 +9,11 @@
 }
 
 body {
-  font-family: "Caslon", "Adobe Caslon Pro", "Big Caslon", "Libre Caslon Text", "Times New Roman", serif;
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Sabon", "Sabon Next", "Sabon LT Std", "Libre Caslon Text", "Times New Roman", serif;
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -73,12 +73,12 @@ All colors MUST be HSL.
     --chart-4: 195 45% 42%;
     --chart-5: 0 65% 48%;
 
-    /* Subtle, restrained gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 35% 22%) 0%, hsl(210 30% 26%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 28% 28%) 0%, hsl(150 24% 32%) 100%);
-    --gradient-card: linear-gradient(160deg, hsl(36 25% 98%) 0%, hsl(38 22% 96%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(35 35% 70%) 0%, hsl(35 28% 62%) 100%);
-    --gradient-wealth: linear-gradient(135deg, hsl(210 35% 22%) 0%, hsl(150 28% 26%) 50%, hsl(35 30% 64%) 100%);
+    /* Solid-only surfaces */
+    --gradient-primary: hsl(210 35% 22%);
+    --gradient-success: hsl(150 28% 28%);
+    --gradient-card: hsl(36 25% 98%);
+    --gradient-gold: hsl(35 35% 70%);
+    --gradient-wealth: hsl(210 35% 22%);
     
     /* Refined shadows with depth */
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.05);
@@ -137,11 +137,11 @@ All colors MUST be HSL.
     --chart-4: 195 26% 42%;
     --chart-5: 0 40% 48%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(210 35% 38%) 0%, hsl(210 32% 42%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 26% 38%) 0%, hsl(150 24% 42%) 100%);
-    --gradient-card: linear-gradient(160deg, hsl(210 18% 12%) 0%, hsl(210 18% 10%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(35 28% 62%) 0%, hsl(35 25% 56%) 100%);
-    --gradient-wealth: linear-gradient(135deg, hsl(210 35% 38%) 0%, hsl(150 26% 36%) 50%, hsl(35 28% 60%) 100%);
+    --gradient-primary: hsl(210 35% 38%);
+    --gradient-success: hsl(150 26% 38%);
+    --gradient-card: hsl(210 18% 12%);
+    --gradient-gold: hsl(35 28% 62%);
+    --gradient-wealth: hsl(210 35% 38%);
 
     --shadow-glow: 0 0 40px hsl(210 30% 45% / 0.18), 0 0 18px hsl(210 30% 45% / 0.1);
     --shadow-elegant: 0 12px 24px -8px rgb(0 0 0 / 0.3), 0 4px 12px -4px rgb(0 0 0 / 0.2);
@@ -176,20 +176,20 @@ All colors MUST be HSL.
   button:hover:not(:disabled),
   a:hover,
   [role="button"]:hover {
-    @apply scale-[1.02] shadow-md;
+    @apply shadow-sm;
   }
 
   button:active:not(:disabled),
   a:active,
   [role="button"]:active {
-    @apply scale-[0.98];
+    @apply opacity-95;
   }
 
   /* Elegant input interactions */
   input:focus,
   textarea:focus,
   select:focus {
-    @apply translate-y-[-2px] shadow-sm;
+    @apply shadow-sm;
   }
 
   /* Card refined hover effects */
@@ -243,6 +243,56 @@ All colors MUST be HSL.
   .stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
   .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
   .stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+
+  /* Global solid-color enforcement: disable gradient backgrounds and text gradients. */
+  [class*="bg-gradient"] {
+    background-image: none !important;
+  }
+
+  [class*="bg-gradient-to-"] {
+    background-image: none !important;
+    background-color: hsl(var(--card)) !important;
+  }
+
+  .bg-gradient-wealth,
+  .bg-gradient-primary,
+  .bg-gradient-success,
+  .bg-gradient-gold {
+    background-image: none !important;
+    color: hsl(var(--primary-foreground));
+  }
+
+  .bg-gradient-wealth,
+  .bg-gradient-primary {
+    background-color: hsl(var(--primary)) !important;
+  }
+
+  .bg-gradient-success {
+    background-color: hsl(var(--success)) !important;
+  }
+
+  .bg-gradient-gold {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .bg-clip-text.text-transparent {
+    background-image: none !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Block any inline gradient style usage. */
+  [style*="gradient"] {
+    background-image: none !important;
+  }
+
+  /* Disable SVG gradient definitions app-wide. */
+  linearGradient,
+  radialGradient,
+  conicGradient {
+    display: none !important;
+  }
 }
 
 /* Typographic scale and responsive text-fitting utilities */

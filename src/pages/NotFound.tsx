@@ -19,7 +19,7 @@ const NotFound = () => {
         canonicalUrl="/404"
         noIndex
       />
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50/40 to-slate-100 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-muted/40 flex items-center justify-center px-4">
       <div className="w-full max-w-xl rounded-2xl border border-border/50 bg-card/90 backdrop-blur p-8 text-center shadow-elegant">
         <h1 className="mb-3 text-4xl font-bold">404 - Page Not Found</h1>
         <p className="mb-6 text-lg text-muted-foreground">The page you requested does not exist or has moved.</p>

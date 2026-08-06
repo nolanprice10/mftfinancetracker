@@ -87,43 +87,7 @@ const Index = () => {
         description="MyFinanceTracker tells you the exact probability of hitting your financial goal. No guessing, no advice—just data. For young professionals earning $60k+."
         canonicalUrl="/"
       />
-      {/* Same elegant background as other pages */}
-      <div className="fixed inset-0 bg-gradient-to-br from-emerald-50 via-amber-50/50 to-slate-100 dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-950 -z-10"></div>
-      <div className="fixed inset-0 bg-gradient-to-tr from-emerald-900/5 via-transparent to-transparent dark:from-emerald-800/10 -z-10"></div>
-      <div className="fixed inset-0 bg-gradient-to-bl from-transparent via-transparent to-rose-900/5 dark:to-rose-950/10 -z-10"></div>
-      
-      <div className="fixed inset-0 opacity-[0.04] dark:opacity-[0.06] -z-10" 
-           style={{
-             backgroundImage: `
-               linear-gradient(45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%),
-               linear-gradient(-45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%)
-             `,
-             backgroundSize: '30px 30px',
-             backgroundPosition: '0 0, 15px 15px'
-           }}>
-      </div>
-
-      <div className="fixed top-1/4 right-1/4 w-96 h-96 bg-gradient-to-br from-amber-400/20 via-yellow-300/15 to-transparent dark:from-amber-600/25 dark:via-yellow-700/20 rounded-full blur-3xl animate-float-enhanced -z-10"></div>
-      <div className="fixed bottom-1/3 left-1/3 w-80 h-80 bg-gradient-to-tr from-emerald-600/15 via-teal-500/12 to-transparent dark:from-emerald-400/20 dark:via-teal-300/15 rounded-full blur-3xl animate-float-delayed-enhanced -z-10"></div>
-      
-      <style>{`
-        @keyframes float-enhanced {
-          0%, 100% { transform: translate(0, 0) scale(1); opacity: 1; }
-          33% { transform: translate(40px, -40px) scale(1.1); opacity: 0.9; }
-          66% { transform: translate(-30px, 30px) scale(0.9); opacity: 0.85; }
-        }
-        @keyframes float-delayed-enhanced {
-          0%, 100% { transform: translate(0, 0) scale(1); opacity: 1; }
-          33% { transform: translate(-40px, 40px) scale(0.9); opacity: 0.85; }
-          66% { transform: translate(30px, -30px) scale(1.1); opacity: 0.9; }
-        }
-        .animate-float-enhanced {
-          animation: float-enhanced 12s ease-in-out infinite;
-        }
-        .animate-float-delayed-enhanced {
-          animation: float-delayed-enhanced 15s ease-in-out infinite;
-        }
-      `}</style>
+      <div className="fixed inset-0 bg-background -z-10"></div>
 
       {/* Navigation */}
       <nav className="relative z-10 bg-card/70 backdrop-blur-md border-b border-border/50">
