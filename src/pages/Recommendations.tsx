@@ -375,18 +375,13 @@ const calculatePortfolioMetrics = (weights: Record<AssetClass, number>) => {
 const Recommendations = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [beginnerView, setBeginnerView] = useState(true);
 
   const displayedRecommendations = useMemo(() => {
-    if (!beginnerView) {
-      return recommendations;
-    }
-
     return recommendations.slice(0, 4).map((rec) => ({
       ...rec,
       actionItems: Array.isArray(rec.actionItems) ? rec.actionItems.slice(0, 2) : [],
     }));
-  }, [recommendations, beginnerView]);
+  }, [recommendations]);
 
   useEffect(() => {
     generateRecommendations();
@@ -1056,23 +1051,16 @@ const Recommendations = () => {
         canonicalUrl="/recommendations"
       />
       <div className="p-8 space-y-6 animate-luxe-fade-in">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Lightbulb className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
-              Personalized Recommendations
-            </h1>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setBeginnerView((current) => !current)}>
-            {beginnerView ? "Advanced view" : "Beginner view"}
-          </Button>
+        <div className="flex items-center gap-3">
+          <Lightbulb className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
+            Personalized Recommendations
+          </h1>
         </div>
 
-        {beginnerView && (
-          <p className="text-sm text-muted-foreground">
-            Showing the most important next steps first.
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground">
+          Showing the most important next steps first.
+        </p>
 
         {displayedRecommendations.length === 0 ? (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">

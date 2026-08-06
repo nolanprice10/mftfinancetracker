@@ -338,7 +338,6 @@ const Investments = () => {
   const [priceLoading, setPriceLoading] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
-  const [beginnerView, setBeginnerView] = useState(true);
   // Use single, consistent chart period for all tickers to ensure reliable data
   const FIXED_PERIOD = "1M";
   const SIMULATION_COUNT = 1000;
@@ -1603,9 +1602,6 @@ const Investments = () => {
             Investment Portfolio
           </h1>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setBeginnerView((current) => !current)}>
-              {beginnerView ? "Advanced view" : "Beginner view"}
-            </Button>
             <Button variant="outline" size="icon" onClick={refreshPrices} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
@@ -1701,229 +1697,14 @@ const Investments = () => {
           </Card>
         </div>
 
-        {!beginnerView && riskAnalysis && (
-          <Card className="shadow-elegant border-border/50 bg-gradient-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Portfolio Risk Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Primary Risk Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Risk Level
-                    <InfoButton 
-                      title="Risk Level"
-                      content="How much your portfolio can swing up and down. Conservative = stable but slower growth. Aggressive = wild swings but potential for bigger gains. Think of it like a roller coaster - conservative is the kiddie ride, aggressive is the loop-de-loop."
-                    />
-                  </div>
-                  <div className={`text-xl font-bold ${riskAnalysis.riskColor}`}>
-                    {riskAnalysis.riskLevel}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">Volatility: {riskAnalysis.portfolioVolatility.toFixed(1)}%</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Diversification
-                    <InfoButton 
-                      title="Diversification"
-                      content="Volatility-only score: this measures how well your holdings are spread across different volatility levels. It does not use asset-type count or correlation anymore. Higher means your risk is distributed better across low/medium/high volatility buckets."
-                    />
-                  </div>
-                  <div className="text-xl font-bold">{riskAnalysis.diversificationScore.toFixed(0)}%</div>
-                  <Progress value={riskAnalysis.diversificationScore} className="mt-1" />
-                  <div className="text-xs text-muted-foreground mt-1">{riskAnalysis.diversificationBreakdown.modeledHoldingsCount} holdings modeled by volatility</div>
-                  <Accordion type="single" collapsible className="mt-2">
-                    <AccordionItem value="diversification-explainer" className="border-none">
-                      <AccordionTrigger className="py-1 text-xs text-muted-foreground hover:no-underline">
-                        Why this score is {riskAnalysis.diversificationScore.toFixed(0)}%
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground space-y-1">
-                          <div>Volatility spread score: {riskAnalysis.diversificationBreakdown.volatilitySpreadScore.toFixed(1)}%</div>
-                          <div>Tier diversity score: {riskAnalysis.diversificationBreakdown.tierDiversityScore.toFixed(1)}%</div>
-                          <div>Weighted volatility std dev: {riskAnalysis.diversificationBreakdown.weightedVolStd.toFixed(1)}%</div>
-                          <div>Penalties/bonuses: -{riskAnalysis.diversificationBreakdown.balancePenalty.toFixed(1)} +{riskAnalysis.diversificationBreakdown.stabilityBonus.toFixed(1)}</div>
-                          <div className="pt-1 font-medium text-foreground">Final volatility diversification score: {riskAnalysis.diversificationBreakdown.finalScore.toFixed(1)}%</div>
-                          <div className="pt-2 font-medium text-foreground">Each asset contribution</div>
-                          <div className="max-h-44 overflow-auto space-y-1 pr-1">
-                            {riskAnalysis.diversificationBreakdown.perAssetContributions.map((asset) => (
-                              <div key={asset.id} className="flex items-start justify-between gap-2 border-t border-border/40 pt-1">
-                                <div className="min-w-0">
-                                  <div className="text-foreground truncate">
-                                    {asset.name}
-                                    {asset.ticker ? ` (${asset.ticker.toUpperCase()})` : ""}
-                                  </div>
-                                  <div>
-                                    Weight {asset.portfolioWeightPct.toFixed(1)}% • Vol {asset.assetVolatilityPct.toFixed(1)}%
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0 text-foreground">
-                                  {asset.contributionPct.toFixed(1)}%
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Concentration Risk
-                    <InfoButton 
-                      title="Concentration Risk"
-                      content="Are you betting too much on one thing? If your biggest investment tanks, how badly are you hurt? Low = you're safe. Critical = one bad day could wreck your whole portfolio. Like having 80% of your net worth in GameStop stock - that's concentration risk!"
-                    />
-                  </div>
-                  <div className={`text-xl font-bold ${riskAnalysis.concentrationColor}`}>{riskAnalysis.concentrationRisk}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Top position: {riskAnalysis.largestAllocation.toFixed(1)}%</div>
-                  <div className="text-xs text-muted-foreground">Top 3: {riskAnalysis.top3Allocation.toFixed(1)}%</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    Sharpe Ratio
-                    <InfoButton 
-                      title="Sharpe Ratio"
-                      content="Bang for your buck - how much return are you getting for the risk you're taking? Above 1.0 = excellent (you're getting paid well for the risk). Below 0.5 = not great (too much stress for the reward). It's like asking: is this roller coaster worth the price of admission?"
-                    />
-                  </div>
-                  <div className={`text-xl font-bold ${riskAnalysis.sharpeRatio > 1 ? 'text-success' : riskAnalysis.sharpeRatio > 0.5 ? 'text-primary' : 'text-warning'}`}>
-                    {riskAnalysis.sharpeRatio.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {riskAnalysis.sharpeRatio > 1 ? 'Excellent' : riskAnalysis.sharpeRatio > 0.5 ? 'Good' : 'Below target'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Expected Performance Metrics */}
-              <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2 flex items-center gap-1">
-                  Expected Performance:
-                  <InfoButton 
-                    title="Expected Performance"
-                    content="What might happen to your money based on historical data. These aren't guarantees - just educated guesses based on how these types of investments have performed in the past."
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Avg Annual Return
-                      <InfoButton 
-                        title="Average Annual Return"
-                        content="What you'd expect to make in a typical year. If it says 10%, you'd turn $1,000 into $1,100 in an average year. But remember - some years are way better, some are way worse. This is just the middle ground."
-                      />
-                    </div>
-                    <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.avgAnnualReturn}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Best Year (95%)
-                      <InfoButton 
-                        title="Best Year Scenario"
-                        content="Your best realistic year (95th percentile). Like when everything goes RIGHT - the stock market booms, crypto pumps, your picks crush it. This has happened about 1 in 20 years historically. Don't count on it, but it's possible!"
-                      />
-                    </div>
-                    <div className="text-lg font-semibold text-success">{riskAnalysis.historicalContext.bestYearGain}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Worst Year (5%)
-                      <InfoButton 
-                        title="Worst Year Scenario"
-                        content="Your worst realistic year (5th percentile). Like 2008 crash level bad. This has happened about 1 in 20 years historically. If you can't stomach seeing this loss, your portfolio is too risky for you. This is the 'oh crap' number."
-                      />
-                    </div>
-                    <div className="text-lg font-semibold text-destructive">{riskAnalysis.historicalContext.worstYearLoss}</div>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      Max Drawdown
-                      <InfoButton 
-                        title="Maximum Drawdown"
-                        content="The biggest peak-to-valley drop you should expect. If you have $10,000 and max drawdown is 30%, you might see it drop to $7,000 before recovering. This is the 'can you sleep at night?' test. If this number terrifies you, reduce your risk!"
-                      />
-                    </div>
-                    <div className="text-lg font-semibold text-warning">{riskAnalysis.expectedDrawdown}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Asset Allocation Breakdown */}
-              <div className="border-t pt-3">
-                <div className="text-sm font-medium mb-2">Asset Allocation ({riskAnalysis.numHoldings} holdings):</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {Object.entries(riskAnalysis.allocations)
-                    .sort(([,a], [,b]) => b - a)
-                    .map(([type, pct]) => (
-                      <div key={type} className="bg-muted/20 rounded p-2">
-                        <div className="text-xs text-muted-foreground capitalize">{type.replace(/_/g, ' ')}</div>
-                        <div className="text-sm font-semibold">{pct.toFixed(1)}%</div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              <div className="border-t pt-3">
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="risk-recommendations" className="border-none">
-                    <AccordionTrigger className="text-sm font-medium">
-                      <span>Risk Analysis & Recommendations</span>
-                      <Badge variant="secondary" className="ml-auto">
-                        {riskAnalysis.recommendations.length}
-                      </Badge>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                        {riskAnalysis.recommendations.map((rec, idx) => (
-                          <li key={idx} className={rec.includes('URGENT') || rec.includes('CRITICAL') || rec.includes('WARNING') ? 'text-destructive font-semibold' : ''}>{rec}</li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Your Investments</h2>
-            {!beginnerView && (
-              <div className="flex items-center gap-2">
-              <Label className="text-sm text-muted-foreground">View:</Label>
-              <div className="flex border rounded-lg">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("grid")}
-                  className="rounded-r-none"
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                  className="rounded-l-none"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-              </div>
-            )}
           </div>
-          <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-4"}>
-          {derivedInvestments.map(({ investment, futureValue, liveValue, gain, tickerKey, hasChart }) => {
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {derivedInvestments.map(({ investment, futureValue, liveValue, gain, tickerKey }) => {
             return (
-              <Card key={investment.id} className={`shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card ${viewMode === "list" ? "max-w-full" : ""}`}>
+              <Card key={investment.id} className="shadow-elegant hover:shadow-luxe transition-all duration-300 border-border/50 bg-gradient-card">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -1976,7 +1757,7 @@ const Investments = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
                         Current Value
@@ -2002,79 +1783,6 @@ const Investments = () => {
                       </div>
                     </div>
                   </div>
-
-                  {!beginnerView && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value={`details-${investment.id}`}>
-                        <AccordionTrigger className="text-sm">Show details</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-4">
-                            {hasChart && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <RefreshCw className="w-3 h-3" />
-                                    Updates every 60 sec
-                                  </div>
-                                  <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
-                                </div>
-                                <PerformanceChart 
-                                  data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
-                                  title={`${FIXED_PERIOD} Performance (Live)`}
-                                  ticker={investment.ticker_symbol!}
-                                  isLoading={!!priceLoading[tickerKey!]}
-                                />
-                              </div>
-                            )}
-
-                            {investment.shares_owned && (
-                              <div>
-                                <div className="text-sm text-muted-foreground">Holdings</div>
-                                <div className="text-sm">
-                                  {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
-                                </div>
-                              </div>
-                            )}
-
-                            <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
-                              {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Monthly Contribution</div>
-                                  <div className="text-sm font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
-                                  <div className="text-xs text-muted-foreground mt-0.5">
-                                    ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-2"
-                                    onClick={() => openMonthlyContributionDialog(investment)}
-                                  >
-                                    Set monthly amount
-                                  </Button>
-                                </div>
-                              )}
-
-                              <div>
-                                <div className="text-sm text-muted-foreground">Expected Return (Monte Carlo)</div>
-                                <div className="text-sm font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
-                                {calculateAssetSpecificParameters(investment) ? (
-                                  <div className="text-xs text-success mt-0.5">
-                                    ✓ Based on {getYahooTickerKey(investment)} historical data
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground mt-0.5">
-                                    Based on {investment.type.replace(/_/g, ' ')} average
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
                 </CardContent>
               </Card>
             );

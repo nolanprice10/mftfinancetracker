@@ -53,7 +53,6 @@ const Dashboard = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [goalView, setGoalView] = useState<string>("all");
-  const [beginnerView, setBeginnerView] = useState(true);
   
   const recommendationRef = useRef<HTMLDivElement>(null);
   
@@ -368,16 +367,6 @@ const Dashboard = () => {
       <OnboardingDialog open={showOnboarding} onOpenChange={setShowOnboarding} />
       <div className="space-y-6 animate-fade-in">
 
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setBeginnerView((current) => !current)}
-          >
-            {beginnerView ? "Switch to advanced view" : "Switch to beginner view"}
-          </Button>
-        </div>
-
         {hasMultipleGoals && (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardContent className="pt-6">
@@ -551,15 +540,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* SHARING CARD - Make it easy to share */}
-            {!beginnerView && (
-              <ProbabilityShareCard 
-                probability={displayProbability || 1}
-                goalName={selectedGoalName}
-                percentile={calculatePercentile(selectedProbability)}
-                referralCode={referralCode}
-              />
-            )}
+            {/* SHARING CARD intentionally hidden to keep dashboard focused for beginners */}
           </>
         ) : (
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-2xl p-8 shadow-glow">
@@ -612,107 +593,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {!beginnerView && selectedProbability !== null && selectedAnalyses.length > 0 && (
-                <div className="bg-muted/30 rounded-lg p-4">
-                  <p className="text-sm font-medium mb-3">Simple ways to improve:</p>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>Cut spending by about ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()} each month</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>Add side income of about ${Math.round(additionalMonthlyAllocationNeeded / 2).toLocaleString()}/month</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span>
-                      <span>Extend your goal date to lower monthly pressure</span>
-                    </li>
-                  </ul>
-                </div>
-              )}
-
-              {!beginnerView && selectedActiveAnalyses.length > 0 && (
-                <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 space-y-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">Monthly plan for {selectedGoalName}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Based on this month and your deadline
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Monthly target</p>
-                      <p className="text-lg font-bold">
-                        ${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Coverage from current surplus</span>
-                      <span>{Math.round(allocationCoveragePercent)}%</span>
-                    </div>
-                    <Progress value={allocationCoveragePercent} className="h-2.5" />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
-                      <p className="text-xs text-muted-foreground">Available after expenses</p>
-                      <p className="text-base font-semibold text-success">
-                        ${cashAvailableForGoal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
-                      <p className="text-xs text-muted-foreground">Additional needed</p>
-                      <p className={`text-base font-semibold ${additionalMonthlyAllocationNeeded > 0 ? "text-destructive" : "text-success"}`}>
-                        ${additionalMonthlyAllocationNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-sm">
-                    {additionalMonthlyAllocationNeeded > 0
-                      ? `Action: free up or earn another $${additionalMonthlyAllocationNeeded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month${isAllGoalsView ? " across your goal timelines." : ` for the next ${monthsToGoalForPrimary} month${monthsToGoalForPrimary === 1 ? "" : "s"}.`}`
-                      : `You're fully funded at your current pace. Keep allocating at least $${requiredMonthlyAllocation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month until the deadline.`}
-                  </div>
-                </div>
-              )}
-
-              {!beginnerView && allActiveAnalyses.length > 0 && accountAllocationPlan.length > 0 && (
-                <div className="rounded-xl border border-border/60 bg-background/60 p-5 space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">Recommended monthly allocation between accounts</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Suggested split to fund all active goals on time
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">All-goal monthly target</p>
-                      <p className="text-base font-semibold">
-                        ${allGoalsMonthlyRequirement.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {accountAllocationPlan.map((entry) => (
-                      <div key={entry.accountId} className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 px-3 py-2">
-                        <div>
-                          <p className="text-sm font-medium">{entry.accountName}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{entry.accountType}</p>
-                        </div>
-                        <p className="text-sm font-semibold">
-                          ${entry.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {transferRecommendation && (
                 <div className="rounded-xl border border-success/25 bg-gradient-to-br from-success/10 via-success/5 to-transparent p-5 space-y-2 shadow-sm">
                   <p className="text-sm font-medium">Best money move this month</p>
@@ -736,7 +616,7 @@ const Dashboard = () => {
               variant="outline"
               size="lg"
             >
-              {beginnerView ? "See more details" : "See details (optional)"}
+              See more details
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </div>
