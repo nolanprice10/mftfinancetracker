@@ -20,6 +20,21 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
+const resolveRouterBasename = () => {
+  if (typeof window === "undefined") {
+    return "/";
+  }
+
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/mftfinancetracker/") || pathname === "/mftfinancetracker") {
+    return "/mftfinancetracker";
+  }
+
+  return "/";
+};
+
+const routerBasename = resolveRouterBasename();
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -27,7 +42,7 @@ const App = () => (
         <ErrorBoundary>
           <Toaster />
           <Sonner />
-          <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <BrowserRouter basename={routerBasename}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
