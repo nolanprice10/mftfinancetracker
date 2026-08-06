@@ -154,6 +154,53 @@ function isPwaRefreshMessage(message: unknown) {
   );
 }
 
+const CHUNK_RECOVERY_FLAG = "mft:chunk-recovery-attempted";
+
+function isChunkLoadFailure(error: unknown) {
+  const message = String((error as { message?: string })?.message || error || "").toLowerCase();
+  return (
+    message.includes("failed to fetch dynamically imported module") ||
+    message.includes("importing a module script failed") ||
+    message.includes("loading chunk")
+  );
+}
+
+async function recoverFromChunkLoadFailure() {
+  if (sessionStorage.getItem(CHUNK_RECOVERY_FLAG) === "1") {
+    return;
+  }
+
+  sessionStorage.setItem(CHUNK_RECOVERY_FLAG, "1");
+
+  try {
+    if ("caches" in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    }
+
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.update()));
+    }
+  } catch {
+    // Best-effort recovery only.
+  }
+
+  window.location.reload();
+}
+
+window.addEventListener("error", (event) => {
+  if (isChunkLoadFailure(event.error || event.message)) {
+    void recoverFromChunkLoadFailure();
+  }
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  if (isChunkLoadFailure(event.reason)) {
+    void recoverFromChunkLoadFailure();
+  }
+});
+
 initializeDarkMode();
 syncWindowControlsOverlay();
 

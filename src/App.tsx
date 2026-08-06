@@ -21,16 +21,12 @@ import ErrorBoundary from "./components/ErrorBoundary";
 const queryClient = new QueryClient();
 
 const resolveRouterBasename = () => {
-  if (typeof window === "undefined") {
+  const baseUrl = (import.meta.env.BASE_URL || "/").trim();
+  if (baseUrl === "/") {
     return "/";
   }
 
-  const pathname = window.location.pathname;
-  if (pathname.startsWith("/mftfinancetracker/") || pathname === "/mftfinancetracker") {
-    return "/mftfinancetracker";
-  }
-
-  return "/";
+  return baseUrl.replace(/\/+$/, "");
 };
 
 const routerBasename = resolveRouterBasename();

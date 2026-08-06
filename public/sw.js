@@ -1,4 +1,4 @@
-const CACHE_VERSION = "mft-cache-v7";
+const CACHE_VERSION = "mft-cache-v8";
 const APP_SHELL_CACHE = `${CACHE_VERSION}-app-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_PAGE = "./offline.html";

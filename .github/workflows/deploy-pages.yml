@@ -41,7 +41,16 @@ jobs:
           fi
 
       - name: Build
-        run: npm run build
+        run: |
+          if [ -f public/CNAME ]; then
+            echo "Custom domain detected via public/CNAME; building with root base path"
+            export VITE_APP_BASE_PATH="/"
+          else
+            echo "No CNAME found; building for GitHub Pages project path"
+            export VITE_APP_BASE_PATH="/${{ github.event.repository.name }}/"
+          fi
+          echo "VITE_APP_BASE_PATH=$VITE_APP_BASE_PATH"
+          npm run build
 
       - name: Verify build output
         run: |
