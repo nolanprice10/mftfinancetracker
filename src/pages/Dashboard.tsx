@@ -190,23 +190,14 @@ const Dashboard = () => {
 
   // Transactions are already month-scoped in fetchData; avoid re-filtering by Date parsing
   // because YYYY-MM-DD parsing can shift by timezone and drop valid entries.
-  const isIncomeLikeTransaction = (tx: Transaction) => {
-    const normalizedType = String(tx.type || "").toLowerCase().trim();
-    if (normalizedType === "income") return true;
-
-    // Some imported deposits are categorized as transfers. Count transfer-in as income.
-    if (normalizedType === "transfer") {
-      const categoryText = String(tx.category || "").toLowerCase().trim();
-      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent)/.test(categoryText);
-      return !looksOutgoingTransfer;
-    }
-
-    return false;
-  };
-
+  // Treat all positive non-expense entries as monthly cash-in to avoid undercounting imported deposits.
   const monthlyIncome = transactions
-    .filter(isIncomeLikeTransaction)
-    .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+    .filter((t) => {
+      const normalizedType = String(t.type || "").toLowerCase().trim();
+      const amount = Number(t.amount) || 0;
+      return normalizedType !== "expense" && amount > 0;
+    })
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   const monthlyExpenses = transactions
     .filter((t) => String(t.type).toLowerCase().trim() === "expense")
