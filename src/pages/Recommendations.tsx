@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, TrendingDown, TrendingUp, Target, AlertCircle, DollarSign, Shield } from "lucide-react";
@@ -375,6 +375,18 @@ const calculatePortfolioMetrics = (weights: Record<AssetClass, number>) => {
 const Recommendations = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [beginnerView, setBeginnerView] = useState(true);
+
+  const displayedRecommendations = useMemo(() => {
+    if (!beginnerView) {
+      return recommendations;
+    }
+
+    return recommendations.slice(0, 4).map((rec) => ({
+      ...rec,
+      actionItems: Array.isArray(rec.actionItems) ? rec.actionItems.slice(0, 2) : [],
+    }));
+  }, [recommendations, beginnerView]);
 
   useEffect(() => {
     generateRecommendations();
@@ -1044,14 +1056,25 @@ const Recommendations = () => {
         canonicalUrl="/recommendations"
       />
       <div className="p-8 space-y-6 animate-luxe-fade-in">
-        <div className="flex items-center gap-3">
-          <Lightbulb className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
-            Personalized Recommendations
-          </h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Lightbulb className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold bg-gradient-wealth bg-clip-text text-transparent">
+              Personalized Recommendations
+            </h1>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setBeginnerView((current) => !current)}>
+            {beginnerView ? "Advanced view" : "Beginner view"}
+          </Button>
         </div>
 
-        {recommendations.length === 0 ? (
+        {beginnerView && (
+          <p className="text-sm text-muted-foreground">
+            Showing the most important next steps first.
+          </p>
+        )}
+
+        {displayedRecommendations.length === 0 ? (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardContent className="py-12 text-center">
               <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -1063,7 +1086,7 @@ const Recommendations = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {recommendations.map((rec, index) => (
+            {displayedRecommendations.map((rec, index) => (
               <RecommendationCard key={index} {...rec} />
             ))}
           </div>

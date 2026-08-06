@@ -338,6 +338,7 @@ const Investments = () => {
   const [priceLoading, setPriceLoading] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [userAge, setUserAge] = useState<number | null>(null);
+  const [beginnerView, setBeginnerView] = useState(true);
   // Use single, consistent chart period for all tickers to ensure reliable data
   const FIXED_PERIOD = "1M";
   const SIMULATION_COUNT = 1000;
@@ -1602,6 +1603,9 @@ const Investments = () => {
             Investment Portfolio
           </h1>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setBeginnerView((current) => !current)}>
+              {beginnerView ? "Advanced view" : "Beginner view"}
+            </Button>
             <Button variant="outline" size="icon" onClick={refreshPrices} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
@@ -1697,7 +1701,7 @@ const Investments = () => {
           </Card>
         </div>
 
-        {riskAnalysis && (
+        {!beginnerView && riskAnalysis && (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1892,7 +1896,8 @@ const Investments = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Your Investments</h2>
-            <div className="flex items-center gap-2">
+            {!beginnerView && (
+              <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground">View:</Label>
               <div className="flex border rounded-lg">
                 <Button
@@ -1912,7 +1917,8 @@ const Investments = () => {
                   <List className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
+              </div>
+            )}
           </div>
           <div className={viewMode === "grid" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-4"}>
           {derivedInvestments.map(({ investment, futureValue, liveValue, gain, tickerKey, hasChart }) => {
@@ -1997,76 +2003,78 @@ const Investments = () => {
                     </div>
                   </div>
 
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value={`details-${investment.id}`}>
-                      <AccordionTrigger className="text-sm">Show details</AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-4">
-                          {hasChart && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <RefreshCw className="w-3 h-3" />
-                                  Updates every 60 sec
+                  {!beginnerView && (
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value={`details-${investment.id}`}>
+                        <AccordionTrigger className="text-sm">Show details</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-4">
+                            {hasChart && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <RefreshCw className="w-3 h-3" />
+                                    Updates every 60 sec
+                                  </div>
+                                  <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
                                 </div>
-                                <div className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">Live 30-Day Chart</div>
-                              </div>
-                              <PerformanceChart 
-                                data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
-                                title={`${FIXED_PERIOD} Performance (Live)`}
-                                ticker={investment.ticker_symbol!}
-                                isLoading={!!priceLoading[tickerKey!]}
-                              />
-                            </div>
-                          )}
-
-                          {investment.shares_owned && (
-                            <div>
-                              <div className="text-sm text-muted-foreground">Holdings</div>
-                              <div className="text-sm">
-                                {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
-                            {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
-                              <div>
-                                <div className="text-sm text-muted-foreground">Monthly Contribution</div>
-                                <div className="text-sm font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="mt-2"
-                                  onClick={() => openMonthlyContributionDialog(investment)}
-                                >
-                                  Set monthly amount
-                                </Button>
+                                <PerformanceChart 
+                                  data={priceData[tickerKey!]?.[FIXED_PERIOD]?.history || []}
+                                  title={`${FIXED_PERIOD} Performance (Live)`}
+                                  ticker={investment.ticker_symbol!}
+                                  isLoading={!!priceLoading[tickerKey!]}
+                                />
                               </div>
                             )}
 
-                            <div>
-                              <div className="text-sm text-muted-foreground">Expected Return (Monte Carlo)</div>
-                              <div className="text-sm font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
-                              {calculateAssetSpecificParameters(investment) ? (
-                                <div className="text-xs text-success mt-0.5">
-                                  ✓ Based on {getYahooTickerKey(investment)} historical data
+                            {investment.shares_owned && (
+                              <div>
+                                <div className="text-sm text-muted-foreground">Holdings</div>
+                                <div className="text-sm">
+                                  {formatNumber(investment.shares_owned, 3)} {investment.type === "crypto" ? "units" : "shares"} × ${formatCurrency(priceData[tickerKey!]?.latest?.price || investment.purchase_price_per_share || 0)}
                                 </div>
-                              ) : (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  Based on {investment.type.replace(/_/g, ' ')} average
+                              </div>
+                            )}
+
+                            <div className={viewMode === "list" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
+                              {(investment.type !== 'individual_stock' && investment.type !== 'crypto') && (
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Monthly Contribution</div>
+                                  <div className="text-sm font-medium">${formatCurrency(Number(investment.monthly_contribution))}</div>
+                                  <div className="text-xs text-muted-foreground mt-0.5">
+                                    ${formatNumber(Number(investment.monthly_contribution) * 12, 0)}/year for {investment.years_remaining} years
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={() => openMonthlyContributionDialog(investment)}
+                                  >
+                                    Set monthly amount
+                                  </Button>
                                 </div>
                               )}
+
+                              <div>
+                                <div className="text-sm text-muted-foreground">Expected Return (Monte Carlo)</div>
+                                <div className="text-sm font-medium">{getEffectiveReturn(investment).toFixed(2)}% annually</div>
+                                {calculateAssetSpecificParameters(investment) ? (
+                                  <div className="text-xs text-success mt-0.5">
+                                    ✓ Based on {getYahooTickerKey(investment)} historical data
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-muted-foreground mt-0.5">
+                                    Based on {investment.type.replace(/_/g, ' ')} average
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
                 </CardContent>
               </Card>
             );

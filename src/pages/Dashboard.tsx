@@ -53,6 +53,7 @@ const Dashboard = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [goalView, setGoalView] = useState<string>("all");
+  const [beginnerView, setBeginnerView] = useState(true);
   
   const recommendationRef = useRef<HTMLDivElement>(null);
   
@@ -367,6 +368,16 @@ const Dashboard = () => {
       <OnboardingDialog open={showOnboarding} onOpenChange={setShowOnboarding} />
       <div className="space-y-6 animate-fade-in">
 
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBeginnerView((current) => !current)}
+          >
+            {beginnerView ? "Switch to advanced view" : "Switch to beginner view"}
+          </Button>
+        </div>
+
         {hasMultipleGoals && (
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardContent className="pt-6">
@@ -541,12 +552,14 @@ const Dashboard = () => {
             </div>
 
             {/* SHARING CARD - Make it easy to share */}
-            <ProbabilityShareCard 
-              probability={displayProbability || 1}
-              goalName={selectedGoalName}
-              percentile={calculatePercentile(selectedProbability)}
-              referralCode={referralCode}
-            />
+            {!beginnerView && (
+              <ProbabilityShareCard 
+                probability={displayProbability || 1}
+                goalName={selectedGoalName}
+                percentile={calculatePercentile(selectedProbability)}
+                referralCode={referralCode}
+              />
+            )}
           </>
         ) : (
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20 rounded-2xl p-8 shadow-glow">
@@ -599,7 +612,7 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {selectedProbability !== null && selectedAnalyses.length > 0 && (
+              {!beginnerView && selectedProbability !== null && selectedAnalyses.length > 0 && (
                 <div className="bg-muted/30 rounded-lg p-4">
                   <p className="text-sm font-medium mb-3">Simple ways to improve:</p>
                   <ul className="space-y-2 text-sm">
@@ -619,7 +632,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {selectedActiveAnalyses.length > 0 && (
+              {!beginnerView && selectedActiveAnalyses.length > 0 && (
                 <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 space-y-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -667,7 +680,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {allActiveAnalyses.length > 0 && accountAllocationPlan.length > 0 && (
+              {!beginnerView && allActiveAnalyses.length > 0 && accountAllocationPlan.length > 0 && (
                 <div className="rounded-xl border border-border/60 bg-background/60 p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -723,7 +736,7 @@ const Dashboard = () => {
               variant="outline"
               size="lg"
             >
-              See details (optional)
+              {beginnerView ? "See more details" : "See details (optional)"}
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </div>
