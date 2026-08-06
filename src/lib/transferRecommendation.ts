@@ -55,11 +55,6 @@ const typePriority = (type: string) => {
   }
 };
 
-const roundToFive = (value: number) => {
-  if (value <= 0) return 0;
-  return Math.round(value / 5) * 5;
-};
-
 export function getBestTransferRecommendation(input: TransferRecommendationInput): TransferRecommendation | null {
   const { accounts, goals, monthlyIncome, monthlyExpenses } = input;
   if (!accounts.length || !goals.length) return null;
@@ -148,15 +143,17 @@ export function getBestTransferRecommendation(input: TransferRecommendationInput
   const monthlySurplus = Math.max(0, monthlyIncome - monthlyExpenses);
   const monthlyGap = Math.max(0, monthlyNeededForGoal - monthlySurplus);
 
-  const desiredMove = Math.max(
-    25,
-    Math.min(monthlyNeededForGoal, topGoal.remaining, source.availableToMove, monthlyGap > 0 ? monthlyGap : monthlyNeededForGoal * 0.5)
+  const desiredMove = Math.min(
+    monthlyNeededForGoal,
+    topGoal.remaining,
+    source.availableToMove,
+    monthlyGap > 0 ? monthlyGap : monthlyNeededForGoal
   );
 
-  const roundedMove = roundToFive(desiredMove);
-  const amount = Math.min(source.availableToMove, topGoal.remaining, roundedMove);
+  // Keep exact cents (no rounding to 5/10/25 buckets).
+  const amount = Math.max(0, Number(desiredMove.toFixed(2)));
 
-  if (amount < 5) return null;
+  if (amount < 0.01) return null;
 
   const reason = monthlyGap > 0
     ? `This goal needs about $${monthlyNeededForGoal.toFixed(0)}/month, and you're currently short by about $${monthlyGap.toFixed(0)}/month.`
