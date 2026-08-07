@@ -477,6 +477,26 @@ const Dashboard = () => {
     5
   );
 
+  const recoveryMonths = combinedOverspend > 0
+    ? Math.min(6, Math.max(1, Math.ceil(combinedOverspend / Math.max(50, combinedSpendingLimit * 0.3))))
+    : 0;
+
+  const recoveryMonthlyReduction = recoveryMonths > 0 ? combinedOverspend / recoveryMonths : 0;
+  const recoveryWeeklyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 52 : 0;
+  const recoveryDailyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 365 : 0;
+
+  const adjustedMonthlySpendingLimit = recoveryMonths > 0
+    ? Math.max(MIN_SPENDING_LIMIT, combinedSpendingLimit - recoveryMonthlyReduction)
+    : combinedSpendingLimit;
+
+  const adjustedWeeklySpendingLimit = recoveryMonths > 0
+    ? Math.max(20, combinedWeeklySpendingLimit - recoveryWeeklyReduction)
+    : combinedWeeklySpendingLimit;
+
+  const adjustedDailySpendingLimit = recoveryMonths > 0
+    ? Math.max(5, combinedDailySpendingLimit - recoveryDailyReduction)
+    : combinedDailySpendingLimit;
+
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
     if (goalsForAllocation.length === 0 || accounts.length === 0 || totalTrackedBalance <= 0) {
       return [];
@@ -844,30 +864,35 @@ const Dashboard = () => {
                     <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                       <p className="text-xs text-muted-foreground">Daily limit</p>
                       <p className="text-sm font-semibold">
-                        ${combinedDailySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${adjustedDailySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                       <p className="text-xs text-muted-foreground">Weekly limit</p>
                       <p className="text-sm font-semibold">
-                        ${combinedWeeklySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${adjustedWeeklySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                       <p className="text-xs text-muted-foreground">Monthly limit</p>
                       <p className="text-sm font-semibold">
-                        ${combinedSpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${adjustedMonthlySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
 
                   <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                     <p className={`text-xs mt-1 ${combinedOverspend > 0 ? "text-destructive" : "text-success"}`}>
-                      {combinedOverspend > 0
-                        ? `You are $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over your unified monthly limit.`
+                      {combinedOverspend > 0 && recoveryMonths > 0
+                        ? `This month is already locked in. Recovery plan: use the adjusted limits above for the next ${recoveryMonths} month${recoveryMonths === 1 ? "" : "s"} to get back on track.`
                         : "You are within the combined limit for all active goals."}
                     </p>
-                    {combinedFloorApplied && (
+                    {combinedOverspend > 0 && recoveryMonths > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Your current overage is $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. We spread that over future months instead of expecting past spending to be undone.
+                      </p>
+                    )}
+                    {combinedOverspend <= 0 && combinedFloorApplied && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
                       </p>
