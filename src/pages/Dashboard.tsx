@@ -52,7 +52,11 @@ interface AccountAllocationPlan {
   accountId: string;
   accountName: string;
   accountType: string;
-  monthlyAmount: number;
+  currentBalance: number;
+  targetBalance: number;
+  gapToTarget: number;
+  excessBalance: number;
+  isOnTarget: boolean;
   allocationSharePercent: number;
 }
 
@@ -219,11 +223,11 @@ const Dashboard = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const rollingWindowStart = new Date(today);
-  rollingWindowStart.setDate(rollingWindowStart.getDate() - 30);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
 
-  const rollingWindowTransactions = transactionsWithParsedDate.filter(({ parsedDate }) => {
-    return parsedDate.getTime() >= rollingWindowStart.getTime() && parsedDate.getTime() <= today.getTime();
+  const currentMonthTransactions = transactionsWithParsedDate.filter(({ parsedDate }) => {
+    return parsedDate.getFullYear() === currentYear && parsedDate.getMonth() === currentMonth;
   });
 
   const latestTransactionDate = transactionsWithParsedDate.reduce<Date | null>((latest, entry) => {
@@ -242,15 +246,13 @@ const Dashboard = () => {
       })
     : [];
 
-  const transactionsForSnapshot = rollingWindowTransactions.length > 0
-    ? rollingWindowTransactions
+  const transactionsForSnapshot = currentMonthTransactions.length > 0
+    ? currentMonthTransactions
     : fallbackMonthTransactions;
 
-  const usingFallbackMonth = rollingWindowTransactions.length === 0 && fallbackMonthTransactions.length > 0;
+  const usingFallbackMonth = currentMonthTransactions.length === 0 && fallbackMonthTransactions.length > 0;
   const snapshotMonthDate = transactionsForSnapshot[0]?.parsedDate ?? today;
-  const snapshotMonthLabel = usingFallbackMonth
-    ? snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" })
-    : `Last 30 days (ending ${formatDateTimeForDisplay(today)})`;
+  const snapshotMonthLabel = snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" });
 
   // Convert mixed transaction labels to cash flow direction.
   // Ambiguous transfers default to income so imported cash-in rows are not dropped.
@@ -396,10 +398,7 @@ const Dashboard = () => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
 
-  const goalsForAllocation = goalAnalyses.filter((analysis) => analysis.remainingAmount > 0);
-  const allocationMonthlyRequirement = goalsForAllocation.reduce((sum, analysis) => {
-    return sum + (analysis.remainingAmount / analysis.monthsToGoal);
-  }, 0);
+  const goalsForAllocation = allActiveAnalyses.filter((analysis) => analysis.remainingAmount > 0);
 
   const practicalMonthlySpendFloor = monthlyIncome > 0
     ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1)
@@ -437,42 +436,98 @@ const Dashboard = () => {
   const combinedFloorApplied = !Number.isFinite(rawCombinedSpendingLimit) || strictCombinedSpendingLimit < practicalMonthlySpendFloor;
   const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
 
-  const positiveBalanceAccounts = accounts.filter((account) => Number(account.balance) > 0);
-  const totalPositiveBalances = positiveBalanceAccounts.reduce((sum, account) => sum + Number(account.balance), 0);
+  const totalTrackedBalance = accounts.reduce((sum, account) => sum + Math.max(0, Number(account.balance) || 0), 0);
 
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
-    if (allocationMonthlyRequirement <= 0 || positiveBalanceAccounts.length === 0 || totalPositiveBalances <= 0) {
+    if (goalsForAllocation.length === 0 || accounts.length === 0 || totalTrackedBalance <= 0) {
       return [];
     }
 
-    const targetCents = Math.round(allocationMonthlyRequirement * 100);
-    let remainingCents = targetCents;
+    const accountsById = new Map(accounts.map((account) => [account.id, account]));
+    const fallbackReceivers = accounts.filter((account) => (Number(account.balance) || 0) > 0);
+    const defaultReceivers = fallbackReceivers.length > 0 ? fallbackReceivers : accounts;
 
-    return positiveBalanceAccounts
-      .map((account, index) => {
-        let centsForAccount = 0;
-        if (index === positiveBalanceAccounts.length - 1) {
-          centsForAccount = remainingCents;
+    const weightedGoals = goalsForAllocation.map((analysis) => ({
+      analysis,
+      urgencyWeight: Math.max(0.01, analysis.remainingAmount / Math.max(1, analysis.monthsToGoal)),
+    }));
+    const totalUrgencyWeight = weightedGoals.reduce((sum, entry) => sum + entry.urgencyWeight, 0);
+
+    if (totalUrgencyWeight <= 0) {
+      return [];
+    }
+
+    const targetByAccountCents = new Map<string, number>();
+
+    weightedGoals.forEach(({ analysis, urgencyWeight }) => {
+      const goalShareCents = Math.round((urgencyWeight / totalUrgencyWeight) * totalTrackedBalance * 100);
+      const linkedAccountId = analysis.goal.account_id || null;
+
+      if (linkedAccountId && accountsById.has(linkedAccountId)) {
+        targetByAccountCents.set(linkedAccountId, (targetByAccountCents.get(linkedAccountId) || 0) + goalShareCents);
+        return;
+      }
+
+      let remainingGoalCents = goalShareCents;
+      defaultReceivers.forEach((account, index) => {
+        let receiverCents = 0;
+        if (index === defaultReceivers.length - 1) {
+          receiverCents = remainingGoalCents;
         } else {
-          const accountShare = Number(account.balance) / totalPositiveBalances;
-          centsForAccount = Math.min(remainingCents, Math.round(targetCents * accountShare));
-          remainingCents -= centsForAccount;
+          const basisBalance = Math.max(0, Number(account.balance) || 0);
+          const denominator = fallbackReceivers.length > 0
+            ? totalTrackedBalance
+            : defaultReceivers.length;
+          const receiverShare = fallbackReceivers.length > 0
+            ? basisBalance / denominator
+            : 1 / defaultReceivers.length;
+          receiverCents = Math.min(remainingGoalCents, Math.round(goalShareCents * receiverShare));
+          remainingGoalCents -= receiverCents;
         }
+        targetByAccountCents.set(account.id, (targetByAccountCents.get(account.id) || 0) + receiverCents);
+      });
+    });
+
+    const rawPlan = accounts
+      .map((account) => {
+        const currentBalance = Math.max(0, Number(account.balance) || 0);
+        const targetBalance = (targetByAccountCents.get(account.id) || 0) / 100;
 
         return {
           accountId: account.id,
           accountName: account.name,
           accountType: account.type,
-          monthlyAmount: centsForAccount / 100,
-          allocationSharePercent: totalPositiveBalances > 0
-            ? (Number(account.balance) / totalPositiveBalances) * 100
+          currentBalance,
+          targetBalance,
+          gapToTarget: Math.max(0, targetBalance - currentBalance),
+          excessBalance: Math.max(0, currentBalance - targetBalance),
+          isOnTarget: currentBalance + 0.01 >= targetBalance,
+          allocationSharePercent: totalTrackedBalance > 0
+            ? (targetBalance / totalTrackedBalance) * 100
             : 0,
         };
       })
-      .filter((entry) => entry.monthlyAmount > 0);
+      .filter((entry) => entry.targetBalance > 0);
+
+    const totalTargetCents = rawPlan.reduce((sum, entry) => sum + Math.round(entry.targetBalance * 100), 0);
+    const driftCents = Math.round(totalTrackedBalance * 100) - totalTargetCents;
+
+    if (rawPlan.length > 0 && driftCents !== 0) {
+      const firstEntry = rawPlan[0];
+      firstEntry.targetBalance = (Math.round(firstEntry.targetBalance * 100) + driftCents) / 100;
+      firstEntry.gapToTarget = Math.max(0, firstEntry.targetBalance - firstEntry.currentBalance);
+      firstEntry.excessBalance = Math.max(0, firstEntry.currentBalance - firstEntry.targetBalance);
+      firstEntry.isOnTarget = firstEntry.currentBalance + 0.01 >= firstEntry.targetBalance;
+      firstEntry.allocationSharePercent = totalTrackedBalance > 0
+        ? (firstEntry.targetBalance / totalTrackedBalance) * 100
+        : 0;
+    }
+
+    return rawPlan.sort((left, right) => right.targetBalance - left.targetBalance);
   })();
 
-  const recommendedAllocationTotal = accountAllocationPlan.reduce((sum, entry) => sum + entry.monthlyAmount, 0);
+  const recommendedAllocationTotal = accountAllocationPlan.reduce((sum, entry) => sum + entry.targetBalance, 0);
+  const accountsOnTargetCount = accountAllocationPlan.filter((entry) => entry.isOnTarget).length;
 
   const displayProbability = selectedProbability !== null
     ? Number(selectedProbability.toFixed(1))
@@ -786,13 +841,22 @@ const Dashboard = () => {
                 <div className="rounded-xl border border-success/20 bg-success/5 p-5 space-y-3">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-sm font-medium">Recommended allocation by account</p>
+                      <p className="text-sm font-medium">Best overall balance allocation</p>
                       <p className="text-xs text-muted-foreground">
-                        Fund this amount each month to reach all active goals as fast as possible based on your current account mix.
+                        This shows how your current total balance is best distributed across accounts to support all active goals overall.
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-success">
-                      Total: ${recommendedAllocationTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                      {accountsOnTargetCount}/{accountAllocationPlan.length} accounts on target
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border/60 bg-background/70 p-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                    <p className="text-sm font-medium">
+                      Total balance allocated: ${recommendedAllocationTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Based on goal urgency and your current balance of ${totalTrackedBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
 
@@ -801,15 +865,29 @@ const Dashboard = () => {
                       <div key={entry.accountId} className="rounded-lg border border-border/60 bg-background/70 p-3">
                         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                           <div>
-                            <p className="text-sm font-medium">{entry.accountName}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{entry.accountName}</p>
+                              {entry.isOnTarget && <Check className="h-4 w-4 text-success" />}
+                            </div>
                             <p className="text-xs text-muted-foreground">
-                              {entry.accountType} account • {entry.allocationSharePercent.toFixed(1)}% share
+                              {entry.accountType} account • target {entry.allocationSharePercent.toFixed(1)}% of total balance
                             </p>
                           </div>
-                          <p className="text-sm font-semibold">
-                            Allocate ${entry.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
-                          </p>
+                          <div className="text-sm md:text-right">
+                            <p className="font-semibold">
+                              Hold ${entry.targetBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Current: ${entry.currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
                         </div>
+
+                        <p className={`text-xs mt-2 ${entry.isOnTarget ? "text-success" : "text-muted-foreground"}`}>
+                          {entry.isOnTarget
+                            ? `On target: this account is $${entry.excessBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} above its recommended allocation.`
+                            : `Needs $${entry.gapToTarget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach its recommended allocation.`}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -820,9 +898,9 @@ const Dashboard = () => {
                 <div className="rounded-xl border border-success/20 bg-success/5 p-5 space-y-3">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-sm font-medium">Recommended allocation by account</p>
+                      <p className="text-sm font-medium">Best overall balance allocation</p>
                       <p className="text-xs text-muted-foreground">
-                        Fund this amount each month to reach all active goals as fast as possible based on your current account mix.
+                        This shows how your current total balance is best distributed across accounts to support all active goals overall.
                       </p>
                     </div>
                   </div>
