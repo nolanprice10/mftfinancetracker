@@ -400,22 +400,82 @@ const Dashboard = () => {
   }, 0);
 
   const goalsForAllocation = allActiveAnalyses.filter((analysis) => analysis.remainingAmount > 0);
+  const totalTrackedBalance = accounts.reduce((sum, account) => sum + Math.max(0, Number(account.balance) || 0), 0);
 
-  const practicalMonthlySpendFloor = monthlyIncome > 0
-    ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1)
-    : MIN_SPENDING_LIMIT;
+  const totalGoalTarget = allActiveAnalyses.reduce((sum, analysis) => sum + analysis.targetAmount, 0);
+  const totalGoalCurrent = allActiveAnalyses.reduce((sum, analysis) => sum + analysis.currentAmount, 0);
+  const totalGoalRemaining = allActiveAnalyses.reduce((sum, analysis) => sum + analysis.remainingAmount, 0);
+
+  const overallGoalProgress = totalGoalTarget > 0
+    ? Math.min(1, Math.max(0, totalGoalCurrent / totalGoalTarget))
+    : 1;
+
+  const goalPressureRatio = monthlyIncome > 0
+    ? allGoalsMonthlyRequirement / Math.max(1, monthlyIncome)
+    : (allGoalsMonthlyRequirement > 0 ? 1 : 0);
+
+  const balanceCoverageRatio = totalGoalRemaining > 0
+    ? totalTrackedBalance / totalGoalRemaining
+    : 1;
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const progressMultiplierMonthly = clamp(0.8 + overallGoalProgress * 0.35, 0.7, 1.1);
+  const pressureMultiplierMonthly = clamp(1.15 - goalPressureRatio * 0.3, 0.65, 1.05);
+  const balanceMultiplierMonthly = clamp(0.85 + Math.min(1, balanceCoverageRatio) * 0.3, 0.75, 1.15);
 
   const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
-  const rawCombinedSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictCombinedSpendingLimit);
-  const combinedSpendingLimit = Number.isFinite(rawCombinedSpendingLimit)
-    ? Math.max(MIN_SPENDING_LIMIT, rawCombinedSpendingLimit)
+  const practicalMonthlySpendFloor = monthlyIncome > 0
+    ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.08)
     : MIN_SPENDING_LIMIT;
-  const combinedFloorApplied = !Number.isFinite(rawCombinedSpendingLimit) || strictCombinedSpendingLimit < practicalMonthlySpendFloor;
-  const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
-  const combinedWeeklySpendingLimit = combinedSpendingLimit / 4.345;
-  const combinedDailySpendingLimit = combinedSpendingLimit / 30.4375;
 
-  const totalTrackedBalance = accounts.reduce((sum, account) => sum + Math.max(0, Number(account.balance) || 0), 0);
+  const adaptiveMonthlyCandidate = strictCombinedSpendingLimit
+    * progressMultiplierMonthly
+    * pressureMultiplierMonthly
+    * balanceMultiplierMonthly;
+
+  const combinedSpendingLimit = Math.max(
+    practicalMonthlySpendFloor,
+    Number.isFinite(adaptiveMonthlyCandidate) ? adaptiveMonthlyCandidate : 0,
+    MIN_SPENDING_LIMIT
+  );
+
+  const combinedFloorApplied = combinedSpendingLimit <= practicalMonthlySpendFloor;
+  const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
+
+  const weeklyIncomeProxy = monthlyIncome * 12 / 52;
+  const weeklyGoalRequirement = allGoalsMonthlyRequirement * 12 / 52;
+  const strictWeeklySpendingLimit = weeklyIncomeProxy - weeklyGoalRequirement;
+  const progressMultiplierWeekly = clamp(0.78 + overallGoalProgress * 0.28, 0.68, 1.08);
+  const pressureMultiplierWeekly = clamp(1.12 - goalPressureRatio * 0.26, 0.66, 1.04);
+  const balanceMultiplierWeekly = clamp(0.82 + Math.min(1, balanceCoverageRatio) * 0.26, 0.72, 1.12);
+  const weeklyFloor = Math.max(20, weeklyIncomeProxy * 0.09);
+  const adaptiveWeeklyCandidate = strictWeeklySpendingLimit
+    * progressMultiplierWeekly
+    * pressureMultiplierWeekly
+    * balanceMultiplierWeekly;
+  const combinedWeeklySpendingLimit = Math.max(
+    weeklyFloor,
+    Number.isFinite(adaptiveWeeklyCandidate) ? adaptiveWeeklyCandidate : 0,
+    20
+  );
+
+  const dailyIncomeProxy = monthlyIncome * 12 / 365;
+  const dailyGoalRequirement = allGoalsMonthlyRequirement * 12 / 365;
+  const strictDailySpendingLimit = dailyIncomeProxy - dailyGoalRequirement;
+  const progressMultiplierDaily = clamp(0.76 + overallGoalProgress * 0.22, 0.66, 1.05);
+  const pressureMultiplierDaily = clamp(1.08 - goalPressureRatio * 0.22, 0.66, 1.03);
+  const balanceMultiplierDaily = clamp(0.8 + Math.min(1, balanceCoverageRatio) * 0.2, 0.7, 1.08);
+  const dailyFloor = Math.max(5, dailyIncomeProxy * 0.1);
+  const adaptiveDailyCandidate = strictDailySpendingLimit
+    * progressMultiplierDaily
+    * pressureMultiplierDaily
+    * balanceMultiplierDaily;
+  const combinedDailySpendingLimit = Math.max(
+    dailyFloor,
+    Number.isFinite(adaptiveDailyCandidate) ? adaptiveDailyCandidate : 0,
+    5
+  );
 
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
     if (goalsForAllocation.length === 0 || accounts.length === 0 || totalTrackedBalance <= 0) {
@@ -424,8 +484,7 @@ const Dashboard = () => {
 
     const totalTrackedCents = Math.round(totalTrackedBalance * 100);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
-    const fallbackReceivers = accounts.filter((account) => (Number(account.balance) || 0) > 0);
-    const defaultReceivers = fallbackReceivers.length > 0 ? fallbackReceivers : accounts;
+    const defaultReceivers = accounts;
 
     const weightedGoals = goalsForAllocation.map((analysis) => ({
       analysis,
@@ -467,13 +526,7 @@ const Dashboard = () => {
         if (index === defaultReceivers.length - 1) {
           receiverCents = remainingGoalCents;
         } else {
-          const basisBalance = Math.max(0, Number(account.balance) || 0);
-          const denominator = fallbackReceivers.length > 0
-            ? totalTrackedBalance
-            : defaultReceivers.length;
-          const receiverShare = fallbackReceivers.length > 0
-            ? basisBalance / denominator
-            : 1 / defaultReceivers.length;
+          const receiverShare = 1 / defaultReceivers.length;
           receiverCents = Math.min(remainingGoalCents, Math.round(goalShareCents * receiverShare));
           remainingGoalCents -= receiverCents;
         }
@@ -784,7 +837,7 @@ const Dashboard = () => {
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
                   <div>
                     <p className="text-sm font-medium">Unified spending limit for all goals</p>
-                    <p className="text-xs text-muted-foreground">One limit across all active goals, calculated from monthly income and all goal deadlines together.</p>
+                    <p className="text-xs text-muted-foreground">One adaptive limit across all active goals, adjusted by monthly income, goal progress, total balance, and goal deadlines.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
