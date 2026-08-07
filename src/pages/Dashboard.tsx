@@ -404,30 +404,6 @@ const Dashboard = () => {
     ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1)
     : MIN_SPENDING_LIMIT;
 
-  const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
-    const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
-    const strictSpendingLimit = monthlyIncome - requiredMonthlySavings;
-    const rawSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictSpendingLimit);
-    const spendingLimit = Number.isFinite(rawSpendingLimit)
-      ? Math.max(MIN_SPENDING_LIMIT, rawSpendingLimit)
-      : MIN_SPENDING_LIMIT;
-    const floorApplied = !Number.isFinite(rawSpendingLimit) || strictSpendingLimit < practicalMonthlySpendFloor;
-    const overspendAmount = Math.max(0, monthlyExpenses - spendingLimit);
-    const underspendBuffer = Math.max(0, spendingLimit - monthlyExpenses);
-
-    return {
-      goalId: analysis.goal.id,
-      goalName: analysis.goal.name,
-      requiredMonthlySavings,
-      strictSpendingLimit,
-      spendingLimit,
-      overspendAmount,
-      underspendBuffer,
-      floorApplied,
-      isOnTrack: overspendAmount <= 0,
-    };
-  });
-
   const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
   const rawCombinedSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictCombinedSpendingLimit);
   const combinedSpendingLimit = Number.isFinite(rawCombinedSpendingLimit)
@@ -435,6 +411,8 @@ const Dashboard = () => {
     : MIN_SPENDING_LIMIT;
   const combinedFloorApplied = !Number.isFinite(rawCombinedSpendingLimit) || strictCombinedSpendingLimit < practicalMonthlySpendFloor;
   const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
+  const combinedWeeklySpendingLimit = combinedSpendingLimit / 4.345;
+  const combinedDailySpendingLimit = combinedSpendingLimit / 30.4375;
 
   const totalTrackedBalance = accounts.reduce((sum, account) => sum + Math.max(0, Number(account.balance) || 0), 0);
 
@@ -443,6 +421,7 @@ const Dashboard = () => {
       return [];
     }
 
+    const totalTrackedCents = Math.round(totalTrackedBalance * 100);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
     const fallbackReceivers = accounts.filter((account) => (Number(account.balance) || 0) > 0);
     const defaultReceivers = fallbackReceivers.length > 0 ? fallbackReceivers : accounts;
@@ -457,10 +436,18 @@ const Dashboard = () => {
       return [];
     }
 
+    // Guarantee every account receives at least a non-zero target allocation.
+    const baselineCentsPerAccount = totalTrackedCents >= accounts.length ? 1 : 0;
+    const baselineTotalCents = baselineCentsPerAccount * accounts.length;
+    const distributableCents = Math.max(0, totalTrackedCents - baselineTotalCents);
+
     const targetByAccountCents = new Map<string, number>();
+    accounts.forEach((account) => {
+      targetByAccountCents.set(account.id, baselineCentsPerAccount);
+    });
 
     weightedGoals.forEach(({ analysis, urgencyWeight }) => {
-      const goalShareCents = Math.round((urgencyWeight / totalUrgencyWeight) * totalTrackedBalance * 100);
+      const goalShareCents = Math.round((urgencyWeight / totalUrgencyWeight) * distributableCents);
       const linkedAccountId = analysis.goal.account_id || null;
 
       if (linkedAccountId && accountsById.has(linkedAccountId)) {
@@ -510,7 +497,7 @@ const Dashboard = () => {
       .filter((entry) => entry.targetBalance > 0);
 
     const totalTargetCents = rawPlan.reduce((sum, entry) => sum + Math.round(entry.targetBalance * 100), 0);
-    const driftCents = Math.round(totalTrackedBalance * 100) - totalTargetCents;
+    const driftCents = totalTrackedCents - totalTargetCents;
 
     if (rawPlan.length > 0 && driftCents !== 0) {
       const firstEntry = rawPlan[0];
@@ -788,44 +775,38 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {spendingLimitsByGoal.length > 0 && (
+              {allActiveAnalyses.length > 0 && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
                   <div>
-                    <p className="text-sm font-medium">Monthly spending limits to stay on track</p>
-                    <p className="text-xs text-muted-foreground">These limits are calculated goal-by-goal based on your current income and each goal's deadline.</p>
+                    <p className="text-sm font-medium">Unified spending limit for all goals</p>
+                    <p className="text-xs text-muted-foreground">One limit across all active goals, calculated from monthly income and all goal deadlines together.</p>
                   </div>
 
-                  <div className="space-y-2">
-                    {spendingLimitsByGoal.map((limit) => (
-                      <div key={limit.goalId} className="rounded-lg border border-border/60 bg-background/70 p-3">
-                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                          <p className="text-sm font-medium">{limit.goalName}</p>
-                          <p className="text-sm font-semibold">
-                            Spend up to ${limit.spendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
-                          </p>
-                        </div>
-                        <p className={`text-xs mt-1 ${limit.isOnTrack ? "text-success" : "text-destructive"}`}>
-                          {limit.isOnTrack
-                            ? `On track: you are $${limit.underspendBuffer.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} under this goal's limit.`
-                            : `Over limit: cut $${limit.overspendAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per month to stay on track.`}
-                        </p>
-                        {limit.floorApplied && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Practical floor applied: strict target would be ${Math.max(0, limit.strictSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">Daily limit</p>
+                      <p className="text-sm font-semibold">
+                        ${combinedDailySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">Weekly limit</p>
+                      <p className="text-sm font-semibold">
+                        ${combinedWeeklySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                      <p className="text-xs text-muted-foreground">Monthly limit</p>
+                      <p className="text-sm font-semibold">
+                        ${combinedSpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="rounded-lg border border-border/60 bg-background/70 p-3">
-                    <p className="text-sm font-medium">All goals combined spending limit</p>
-                    <p className="text-sm font-semibold">
-                      Spend up to ${combinedSpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
-                    </p>
                     <p className={`text-xs mt-1 ${combinedOverspend > 0 ? "text-destructive" : "text-success"}`}>
                       {combinedOverspend > 0
-                        ? `You are $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over the combined limit.`
+                        ? `You are $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over your unified monthly limit.`
                         : "You are within the combined limit for all active goals."}
                     </p>
                     {combinedFloorApplied && (
@@ -844,6 +825,9 @@ const Dashboard = () => {
                       <p className="text-sm font-medium">Best overall balance allocation</p>
                       <p className="text-xs text-muted-foreground">
                         This shows how your current total balance is best distributed across accounts to support all active goals overall.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Every account receives a small baseline target, even without a linked goal.
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-success">
