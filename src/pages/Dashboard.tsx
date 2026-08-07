@@ -157,11 +157,6 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const now = new Date();
-      const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-      const startOfNextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const startOfNextMonth = `${startOfNextMonthDate.getFullYear()}-${String(startOfNextMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
-
       const [accountsRes, goalsRes, transactionsRes, profileRes] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", user.id),
         supabase.from("goals").select("*").eq("user_id", user.id),
@@ -169,8 +164,6 @@ const Dashboard = () => {
           .from("transactions")
           .select("amount,type,date,category")
           .eq("user_id", user.id)
-          .gte("date", startOfMonth)
-          .lt("date", startOfNextMonth)
           .order("date", { ascending: false }),
         supabase.from("profiles").select("name").eq("id", user.id).single(),
       ]);
@@ -188,8 +181,32 @@ const Dashboard = () => {
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
-  // Transactions are already month-scoped in fetchData; avoid re-filtering by Date parsing
-  // because YYYY-MM-DD parsing can shift by timezone and drop valid entries.
+  // Strictly scope to the user's current local calendar month to avoid
+  // backend/query boundary drift and timezone edge cases.
+  const isCurrentMonthTransaction = (rawDate: string) => {
+    if (!rawDate) return false;
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    let parsed: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      const [year, month, day] = rawDate.split("-").map(Number);
+      parsed = new Date(year, month - 1, day);
+    } else {
+      parsed = new Date(rawDate);
+    }
+
+    if (Number.isNaN(parsed.getTime())) {
+      return false;
+    }
+
+    return parsed.getFullYear() === currentYear && parsed.getMonth() === currentMonth;
+  };
+
+  const currentMonthTransactions = transactions.filter((t) => isCurrentMonthTransaction(String(t.date || "")));
+
   // Treat income-like entries as cash-in even when imported with negative signs.
   // Exclude explicit outgoing transfers to avoid inflating income.
   const isIncomeLikeTransaction = (tx: Transaction) => {
@@ -208,11 +225,11 @@ const Dashboard = () => {
     return true;
   };
 
-  const monthlyIncome = transactions
+  const monthlyIncome = currentMonthTransactions
     .filter((t) => isIncomeLikeTransaction(t) && Math.abs(Number(t.amount) || 0) > 0)
     .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
-  const monthlyExpenses = transactions
+  const monthlyExpenses = currentMonthTransactions
     .filter((t) => String(t.type).toLowerCase().trim() === "expense")
     .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
