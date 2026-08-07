@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { SEO } from "@/components/SEO";
 import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
+import { parseDateOnlyString } from "@/lib/date";
 
 type RiskProfileType = "conservative" | "moderate" | "aggressive";
 type AssetClass = "equity_us" | "equity_intl" | "bonds" | "real_assets" | "alternatives" | "cash" | "other";
@@ -428,12 +429,13 @@ const Recommendations = () => {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       const monthlyTransactions = transactions.filter(t => {
-        const date = new Date(t.date);
+        const date = parseDateOnlyString(t.date) ?? new Date(t.date);
         return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
       });
 
       const last90Days = transactions.filter(t => {
-        const daysAgo = (Date.now() - new Date(t.date).getTime()) / (1000 * 60 * 60 * 24);
+        const txDate = parseDateOnlyString(t.date) ?? new Date(t.date);
+        const daysAgo = (Date.now() - txDate.getTime()) / (1000 * 60 * 60 * 24);
         return daysAgo <= 90;
       });
 

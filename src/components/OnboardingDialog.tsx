@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Target, Check, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { toLocalDateInputValue } from "@/lib/date";
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -62,8 +63,8 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
         name: goalName,
         target_amount: goalAmount,
         current_amount: 0,
-        start_date: new Date().toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
+        start_date: toLocalDateInputValue(new Date()),
+        end_date: toLocalDateInputValue(endDate),
         account_id: accountData.id,
         notes: `Monthly income: $${monthlyIncome.toFixed(0)}, Monthly spending: $${monthlySpending.toFixed(0)}, Monthly savings: $${monthlySavings.toFixed(0)}`
       });

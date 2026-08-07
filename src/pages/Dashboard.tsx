@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClass } from "@/lib/probability";
 import { calculatePercentile } from "@/lib/percentile";
 import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
+import { formatDateOnlyForDisplay, formatDateTimeForDisplay, parseDateOnlyString } from "@/lib/date";
 
 interface Account {
   id: string;
@@ -198,18 +199,8 @@ const Dashboard = () => {
   const parseTransactionDate = (rawDate: string): Date | null => {
     if (!rawDate) return null;
 
-    let parsed: Date;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
-      const [year, month, day] = rawDate.split("-").map(Number);
-      parsed = new Date(year, month - 1, day);
-    } else {
-      parsed = new Date(rawDate);
-    }
-
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-
+    const parsed = parseDateOnlyString(rawDate) ?? new Date(rawDate);
+    if (Number.isNaN(parsed.getTime())) return null;
     parsed.setHours(0, 0, 0, 0);
     return parsed;
   };
@@ -259,7 +250,7 @@ const Dashboard = () => {
   const snapshotMonthDate = transactionsForSnapshot[0]?.parsedDate ?? today;
   const snapshotMonthLabel = usingFallbackMonth
     ? snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" })
-    : `Last 30 days (ending ${today.toLocaleDateString()})`;
+    : `Last 30 days (ending ${formatDateTimeForDisplay(today)})`;
 
   // Convert mixed transaction labels to cash flow direction.
   // Ambiguous transfers default to income so imported cash-in rows are not dropped.
@@ -571,7 +562,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground">
                 {isAllGoalsView
                   ? `${selectedExpiredCount} goal${selectedExpiredCount === 1 ? " has" : "s have"} passed the deadline without full completion.`
-                  : `Deadline was ${new Date(selectedAnalyses[0].goal.end_date).toLocaleDateString()}`}
+                    : `Deadline was ${formatDateOnlyForDisplay(selectedAnalyses[0].goal.end_date)}`}
               </p>
               <div className="text-2xl font-semibold">
                 ${selectedCurrentAmount.toLocaleString()} / ${selectedTargetAmount.toLocaleString()}
@@ -626,7 +617,7 @@ const Dashboard = () => {
                   Target: ${selectedTargetAmount.toLocaleString()}
                   {isAllGoalsView
                     ? " across all active goals"
-                    : ` by ${new Date(selectedAnalyses[0].goal.end_date).toLocaleDateString()}`}
+                    : ` by ${formatDateOnlyForDisplay(selectedAnalyses[0].goal.end_date)}`}
                 </p>
               </div>
 

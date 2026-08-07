@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { formatDateTimeForDisplay, parseDateOnlyString } from "@/lib/date";
 
 interface ChartDataPoint {
   date: string;
@@ -50,16 +51,24 @@ export const PerformanceChart = ({ data, title, ticker, isLoading = false }: Per
   }
 
   // Ensure incoming data is sorted and unique by date, then format for display
-  const sorted = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const sorted = [...data].sort((a, b) => {
+    const dateA = parseDateOnlyString(a.date) ?? new Date(a.date);
+    const dateB = parseDateOnlyString(b.date) ?? new Date(b.date);
+    return dateA.getTime() - dateB.getTime();
+  });
   const deduped: ChartDataPoint[] = [];
   for (const d of sorted) {
-    if (!deduped.length || new Date(d.date).getTime() !== new Date(deduped[deduped.length - 1].date).getTime()) {
+    const currentDate = parseDateOnlyString(d.date) ?? new Date(d.date);
+    const previousDate = deduped.length
+      ? (parseDateOnlyString(deduped[deduped.length - 1].date) ?? new Date(deduped[deduped.length - 1].date))
+      : null;
+    if (!previousDate || currentDate.getTime() !== previousDate.getTime()) {
       deduped.push(d);
     }
   }
 
   const formattedData = deduped.map(point => ({
-    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: formatDateTimeForDisplay(point.date, 'en-US', { month: 'short', day: 'numeric' }),
     price: point.price
   }));
 

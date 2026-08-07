@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { formatDateOnlyForDisplay, getTodayLocalDateInputValue, parseDateOnlyString } from "@/lib/date";
 
 interface Goal {
   id: string;
@@ -43,7 +44,7 @@ const Goals = () => {
     name: "",
     target_amount: "",
     current_amount: "0",
-    start_date: new Date().toISOString().split("T")[0],
+    start_date: getTodayLocalDateInputValue(),
     end_date: "",
     notes: "",
     account_id: "",
@@ -203,7 +204,7 @@ const Goals = () => {
         name: "",
         target_amount: "",
         current_amount: "0",
-        start_date: new Date().toISOString().split("T")[0],
+        start_date: getTodayLocalDateInputValue(),
         end_date: "",
         notes: "",
         account_id: "",
@@ -318,7 +319,7 @@ const Goals = () => {
 
   const calculateMonthsRemaining = (endDate: string) => {
     const today = new Date();
-    const end = new Date(endDate);
+    const end = parseDateOnlyString(endDate) ?? new Date(endDate);
     const monthsRemaining = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30));
     return Math.max(0, monthsRemaining);
   };
@@ -332,7 +333,7 @@ const Goals = () => {
   const calculateDailyTarget = (goal: Goal) => {
     const remaining = Number(goal.target_amount) - Number(goal.current_amount);
     const today = new Date();
-    const end = new Date(goal.end_date);
+    const end = parseDateOnlyString(goal.end_date) ?? new Date(goal.end_date);
     const daysRemaining = Math.max(Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0);
     return daysRemaining > 0 ? remaining / daysRemaining : remaining;
   };
@@ -340,7 +341,7 @@ const Goals = () => {
   const calculateWeeklyTarget = (goal: Goal) => {
     const remaining = Number(goal.target_amount) - Number(goal.current_amount);
     const today = new Date();
-    const end = new Date(goal.end_date);
+    const end = parseDateOnlyString(goal.end_date) ?? new Date(goal.end_date);
     const daysRemaining = Math.max(Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), 0);
     const weeksRemaining = Math.max(Math.ceil(daysRemaining / 7), 0);
     return weeksRemaining > 0 ? remaining / weeksRemaining : remaining;
@@ -540,7 +541,7 @@ const Goals = () => {
               const dailyTarget = calculateDailyTarget(goal);
               const linkedAccount = accounts.find(a => a.id === goal.account_id);
               const isGoalComplete = progress >= 100;
-              const endDate = new Date(goal.end_date);
+              const endDate = parseDateOnlyString(goal.end_date) ?? new Date(goal.end_date);
               const today = new Date();
               today.setHours(0, 0, 0, 0);
               endDate.setHours(0, 0, 0, 0);
@@ -566,7 +567,7 @@ const Goals = () => {
                         <CardDescription>
                           {isGoalComplete 
                             ? `🎊 Goal Completed! Reached $${Number(goal.current_amount).toLocaleString()}`
-                            : `Target: $${Number(goal.target_amount).toLocaleString()} by ${new Date(goal.end_date).toLocaleDateString()}`
+                            : `Target: $${Number(goal.target_amount).toLocaleString()} by ${formatDateOnlyForDisplay(goal.end_date)}`
                           }
                         </CardDescription>
                         {goal.account_id ? (
@@ -604,7 +605,7 @@ const Goals = () => {
                         <div className="text-6xl">⏰</div>
                         <div>
                           <h3 className="text-2xl font-bold text-destructive mb-2">Goal Deadline Passed</h3>
-                          <p className="text-muted-foreground mb-2">This goal ended on {new Date(goal.end_date).toLocaleDateString()}</p>
+                          <p className="text-muted-foreground mb-2">This goal ended on {formatDateOnlyForDisplay(goal.end_date)}</p>
                           <p className="text-lg font-semibold">
                             ${Number(goal.current_amount).toLocaleString()} / ${Number(goal.target_amount).toLocaleString()}
                             <span className="text-sm text-muted-foreground ml-2">({progress.toFixed(1)}% reached)</span>

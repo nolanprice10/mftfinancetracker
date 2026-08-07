@@ -3,6 +3,7 @@ import { MessageCircle, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDateOnlyString } from "@/lib/date";
 
 interface Message {
   id: string;
@@ -47,7 +48,7 @@ const FinanceAssistant = () => {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         const monthlyTransactions = transactions.filter((tx: any) => {
-          const txDate = new Date(tx.date);
+          const txDate = parseDateOnlyString(tx.date) ?? new Date(tx.date);
           return txDate >= startOfMonth;
         });
 

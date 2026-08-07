@@ -15,6 +15,30 @@ import { Moon, Sun, User, Lock, Trash2, LogOut, Mail, Linkedin, MessageSquare, G
 import { themes, getFreeThemes, getLockedThemes } from "@/lib/themes";
 import { useTheme } from "@/hooks/useTheme";
 import { useRewards } from "@/hooks/useRewards";
+import { DEVICE_TIMEZONE_VALUE, formatDateTimeForDisplay, getDeviceTimeZone, getUserTimeZone, getUserTimeZonePreference, setUserTimeZonePreference } from "@/lib/date";
+
+const COMMON_TIMEZONES = [
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Madrid",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Asia/Shanghai",
+  "Asia/Singapore",
+  "Asia/Kolkata",
+  "Australia/Sydney",
+  "Australia/Perth",
+  "Pacific/Auckland",
+];
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -26,6 +50,7 @@ const Settings = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [timeZonePreference, setTimeZonePreference] = useState<string>(DEVICE_TIMEZONE_VALUE);
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong">("weak");
   
   // Referral state
@@ -51,6 +76,7 @@ const Settings = () => {
 
     document.documentElement.classList.toggle('dark', isDark);
     setDarkMode(isDark);
+    setTimeZonePreference(getUserTimeZonePreference());
   }, []);
 
   const fetchUserData = async () => {
@@ -289,6 +315,23 @@ const Settings = () => {
     }
   };
 
+  const handleTimeZoneChange = (value: string) => {
+    try {
+      setUserTimeZonePreference(value);
+      setTimeZonePreference(value);
+      toast.success("Timezone preference updated");
+    } catch {
+      toast.error("Invalid timezone selection");
+    }
+  };
+
+  const timezoneOptions = Array.from(new Set([
+    DEVICE_TIMEZONE_VALUE,
+    getUserTimeZone(),
+    getDeviceTimeZone(),
+    ...COMMON_TIMEZONES,
+  ]));
+
   const handleDeleteAccount = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -475,6 +518,39 @@ const Settings = () => {
                 onCheckedChange={handleToggleDarkMode}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              <CardTitle>Date & Timezone</CardTitle>
+            </div>
+            <CardDescription>Choose how dates and times are interpreted and displayed</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Select value={timeZonePreference} onValueChange={handleTimeZoneChange}>
+                <SelectTrigger id="timezone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timezoneOptions.map((timezone) => (
+                    <SelectItem key={timezone} value={timezone}>
+                      {timezone === DEVICE_TIMEZONE_VALUE ? `Use device timezone (${getDeviceTimeZone()})` : timezone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Active timezone: {getUserTimeZone()}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Preview: {formatDateTimeForDisplay(new Date(), undefined, { month: "long", day: "numeric", year: "numeric" })}
+            </p>
           </CardContent>
         </Card>
 
@@ -673,7 +749,7 @@ const Settings = () => {
                       <p className="font-medium">{reward.reward_description}</p>
                       {reward.expires_at && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Expires: {new Date(reward.expires_at).toLocaleDateString()}
+                          Expires: {formatDateTimeForDisplay(reward.expires_at)}
                         </p>
                       )}
                     </div>
