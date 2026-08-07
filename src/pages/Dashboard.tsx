@@ -321,6 +321,26 @@ const Dashboard = () => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
 
+  const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
+    const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
+    const spendingLimit = Math.max(0, monthlyIncome - requiredMonthlySavings);
+    const overspendAmount = Math.max(0, monthlyExpenses - spendingLimit);
+    const underspendBuffer = Math.max(0, spendingLimit - monthlyExpenses);
+
+    return {
+      goalId: analysis.goal.id,
+      goalName: analysis.goal.name,
+      requiredMonthlySavings,
+      spendingLimit,
+      overspendAmount,
+      underspendBuffer,
+      isOnTrack: overspendAmount <= 0,
+    };
+  });
+
+  const combinedSpendingLimit = Math.max(0, monthlyIncome - allGoalsMonthlyRequirement);
+  const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
+
   const positiveBalanceAccounts = accounts.filter((account) => Number(account.balance) > 0);
   const totalPositiveBalances = positiveBalanceAccounts.reduce((sum, account) => sum + Number(account.balance), 0);
 
@@ -607,6 +627,45 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
+
+              {spendingLimitsByGoal.length > 0 && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">Monthly spending limits to stay on track</p>
+                    <p className="text-xs text-muted-foreground">These limits are calculated goal-by-goal based on your current income and each goal's deadline.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {spendingLimitsByGoal.map((limit) => (
+                      <div key={limit.goalId} className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <p className="text-sm font-medium">{limit.goalName}</p>
+                          <p className="text-sm font-semibold">
+                            Spend up to ${limit.spendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                          </p>
+                        </div>
+                        <p className={`text-xs mt-1 ${limit.isOnTrack ? "text-success" : "text-destructive"}`}>
+                          {limit.isOnTrack
+                            ? `On track: you are $${limit.underspendBuffer.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} under this goal's limit.`
+                            : `Over limit: cut $${limit.overspendAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per month to stay on track.`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                    <p className="text-sm font-medium">All goals combined spending limit</p>
+                    <p className="text-sm font-semibold">
+                      Spend up to ${combinedSpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                    </p>
+                    <p className={`text-xs mt-1 ${combinedOverspend > 0 ? "text-destructive" : "text-success"}`}>
+                      {combinedOverspend > 0
+                        ? `You are $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over the combined limit.`
+                        : "You are within the combined limit for all active goals."}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {transferRecommendation && (
                 <div className="rounded-xl border border-success/25 bg-gradient-to-br from-success/10 via-success/5 to-transparent p-5 space-y-2 shadow-sm">
