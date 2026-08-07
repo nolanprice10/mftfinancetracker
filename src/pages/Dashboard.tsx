@@ -47,6 +47,14 @@ interface TransactionWithParsedDate {
   parsedDate: Date;
 }
 
+interface AccountAllocationPlan {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  monthlyAmount: number;
+  allocationSharePercent: number;
+}
+
 const Dashboard = () => {
   const MIN_SPENDING_LIMIT = 50;
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -464,10 +472,15 @@ const Dashboard = () => {
           accountName: account.name,
           accountType: account.type,
           monthlyAmount: centsForAccount / 100,
+          allocationSharePercent: totalPositiveBalances > 0
+            ? (Number(account.balance) / totalPositiveBalances) * 100
+            : 0,
         };
       })
       .filter((entry) => entry.monthlyAmount > 0);
   })();
+
+  const recommendedAllocationTotal = accountAllocationPlan.reduce((sum, entry) => sum + entry.monthlyAmount, 0);
 
   const displayProbability = selectedProbability !== null
     ? Number(selectedProbability.toFixed(1))
@@ -773,6 +786,40 @@ const Dashboard = () => {
                         Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
                       </p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {accountAllocationPlan.length > 0 && (
+                <div className="rounded-xl border border-success/20 bg-success/5 p-5 space-y-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Recommended allocation by account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fund this amount each month to reach all active goals as fast as possible based on your current account mix.
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-success">
+                      Total: ${recommendedAllocationTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {accountAllocationPlan.map((entry) => (
+                      <div key={entry.accountId} className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{entry.accountName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {entry.accountType} account • {entry.allocationSharePercent.toFixed(1)}% share
+                            </p>
+                          </div>
+                          <p className="text-sm font-semibold">
+                            Allocate ${entry.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
