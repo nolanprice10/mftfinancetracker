@@ -399,19 +399,9 @@ const Dashboard = () => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
 
-  const practicalMonthlySpendFloor = (() => {
-    if (monthlyIncome > 0) {
-      // Keep a non-zero floor for real-world essentials.
-      return Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1);
-    }
-
-    if (monthlyExpenses > 0) {
-      // If no income is logged, use a reduced slice of current expenses.
-      return Math.max(MIN_SPENDING_LIMIT, monthlyExpenses * 0.25);
-    }
-
-    return MIN_SPENDING_LIMIT;
-  })();
+  const practicalMonthlySpendFloor = monthlyIncome > 0
+    ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1)
+    : MIN_SPENDING_LIMIT;
 
   const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
     const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
