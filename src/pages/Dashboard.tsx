@@ -307,16 +307,16 @@ const Dashboard = () => {
       : 100;
   }
 
-  const transferRecommendation = selectedActiveAnalyses.length > 0
+  const allActiveAnalyses = goalAnalyses.filter((analysis) => !analysis.isExpired);
+  const transferRecommendation = allActiveAnalyses.length > 0
     ? getBestTransferRecommendation({
         accounts,
-        goals: selectedActiveAnalyses.map((analysis) => analysis.goal),
+        goals: allActiveAnalyses.map((analysis) => analysis.goal),
         monthlyIncome,
         monthlyExpenses,
       })
     : null;
 
-  const allActiveAnalyses = goalAnalyses.filter((analysis) => !analysis.isExpired);
   const allGoalsMonthlyRequirement = allActiveAnalyses.reduce((sum, analysis) => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
@@ -512,7 +512,7 @@ const Dashboard = () => {
                           Move ${transferRecommendation.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from {transferRecommendation.fromAccountName} to {transferRecommendation.toAccountName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          This directly supports your {transferRecommendation.goalName} goal.
+                          This move is optimized across all your active goals.
                         </p>
                       </>
                     ) : (
@@ -613,7 +613,7 @@ const Dashboard = () => {
                     Move ${transferRecommendation.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from {transferRecommendation.fromAccountName} to {transferRecommendation.toAccountName}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    This supports your {transferRecommendation.goalName} goal. {transferRecommendation.reason}
+                    This move is optimized across all your active goals. {transferRecommendation.reason}
                   </p>
                 </div>
               )}
