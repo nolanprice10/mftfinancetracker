@@ -321,9 +321,25 @@ const Dashboard = () => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
 
+  const practicalMonthlySpendFloor = (() => {
+    if (monthlyIncome > 0) {
+      // Keep a non-zero floor for real-world essentials.
+      return Math.max(50, monthlyIncome * 0.1);
+    }
+
+    if (monthlyExpenses > 0) {
+      // If no income is logged, use a reduced slice of current expenses.
+      return Math.max(50, monthlyExpenses * 0.25);
+    }
+
+    return 50;
+  })();
+
   const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
     const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
-    const spendingLimit = Math.max(0, monthlyIncome - requiredMonthlySavings);
+    const strictSpendingLimit = monthlyIncome - requiredMonthlySavings;
+    const spendingLimit = Math.max(practicalMonthlySpendFloor, strictSpendingLimit);
+    const floorApplied = strictSpendingLimit < practicalMonthlySpendFloor;
     const overspendAmount = Math.max(0, monthlyExpenses - spendingLimit);
     const underspendBuffer = Math.max(0, spendingLimit - monthlyExpenses);
 
@@ -331,14 +347,18 @@ const Dashboard = () => {
       goalId: analysis.goal.id,
       goalName: analysis.goal.name,
       requiredMonthlySavings,
+      strictSpendingLimit,
       spendingLimit,
       overspendAmount,
       underspendBuffer,
+      floorApplied,
       isOnTrack: overspendAmount <= 0,
     };
   });
 
-  const combinedSpendingLimit = Math.max(0, monthlyIncome - allGoalsMonthlyRequirement);
+  const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
+  const combinedSpendingLimit = Math.max(practicalMonthlySpendFloor, strictCombinedSpendingLimit);
+  const combinedFloorApplied = strictCombinedSpendingLimit < practicalMonthlySpendFloor;
   const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
 
   const positiveBalanceAccounts = accounts.filter((account) => Number(account.balance) > 0);
@@ -649,6 +669,11 @@ const Dashboard = () => {
                             ? `On track: you are $${limit.underspendBuffer.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} under this goal's limit.`
                             : `Over limit: cut $${limit.overspendAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per month to stay on track.`}
                         </p>
+                        {limit.floorApplied && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Practical floor applied: strict target would be ${Math.max(0, limit.strictSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -663,6 +688,11 @@ const Dashboard = () => {
                         ? `You are $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} over the combined limit.`
                         : "You are within the combined limit for all active goals."}
                     </p>
+                    {combinedFloorApplied && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
