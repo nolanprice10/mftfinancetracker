@@ -43,6 +43,7 @@ interface Transaction {
 }
 
 const Dashboard = () => {
+  const MIN_SPENDING_LIMIT = 50;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -341,21 +342,21 @@ const Dashboard = () => {
   const practicalMonthlySpendFloor = (() => {
     if (monthlyIncome > 0) {
       // Keep a non-zero floor for real-world essentials.
-      return Math.max(50, monthlyIncome * 0.1);
+      return Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1);
     }
 
     if (monthlyExpenses > 0) {
       // If no income is logged, use a reduced slice of current expenses.
-      return Math.max(50, monthlyExpenses * 0.25);
+      return Math.max(MIN_SPENDING_LIMIT, monthlyExpenses * 0.25);
     }
 
-    return 50;
+    return MIN_SPENDING_LIMIT;
   })();
 
   const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
     const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
     const strictSpendingLimit = monthlyIncome - requiredMonthlySavings;
-    const spendingLimit = Math.max(practicalMonthlySpendFloor, strictSpendingLimit);
+    const spendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictSpendingLimit);
     const floorApplied = strictSpendingLimit < practicalMonthlySpendFloor;
     const overspendAmount = Math.max(0, monthlyExpenses - spendingLimit);
     const underspendBuffer = Math.max(0, spendingLimit - monthlyExpenses);
@@ -374,7 +375,7 @@ const Dashboard = () => {
   });
 
   const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
-  const combinedSpendingLimit = Math.max(practicalMonthlySpendFloor, strictCombinedSpendingLimit);
+  const combinedSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictCombinedSpendingLimit);
   const combinedFloorApplied = strictCombinedSpendingLimit < practicalMonthlySpendFloor;
   const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
 
@@ -688,7 +689,7 @@ const Dashboard = () => {
                         </p>
                         {limit.floorApplied && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Practical floor applied: strict target would be ${Math.max(0, limit.strictSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
+                            Practical floor applied: strict target would be ${Math.max(0, limit.strictSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
                           </p>
                         )}
                       </div>
@@ -707,7 +708,7 @@ const Dashboard = () => {
                     </p>
                     {combinedFloorApplied && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
+                        Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
                       </p>
                     )}
                   </div>
