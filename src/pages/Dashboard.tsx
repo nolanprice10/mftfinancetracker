@@ -62,6 +62,7 @@ interface AccountAllocationPlan {
 
 const Dashboard = () => {
   const MIN_SPENDING_LIMIT = 50;
+  const ACCOUNT_BASELINE_EQUAL_SHARE_FACTOR = 0.4;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -436,9 +437,14 @@ const Dashboard = () => {
       return [];
     }
 
-    // Guarantee every account receives at least a non-zero target allocation.
-    const baselineCentsPerAccount = totalTrackedCents >= accounts.length ? 1 : 0;
-    const baselineTotalCents = baselineCentsPerAccount * accounts.length;
+    // Keep money in every account: reserve a meaningful baseline slice for each account,
+    // then distribute the remaining balance by goal urgency.
+    const equalShareCents = Math.floor(totalTrackedCents / accounts.length);
+    const baselineCentsPerAccount = Math.max(
+      1,
+      Math.floor(equalShareCents * ACCOUNT_BASELINE_EQUAL_SHARE_FACTOR)
+    );
+    const baselineTotalCents = Math.min(totalTrackedCents, baselineCentsPerAccount * accounts.length);
     const distributableCents = Math.max(0, totalTrackedCents - baselineTotalCents);
 
     const targetByAccountCents = new Map<string, number>();
@@ -493,8 +499,7 @@ const Dashboard = () => {
             ? (targetBalance / totalTrackedBalance) * 100
             : 0,
         };
-      })
-      .filter((entry) => entry.targetBalance > 0);
+      });
 
     const totalTargetCents = rawPlan.reduce((sum, entry) => sum + Math.round(entry.targetBalance * 100), 0);
     const driftCents = totalTrackedCents - totalTargetCents;
@@ -827,7 +832,7 @@ const Dashboard = () => {
                         This shows how your current total balance is best distributed across accounts to support all active goals overall.
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Every account receives a small baseline target, even without a linked goal.
+                        Every account receives a meaningful baseline target, even without a linked goal.
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-success">
