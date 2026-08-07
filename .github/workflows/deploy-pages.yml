@@ -40,6 +40,16 @@ jobs:
             echo "⚠️ .env file not found"
           fi
 
+      - name: Restore source HTML template for build
+        run: |
+          if [ -f index.source.html ]; then
+            cp index.source.html index.html
+            echo "Restored index.html from index.source.html"
+          else
+            echo "index.source.html is missing; cannot prepare source template"
+            exit 1
+          fi
+
       - name: Build
         run: |
           if [ -f public/CNAME ]; then
