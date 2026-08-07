@@ -282,7 +282,7 @@ const Dashboard = () => {
   }
 
   if (selectedProbability !== null) {
-    selectedProbability = Math.max(1, selectedProbability);
+    selectedProbability = Math.min(98, Math.max(2, selectedProbability));
   }
 
   let monthsToGoalForPrimary = 1;
@@ -353,7 +353,9 @@ const Dashboard = () => {
       .filter((entry) => entry.monthlyAmount > 0);
   })();
 
-  const displayProbability = selectedProbability !== null ? Math.max(1, Math.round(selectedProbability)) : null;
+  const displayProbability = selectedProbability !== null
+    ? Number(selectedProbability.toFixed(1))
+    : null;
 
   if (loading) {
     return (
