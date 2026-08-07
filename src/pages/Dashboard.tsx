@@ -261,11 +261,17 @@ const Dashboard = () => {
     if (normalizedType === "expense") return "expense";
 
     if (normalizedType === "transfer") {
-      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent|to\s)/.test(categoryText);
-      const looksIncomingTransfer = /(transfer in|incoming|deposit|credit|received|from\s)/.test(categoryText);
+      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment to|debit|sent to|transfer to)/.test(categoryText);
+      const looksIncomingTransfer = /(transfer in|incoming|deposit|credit|received from|transfer from)/.test(categoryText);
 
-      if (looksOutgoingTransfer) return "expense";
-      if (looksIncomingTransfer) return "income";
+      if (looksIncomingTransfer && !looksOutgoingTransfer) return "income";
+      if (looksOutgoingTransfer && !looksIncomingTransfer) return "expense";
+
+      if (looksIncomingTransfer && looksOutgoingTransfer) {
+        // Phrases like "transfer from A to B" are typically incoming for the destination account view.
+        return "income";
+      }
+
       return "income";
     }
 
