@@ -228,11 +228,11 @@ const Dashboard = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
+  const rollingWindowStart = new Date(today);
+  rollingWindowStart.setDate(rollingWindowStart.getDate() - 30);
 
-  const currentMonthTransactions = transactionsWithParsedDate.filter(({ parsedDate }) => {
-    return parsedDate.getFullYear() === currentYear && parsedDate.getMonth() === currentMonth;
+  const rollingWindowTransactions = transactionsWithParsedDate.filter(({ parsedDate }) => {
+    return parsedDate.getTime() >= rollingWindowStart.getTime() && parsedDate.getTime() <= today.getTime();
   });
 
   const latestTransactionDate = transactionsWithParsedDate.reduce<Date | null>((latest, entry) => {
@@ -251,19 +251,22 @@ const Dashboard = () => {
       })
     : [];
 
-  const transactionsForSnapshot = currentMonthTransactions.length > 0
-    ? currentMonthTransactions
+  const transactionsForSnapshot = rollingWindowTransactions.length > 0
+    ? rollingWindowTransactions
     : fallbackMonthTransactions;
 
-  const usingFallbackMonth = currentMonthTransactions.length === 0 && fallbackMonthTransactions.length > 0;
+  const usingFallbackMonth = rollingWindowTransactions.length === 0 && fallbackMonthTransactions.length > 0;
   const snapshotMonthDate = transactionsForSnapshot[0]?.parsedDate ?? today;
-  const snapshotMonthLabel = snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+  const snapshotMonthLabel = usingFallbackMonth
+    ? snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" })
+    : `Last 30 days (ending ${today.toLocaleDateString()})`;
 
   // Convert mixed transaction labels to cash flow direction.
   // Ambiguous transfers default to income so imported cash-in rows are not dropped.
   const getCashFlowType = (tx: Transaction): "income" | "expense" | null => {
     const normalizedType = String(tx.type || "").toLowerCase().trim();
     const categoryText = String(tx.category || "").toLowerCase().trim();
+    const numericAmount = Number(tx.amount) || 0;
 
     if (normalizedType === "income") return "income";
     if (normalizedType === "expense") return "expense";
@@ -282,6 +285,9 @@ const Dashboard = () => {
 
       return "income";
     }
+
+    if (numericAmount > 0) return "income";
+    if (numericAmount < 0) return "expense";
 
     return null;
   };
@@ -399,6 +405,11 @@ const Dashboard = () => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
 
+  const goalsForAllocation = goalAnalyses.filter((analysis) => analysis.remainingAmount > 0);
+  const allocationMonthlyRequirement = goalsForAllocation.reduce((sum, analysis) => {
+    return sum + (analysis.remainingAmount / analysis.monthsToGoal);
+  }, 0);
+
   const practicalMonthlySpendFloor = monthlyIncome > 0
     ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.1)
     : MIN_SPENDING_LIMIT;
@@ -439,11 +450,11 @@ const Dashboard = () => {
   const totalPositiveBalances = positiveBalanceAccounts.reduce((sum, account) => sum + Number(account.balance), 0);
 
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
-    if (allGoalsMonthlyRequirement <= 0 || positiveBalanceAccounts.length === 0 || totalPositiveBalances <= 0) {
+    if (allocationMonthlyRequirement <= 0 || positiveBalanceAccounts.length === 0 || totalPositiveBalances <= 0) {
       return [];
     }
 
-    const targetCents = Math.round(allGoalsMonthlyRequirement * 100);
+    const targetCents = Math.round(allocationMonthlyRequirement * 100);
     let remainingCents = targetCents;
 
     return positiveBalanceAccounts
@@ -810,6 +821,24 @@ const Dashboard = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {accountAllocationPlan.length === 0 && goals.length > 0 && (
+                <div className="rounded-xl border border-success/20 bg-success/5 p-5 space-y-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Recommended allocation by account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fund this amount each month to reach all active goals as fast as possible based on your current account mix.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                    <p className="text-sm text-muted-foreground">
+                      We need at least one account with a positive balance and one goal with remaining amount to generate an allocation plan.
+                    </p>
                   </div>
                 </div>
               )}
