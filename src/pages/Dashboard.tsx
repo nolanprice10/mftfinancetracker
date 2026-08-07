@@ -42,6 +42,11 @@ interface Transaction {
   category?: string;
 }
 
+interface TransactionWithParsedDate {
+  transaction: Transaction;
+  parsedDate: Date;
+}
+
 const Dashboard = () => {
   const MIN_SPENDING_LIMIT = 50;
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -182,14 +187,8 @@ const Dashboard = () => {
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
-  // Strictly scope to the user's current local calendar month to avoid
-  // backend/query boundary drift and timezone edge cases.
-  const isCurrentMonthTransaction = (rawDate: string) => {
-    if (!rawDate) return false;
-
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
+  const parseTransactionDate = (rawDate: string): Date | null => {
+    if (!rawDate) return null;
 
     let parsed: Date;
     if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
@@ -200,39 +199,86 @@ const Dashboard = () => {
     }
 
     if (Number.isNaN(parsed.getTime())) {
-      return false;
+      return null;
     }
 
-    return parsed.getFullYear() === currentYear && parsed.getMonth() === currentMonth;
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
   };
 
-  const currentMonthTransactions = transactions.filter((t) => isCurrentMonthTransaction(String(t.date || "")));
+  const transactionsWithParsedDate: TransactionWithParsedDate[] = transactions
+    .map((transaction) => {
+      const parsedDate = parseTransactionDate(String(transaction.date || ""));
+      if (!parsedDate) return null;
+      return {
+        transaction,
+        parsedDate,
+      };
+    })
+    .filter((entry): entry is TransactionWithParsedDate => entry !== null);
 
-  // Treat income-like entries as cash-in even when imported with negative signs.
-  // Exclude explicit outgoing transfers to avoid inflating income.
-  const isIncomeLikeTransaction = (tx: Transaction) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const currentMonthTransactions = transactionsWithParsedDate.filter(({ parsedDate }) => {
+    return parsedDate.getFullYear() === currentYear && parsedDate.getMonth() === currentMonth;
+  });
+
+  const latestTransactionDate = transactionsWithParsedDate.reduce<Date | null>((latest, entry) => {
+    if (!latest || entry.parsedDate.getTime() > latest.getTime()) {
+      return entry.parsedDate;
+    }
+    return latest;
+  }, null);
+
+  const fallbackMonthTransactions = latestTransactionDate
+    ? transactionsWithParsedDate.filter(({ parsedDate }) => {
+        return (
+          parsedDate.getFullYear() === latestTransactionDate.getFullYear() &&
+          parsedDate.getMonth() === latestTransactionDate.getMonth()
+        );
+      })
+    : [];
+
+  const transactionsForSnapshot = currentMonthTransactions.length > 0
+    ? currentMonthTransactions
+    : fallbackMonthTransactions;
+
+  const usingFallbackMonth = currentMonthTransactions.length === 0 && fallbackMonthTransactions.length > 0;
+  const snapshotMonthDate = transactionsForSnapshot[0]?.parsedDate ?? today;
+  const snapshotMonthLabel = snapshotMonthDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+
+  // Convert mixed transaction labels to cash flow direction.
+  // Ambiguous transfers default to income so imported cash-in rows are not dropped.
+  const getCashFlowType = (tx: Transaction): "income" | "expense" | null => {
     const normalizedType = String(tx.type || "").toLowerCase().trim();
     const categoryText = String(tx.category || "").toLowerCase().trim();
 
-    if (normalizedType === "expense") return false;
-    if (normalizedType === "income") return true;
+    if (normalizedType === "income") return "income";
+    if (normalizedType === "expense") return "expense";
 
     if (normalizedType === "transfer") {
-      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent)/.test(categoryText);
-      return !looksOutgoingTransfer;
+      const looksOutgoingTransfer = /(transfer out|outgoing|withdraw|withdrawal|payment|debit|sent|to\s)/.test(categoryText);
+      const looksIncomingTransfer = /(transfer in|incoming|deposit|credit|received|from\s)/.test(categoryText);
+
+      if (looksOutgoingTransfer) return "expense";
+      if (looksIncomingTransfer) return "income";
+      return "income";
     }
 
-    // Fallback for imported/unknown labels: count non-expense entries with non-zero amounts.
-    return true;
+    return null;
   };
 
-  const monthlyIncome = currentMonthTransactions
-    .filter((t) => isIncomeLikeTransaction(t) && Math.abs(Number(t.amount) || 0) > 0)
-    .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+  const monthlyIncome = transactionsForSnapshot
+    .filter(({ transaction }) => getCashFlowType(transaction) === "income")
+    .reduce((sum, { transaction }) => sum + Math.abs(Number(transaction.amount) || 0), 0);
 
-  const monthlyExpenses = currentMonthTransactions
-    .filter((t) => String(t.type).toLowerCase().trim() === "expense")
-    .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+  const monthlyExpenses = transactionsForSnapshot
+    .filter(({ transaction }) => getCashFlowType(transaction) === "expense")
+    .reduce((sum, { transaction }) => sum + Math.abs(Number(transaction.amount) || 0), 0);
 
   const monthlyNet = monthlyIncome - monthlyExpenses;
 
@@ -356,8 +402,11 @@ const Dashboard = () => {
   const spendingLimitsByGoal = allActiveAnalyses.map((analysis) => {
     const requiredMonthlySavings = analysis.remainingAmount / analysis.monthsToGoal;
     const strictSpendingLimit = monthlyIncome - requiredMonthlySavings;
-    const spendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictSpendingLimit);
-    const floorApplied = strictSpendingLimit < practicalMonthlySpendFloor;
+    const rawSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictSpendingLimit);
+    const spendingLimit = Number.isFinite(rawSpendingLimit)
+      ? Math.max(MIN_SPENDING_LIMIT, rawSpendingLimit)
+      : MIN_SPENDING_LIMIT;
+    const floorApplied = !Number.isFinite(rawSpendingLimit) || strictSpendingLimit < practicalMonthlySpendFloor;
     const overspendAmount = Math.max(0, monthlyExpenses - spendingLimit);
     const underspendBuffer = Math.max(0, spendingLimit - monthlyExpenses);
 
@@ -375,8 +424,11 @@ const Dashboard = () => {
   });
 
   const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
-  const combinedSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictCombinedSpendingLimit);
-  const combinedFloorApplied = strictCombinedSpendingLimit < practicalMonthlySpendFloor;
+  const rawCombinedSpendingLimit = Math.max(MIN_SPENDING_LIMIT, practicalMonthlySpendFloor, strictCombinedSpendingLimit);
+  const combinedSpendingLimit = Number.isFinite(rawCombinedSpendingLimit)
+    ? Math.max(MIN_SPENDING_LIMIT, rawCombinedSpendingLimit)
+    : MIN_SPENDING_LIMIT;
+  const combinedFloorApplied = !Number.isFinite(rawCombinedSpendingLimit) || strictCombinedSpendingLimit < practicalMonthlySpendFloor;
   const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
 
   const positiveBalanceAccounts = accounts.filter((account) => Number(account.balance) > 0);
@@ -642,7 +694,11 @@ const Dashboard = () => {
           <Card className="shadow-elegant border-border/50 bg-gradient-card">
             <CardHeader>
               <CardTitle>Your Financial Snapshot</CardTitle>
-              <CardDescription>Current status across all accounts</CardDescription>
+              <CardDescription>
+                {usingFallbackMonth
+                  ? `No transactions found yet for this month. Showing totals for ${snapshotMonthLabel}.`
+                  : `Current status across all accounts (${snapshotMonthLabel} cash flow).`}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
