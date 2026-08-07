@@ -19,6 +19,7 @@ import { useFormInput } from "@/hooks/useFormInput";
 import { ImportTransactionsDialog } from "@/components/ImportTransactionsDialog";
 import { getGoalAllocationRecommendation } from "@/lib/goalAllocation";
 import { createInMemoryRateLimiter } from "@/lib/rateLimit";
+import { formatDateOnlyForDisplay, getTodayLocalDateInputValue } from "@/lib/date";
 
 interface Transaction {
   id: string;
@@ -59,7 +60,7 @@ const Transactions = () => {
   const [type, setType] = useState("expense");
   const [category, setCategory] = useState("");
   const [accountId, setAccountId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getTodayLocalDateInputValue());
   const [sortBy, setSortBy] = useState<"date" | "amount" | "category" | "type">("date");
   
   const amountInput = useFormInput("");
@@ -199,7 +200,7 @@ const Transactions = () => {
       setType("expense");
       setCategory("");
       setAccountId("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(getTodayLocalDateInputValue());
       
       toast.success(allocationRecommendation ? `Added! ${allocationRecommendation.message}` : "Transaction added successfully");
       await fetchData();
@@ -523,7 +524,7 @@ const Transactions = () => {
                         <span className="font-medium">{transaction.category}</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {transaction.accounts.name} • {new Date(transaction.date).toLocaleDateString()}
+                        {transaction.accounts.name} • {formatDateOnlyForDisplay(transaction.date)}
                       </p>
                       {transaction.notes && (
                         <p className="text-sm text-muted-foreground mt-1">{transaction.notes}</p>

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { toLocalDateInputValue, toLocalDateOnlyString } from "@/lib/date";
 
 type ParsedRow = Record<string, unknown>;
 
@@ -59,15 +60,17 @@ function asIsoDate(value: unknown): string | null {
   if (typeof value === "number") {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (!parsed) return null;
-    const dt = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d));
-    return dt.toISOString().split("T")[0];
+    return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
   }
 
   const raw = String(value).trim();
   if (!raw) return null;
+  const dateOnly = toLocalDateOnlyString(raw);
+  if (dateOnly) return dateOnly;
+
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().split("T")[0];
+  return toLocalDateInputValue(date);
 }
 
 function normalizeType(rawType: unknown, amount: number | null): "income" | "expense" | null {

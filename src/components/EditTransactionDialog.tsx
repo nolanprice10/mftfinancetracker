@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useFormInput } from "@/hooks/useFormInput";
+import { getTodayLocalDateInputValue } from "@/lib/date";
 
 interface Transaction {
   id: string;
@@ -35,7 +36,7 @@ export function EditTransactionDialog({ transaction, accounts, open, onOpenChang
   const [submitting, setSubmitting] = useState(false);
   const [type, setType] = useState(transaction?.type || "expense");
   const [accountId, setAccountId] = useState(transaction?.account_id || "");
-  const [date, setDate] = useState(transaction?.date || new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(transaction?.date || getTodayLocalDateInputValue());
   
   const amountInput = useFormInput(transaction?.amount.toString() || "");
   const categoryInput = useFormInput(transaction?.category || "");
