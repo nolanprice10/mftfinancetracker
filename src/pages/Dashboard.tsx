@@ -19,6 +19,7 @@ import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClas
 import { calculatePercentile } from "@/lib/percentile";
 import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
 import { formatDateOnlyForDisplay, formatDateTimeForDisplay, parseDateOnlyString } from "@/lib/date";
+import { computeSpendingLimits } from "@/lib/spendingLimits";
 
 interface Account {
   id: string;
@@ -61,7 +62,7 @@ interface AccountAllocationPlan {
 }
 
 const Dashboard = () => {
-  const MIN_SPENDING_LIMIT = 50;
+  const MIN_SPENDING_LIMIT = 0.01;
   const ACCOUNT_BASELINE_EQUAL_SHARE_FACTOR = 0.4;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -418,84 +419,24 @@ const Dashboard = () => {
     ? totalTrackedBalance / totalGoalRemaining
     : 1;
 
-  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-  const progressMultiplierMonthly = clamp(0.8 + overallGoalProgress * 0.35, 0.7, 1.1);
-  const pressureMultiplierMonthly = clamp(1.15 - goalPressureRatio * 0.3, 0.65, 1.05);
-  const balanceMultiplierMonthly = clamp(0.85 + Math.min(1, balanceCoverageRatio) * 0.3, 0.75, 1.15);
-
-  const strictCombinedSpendingLimit = monthlyIncome - allGoalsMonthlyRequirement;
-  const practicalMonthlySpendFloor = monthlyIncome > 0
-    ? Math.max(MIN_SPENDING_LIMIT, monthlyIncome * 0.08)
-    : MIN_SPENDING_LIMIT;
-
-  const adaptiveMonthlyCandidate = strictCombinedSpendingLimit
-    * progressMultiplierMonthly
-    * pressureMultiplierMonthly
-    * balanceMultiplierMonthly;
-
-  const combinedSpendingLimit = Math.max(
-    practicalMonthlySpendFloor,
-    Number.isFinite(adaptiveMonthlyCandidate) ? adaptiveMonthlyCandidate : 0,
-    MIN_SPENDING_LIMIT
-  );
-
-  const combinedFloorApplied = combinedSpendingLimit <= practicalMonthlySpendFloor;
-  const combinedOverspend = Math.max(0, monthlyExpenses - combinedSpendingLimit);
-
-  const weeklyIncomeProxy = monthlyIncome * 12 / 52;
-  const weeklyGoalRequirement = allGoalsMonthlyRequirement * 12 / 52;
-  const strictWeeklySpendingLimit = weeklyIncomeProxy - weeklyGoalRequirement;
-  const progressMultiplierWeekly = clamp(0.78 + overallGoalProgress * 0.28, 0.68, 1.08);
-  const pressureMultiplierWeekly = clamp(1.12 - goalPressureRatio * 0.26, 0.66, 1.04);
-  const balanceMultiplierWeekly = clamp(0.82 + Math.min(1, balanceCoverageRatio) * 0.26, 0.72, 1.12);
-  const weeklyFloor = Math.max(20, weeklyIncomeProxy * 0.09);
-  const adaptiveWeeklyCandidate = strictWeeklySpendingLimit
-    * progressMultiplierWeekly
-    * pressureMultiplierWeekly
-    * balanceMultiplierWeekly;
-  const combinedWeeklySpendingLimit = Math.max(
-    weeklyFloor,
-    Number.isFinite(adaptiveWeeklyCandidate) ? adaptiveWeeklyCandidate : 0,
-    20
-  );
-
-  const dailyIncomeProxy = monthlyIncome * 12 / 365;
-  const dailyGoalRequirement = allGoalsMonthlyRequirement * 12 / 365;
-  const strictDailySpendingLimit = dailyIncomeProxy - dailyGoalRequirement;
-  const progressMultiplierDaily = clamp(0.76 + overallGoalProgress * 0.22, 0.66, 1.05);
-  const pressureMultiplierDaily = clamp(1.08 - goalPressureRatio * 0.22, 0.66, 1.03);
-  const balanceMultiplierDaily = clamp(0.8 + Math.min(1, balanceCoverageRatio) * 0.2, 0.7, 1.08);
-  const dailyFloor = Math.max(5, dailyIncomeProxy * 0.1);
-  const adaptiveDailyCandidate = strictDailySpendingLimit
-    * progressMultiplierDaily
-    * pressureMultiplierDaily
-    * balanceMultiplierDaily;
-  const combinedDailySpendingLimit = Math.max(
-    dailyFloor,
-    Number.isFinite(adaptiveDailyCandidate) ? adaptiveDailyCandidate : 0,
-    5
-  );
-
-  const recoveryMonths = combinedOverspend > 0
-    ? Math.min(6, Math.max(1, Math.ceil(combinedOverspend / Math.max(50, combinedSpendingLimit * 0.3))))
-    : 0;
-
-  const recoveryMonthlyReduction = recoveryMonths > 0 ? combinedOverspend / recoveryMonths : 0;
-  const recoveryWeeklyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 52 : 0;
-  const recoveryDailyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 365 : 0;
-
-  const adjustedMonthlySpendingLimit = recoveryMonths > 0
-    ? Math.max(MIN_SPENDING_LIMIT, combinedSpendingLimit - recoveryMonthlyReduction)
-    : combinedSpendingLimit;
-
-  const adjustedWeeklySpendingLimit = recoveryMonths > 0
-    ? Math.max(20, combinedWeeklySpendingLimit - recoveryWeeklyReduction)
-    : combinedWeeklySpendingLimit;
-
-  const adjustedDailySpendingLimit = recoveryMonths > 0
-    ? Math.max(5, combinedDailySpendingLimit - recoveryDailyReduction)
-    : combinedDailySpendingLimit;
+  const {
+    combinedSpendingLimit,
+    adjustedMonthlySpendingLimit,
+    adjustedWeeklySpendingLimit,
+    adjustedDailySpendingLimit,
+    combinedOverspend,
+    recoveryMonths,
+    combinedFloorApplied,
+    strictCombinedSpendingLimit,
+  } = computeSpendingLimits({
+    monthlyIncome,
+    monthlyExpenses,
+    allGoalsMonthlyRequirement,
+    overallGoalProgress,
+    goalPressureRatio,
+    balanceCoverageRatio,
+    minSpendingLimit: MIN_SPENDING_LIMIT,
+  });
 
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
     if (goalsForAllocation.length === 0 || accounts.length === 0 || totalTrackedBalance <= 0) {
