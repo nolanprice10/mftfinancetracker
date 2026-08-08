@@ -9,7 +9,8 @@ export function computeSpendingLimits({
   overallGoalProgress,
   goalPressureRatio,
   balanceCoverageRatio,
-  minSpendingLimit = 0.01,
+  availableBalance,
+  minSpendingLimit = 1,
 }) {
   const progressMultiplierMonthly = clamp(0.8 + overallGoalProgress * 0.35, 0.7, 1.1);
   const pressureMultiplierMonthly = clamp(1.15 - goalPressureRatio * 0.3, 0.65, 1.05);
@@ -68,33 +69,66 @@ export function computeSpendingLimits({
     Number.isFinite(adaptiveDailyCandidate) ? adaptiveDailyCandidate : 0,
   ));
 
-  const recoveryMonths = combinedOverspend > 0
-    ? Math.min(6, Math.max(1, Math.ceil(combinedOverspend / Math.max(minSpendingLimit, combinedSpendingLimit * 0.3))))
+  const safeAvailableBalance = toCents(Math.max(0, Number(availableBalance) || 0));
+  const overageBuffer = combinedOverspend > 0
+    ? Math.max(5, combinedSpendingLimit * 0.1)
     : 0;
 
-  const recoveryMonthlyReduction = recoveryMonths > 0 ? combinedOverspend / recoveryMonths : 0;
-  const recoveryWeeklyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 52 : 0;
-  const recoveryDailyReduction = recoveryMonths > 0 ? (combinedOverspend / recoveryMonths) * 12 / 365 : 0;
-
-  const adjustedMonthlySpendingLimit = recoveryMonths > 0
-    ? toCents(Math.max(minSpendingLimit, combinedSpendingLimit - recoveryMonthlyReduction))
+  const requestedAdjustedMonthlyLimit = combinedOverspend > 0
+    ? toCents(monthlyExpenses + overageBuffer)
     : combinedSpendingLimit;
 
-  const adjustedWeeklySpendingLimit = recoveryMonths > 0
-    ? toCents(Math.max(minSpendingLimit, combinedWeeklySpendingLimit - recoveryWeeklyReduction))
-    : combinedWeeklySpendingLimit;
+  const requestedBorrowAmount = combinedOverspend > 0
+    ? toCents(Math.max(0, requestedAdjustedMonthlyLimit - combinedSpendingLimit))
+    : 0;
 
-  const adjustedDailySpendingLimit = recoveryMonths > 0
-    ? toCents(Math.max(minSpendingLimit, combinedDailySpendingLimit - recoveryDailyReduction))
-    : combinedDailySpendingLimit;
+  const autoAdjustmentBlocked = combinedOverspend > 0 && requestedAdjustedMonthlyLimit > safeAvailableBalance;
+  const canAutoAdjust = combinedOverspend > 0 && !autoAdjustmentBlocked;
+
+  const affordabilityCappedBaseMonthlyLimit = toCents(
+    Math.max(minSpendingLimit, Math.min(combinedSpendingLimit, safeAvailableBalance || minSpendingLimit))
+  );
+
+  const adjustedMonthlySpendingLimit = canAutoAdjust
+    ? requestedAdjustedMonthlyLimit
+    : affordabilityCappedBaseMonthlyLimit;
+
+  const borrowedFromNextMonthAmount = canAutoAdjust ? requestedBorrowAmount : 0;
+  const nextMonthAdjustedLimit = borrowedFromNextMonthAmount > 0
+    ? toCents(Math.max(minSpendingLimit, combinedSpendingLimit - borrowedFromNextMonthAmount))
+    : combinedSpendingLimit;
+
+  const weeklyRatio = combinedSpendingLimit > 0 ? combinedWeeklySpendingLimit / combinedSpendingLimit : 12 / 52;
+  const dailyRatio = combinedSpendingLimit > 0 ? combinedDailySpendingLimit / combinedSpendingLimit : 12 / 365;
+
+  const adjustedWeeklySpendingLimit = toCents(Math.max(minSpendingLimit, adjustedMonthlySpendingLimit * weeklyRatio));
+  const adjustedDailySpendingLimit = toCents(Math.max(minSpendingLimit, adjustedMonthlySpendingLimit * dailyRatio));
+
+  const nextMonthAdjustedWeeklyLimit = toCents(Math.max(minSpendingLimit, nextMonthAdjustedLimit * weeklyRatio));
+  const nextMonthAdjustedDailyLimit = toCents(Math.max(minSpendingLimit, nextMonthAdjustedLimit * dailyRatio));
+
+  const guaranteedFloorActive = (
+    adjustedMonthlySpendingLimit === minSpendingLimit
+    || adjustedWeeklySpendingLimit === minSpendingLimit
+    || adjustedDailySpendingLimit === minSpendingLimit
+    || nextMonthAdjustedLimit === minSpendingLimit
+  );
 
   return {
     combinedSpendingLimit,
     adjustedMonthlySpendingLimit,
     adjustedWeeklySpendingLimit,
     adjustedDailySpendingLimit,
+    nextMonthAdjustedLimit,
+    nextMonthAdjustedWeeklyLimit,
+    nextMonthAdjustedDailyLimit,
+    borrowedFromNextMonthAmount,
+    requestedAdjustedMonthlyLimit,
+    autoAdjustmentBlocked,
+    canAutoAdjust,
+    availableBalance: safeAvailableBalance,
+    guaranteedFloorActive,
     combinedOverspend,
-    recoveryMonths,
     combinedFloorApplied,
     strictCombinedSpendingLimit,
   };

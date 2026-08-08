@@ -62,7 +62,7 @@ interface AccountAllocationPlan {
 }
 
 const Dashboard = () => {
-  const MIN_SPENDING_LIMIT = 0.01;
+  const MIN_SPENDING_LIMIT = 1;
   const ACCOUNT_BASELINE_EQUAL_SHARE_FACTOR = 0.4;
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -424,8 +424,14 @@ const Dashboard = () => {
     adjustedMonthlySpendingLimit,
     adjustedWeeklySpendingLimit,
     adjustedDailySpendingLimit,
+    nextMonthAdjustedLimit,
+    borrowedFromNextMonthAmount,
+    requestedAdjustedMonthlyLimit,
+    autoAdjustmentBlocked,
+    canAutoAdjust,
+    availableBalance,
+    guaranteedFloorActive,
     combinedOverspend,
-    recoveryMonths,
     combinedFloorApplied,
     strictCombinedSpendingLimit,
   } = computeSpendingLimits({
@@ -435,6 +441,7 @@ const Dashboard = () => {
     overallGoalProgress,
     goalPressureRatio,
     balanceCoverageRatio,
+    availableBalance: totalTrackedBalance,
     minSpendingLimit: MIN_SPENDING_LIMIT,
   });
 
@@ -799,6 +806,11 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-medium">Unified spending limit for all goals</p>
                     <p className="text-xs text-muted-foreground">One adaptive limit across all active goals, adjusted by monthly income, goal progress, total balance, and goal deadlines.</p>
+                    {borrowedFromNextMonthAmount > 0 && (
+                      <p className="text-xs font-medium text-amber-700 mt-2">
+                        Borrowing from next cycle: ${borrowedFromNextMonthAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -824,18 +836,30 @@ const Dashboard = () => {
 
                   <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                     <p className={`text-xs mt-1 ${combinedOverspend > 0 ? "text-destructive" : "text-success"}`}>
-                      {combinedOverspend > 0 && recoveryMonths > 0
-                        ? `This month is already locked in. Recovery plan: use the adjusted limits above for the next ${recoveryMonths} month${recoveryMonths === 1 ? "" : "s"} to get back on track.`
+                      {canAutoAdjust
+                        ? `Limit increased to $${adjustedMonthlySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for this month. Your next month's budget has been adjusted to $${nextMonthAdjustedLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to stay on track.`
+                        : autoAdjustmentBlocked
+                        ? `Cannot auto-adjust limit: Your current account balance ($${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) cannot support a $${requestedAdjustedMonthlyLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} limit. You are out of available funds.`
                         : "You are within the combined limit for all active goals."}
                     </p>
-                    {combinedOverspend > 0 && recoveryMonths > 0 && (
+                    {canAutoAdjust && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Your current overage is $${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. We spread that over future months instead of expecting past spending to be undone.
+                        You are over your base monthly limit by ${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. We borrowed ${borrowedFromNextMonthAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from next month so you still have room to spend now.
+                      </p>
+                    )}
+                    {autoAdjustmentBlocked && combinedOverspend > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        You are over your base monthly limit by ${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Auto-expansion was blocked to keep your limit within your available funds.
                       </p>
                     )}
                     {combinedOverspend <= 0 && combinedFloorApplied && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Practical floor applied: strict all-goals target would be ${Math.max(0, strictCombinedSpendingLimit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month, so we enforce at least ${MIN_SPENDING_LIMIT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/month.
+                      </p>
+                    )}
+                    {guaranteedFloorActive && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Your budget limit is operating on your guaranteed minimum spending floor for this period.
                       </p>
                     )}
                   </div>
