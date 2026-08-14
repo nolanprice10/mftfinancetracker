@@ -15,6 +15,8 @@ import Recommendations from "./pages/Recommendations";
 import Settings from "./pages/Settings";
 import Risk from "./pages/Risk";
 import Compare from "./pages/Compare";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -51,6 +53,8 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/risk" element={<Risk />} />
               <Route path="/compare" element={<Compare />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
