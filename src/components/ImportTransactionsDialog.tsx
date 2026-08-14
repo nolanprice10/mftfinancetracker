@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -58,9 +57,7 @@ function cleanAmount(value: unknown): number | null {
 function asIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") {
-    const parsed = XLSX.SSF.parse_date_code(value);
-    if (!parsed) return null;
-    return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`;
+    return null;
   }
 
   const raw = String(value).trim();
@@ -122,16 +119,8 @@ function getFieldValue(row: ParsedRow, aliases: readonly string[]): unknown {
 
 async function parseFileRows(file: File): Promise<ParsedRow[]> {
   const lowerName = file.name.toLowerCase();
-  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: "array" });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) return [];
-
-    return XLSX.utils.sheet_to_json<ParsedRow>(workbook.Sheets[firstSheetName], {
-      defval: "",
-      raw: true,
-    });
+  if (!lowerName.endsWith(".csv") && !lowerName.endsWith(".tsv") && !lowerName.endsWith(".txt")) {
+    throw new Error("Please upload a CSV, TSV, or plain-text file.");
   }
 
   const text = await file.text();
@@ -305,7 +294,7 @@ export function ImportTransactionsDialog({ accounts, onSuccess }: ImportTransact
         <DialogHeader>
           <DialogTitle>Import Transactions</DialogTitle>
           <DialogDescription>
-            Import from CSV, Excel (.xlsx/.xls), or a public Google Sheets link.
+                Import from CSV, TSV, plain text, or a public Google Sheets link.
           </DialogDescription>
         </DialogHeader>
 
@@ -317,7 +306,7 @@ export function ImportTransactionsDialog({ accounts, onSuccess }: ImportTransact
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="file">CSV or Excel file</SelectItem>
+                <SelectItem value="file">CSV or text file</SelectItem>
                 <SelectItem value="google-sheet">Google Sheets URL</SelectItem>
               </SelectContent>
             </Select>
@@ -328,7 +317,7 @@ export function ImportTransactionsDialog({ accounts, onSuccess }: ImportTransact
               <Label>File</Label>
               <Input
                 type="file"
-                accept=".csv,.tsv,.txt,.xlsx,.xls"
+                accept=".csv,.tsv,.txt"
                 onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
               />
             </div>
