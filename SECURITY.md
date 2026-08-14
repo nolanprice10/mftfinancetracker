@@ -18,9 +18,9 @@
 
 `public/_headers` contains the security header policy for hosts that support the `_headers` convention. GitHub Pages does not apply custom response headers from static files, so production hosting must enforce CSP, HSTS, HTTPS redirects, and the remaining headers at the CDN or reverse proxy before launch.
 
-## Known dependency blocker
+## Dependency audit status
 
-As of August 14, 2026, `npm audit --audit-level=high` reports high-severity advisories, including an unfixed advisory for `xlsx`. Deployment must remain blocked until dependencies are upgraded, isolated behind a trusted parser, or the package is removed.
+As of August 14, 2026, `npm audit --audit-level=high` passes with no high or critical findings. The full audit reports two moderate React Router advisories; upgrade React Router and its DOM adapter in a dependency maintenance change, then rerun the audit. The deployment workflow continues to block high and critical production advisories.
 
 ## External launch tasks
 

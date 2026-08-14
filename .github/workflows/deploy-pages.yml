@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -27,7 +29,13 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Scan Git history for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --results=verified,unknown
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
@@ -58,6 +66,9 @@ jobs:
           fi
           echo "VITE_APP_BASE_PATH=$VITE_APP_BASE_PATH"
           npm run build
+
+      - name: Check client bundle for server-only secrets
+        run: npm run security:bundle
 
       - name: Verify build output
         run: |

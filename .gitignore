@@ -7,15 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Environment files may contain credentials. Keep only the documented template.
 .env
 .env.*
 !.env.example
-*.pem
-*.key
 
 # Editor directories and files
 .vscode/*
