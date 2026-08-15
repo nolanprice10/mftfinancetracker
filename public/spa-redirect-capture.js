@@ -3,5 +3,7 @@
 (function () {
   var path = window.location.pathname + window.location.search + window.location.hash;
   sessionStorage.setItem("mft:redirect-path", path);
-  window.location.replace("/");
+  var scriptUrl = new URL(document.currentScript.src, window.location.href);
+  var basePath = scriptUrl.pathname.replace(/spa-redirect-capture\.js$/, "");
+  window.location.replace(basePath);
 })();
