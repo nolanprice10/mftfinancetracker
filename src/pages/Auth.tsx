@@ -29,6 +29,7 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("signin");
 
   const navigateToDashboard = () => {
     try {
@@ -293,7 +294,14 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value);
+              setShowForgotPassword(false);
+            }}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
