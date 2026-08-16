@@ -95,7 +95,7 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (session) {
+        if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
           navigateToDashboard();
         }
       }
@@ -209,10 +209,6 @@ const Auth = () => {
       });
 
       if (error) throw error;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Sign-in succeeded, but the session was not ready. Please try again.");
-      }
 
       toast.success("Welcome back!");
       navigateToDashboard();
