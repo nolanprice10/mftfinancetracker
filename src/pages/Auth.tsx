@@ -201,7 +201,7 @@ const Auth = () => {
 
       if (error) throw error;
       toast.success("Welcome back!");
-      window.location.assign(buildAppRedirectUrl("dashboard"));
+      navigate("/dashboard", { replace: true });
       
       // Track login
       if (typeof window !== 'undefined' && (window as any).gtag) {
