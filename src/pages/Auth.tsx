@@ -30,6 +30,15 @@ const Auth = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [referralCode, setReferralCode] = useState<string | null>(null);
 
+  const navigateToDashboard = () => {
+    try {
+      navigate("/dashboard", { replace: true });
+    } catch (navigationError) {
+      console.error("Client-side dashboard navigation failed:", navigationError);
+      window.location.replace(buildAppRedirectUrl("dashboard"));
+    }
+  };
+
   const testimonials = [
     {
       name: "Dr. James Patterson",
@@ -87,14 +96,14 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session) {
-          navigate("/dashboard");
+          navigateToDashboard();
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/dashboard");
+        navigateToDashboard();
       }
     });
 
@@ -179,7 +188,7 @@ const Auth = () => {
           });
         }
         
-        navigate("/dashboard");
+        navigateToDashboard();
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
@@ -200,8 +209,13 @@ const Auth = () => {
       });
 
       if (error) throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Sign-in succeeded, but the session was not ready. Please try again.");
+      }
+
       toast.success("Welcome back!");
-      navigate("/dashboard", { replace: true });
+      navigateToDashboard();
       
       // Track login
       if (typeof window !== 'undefined' && (window as any).gtag) {
