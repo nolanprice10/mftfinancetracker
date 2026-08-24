@@ -76,6 +76,9 @@ const Dashboard = () => {
   const [goalView, setGoalView] = useState<string>("all");
   
   const recommendationRef = useRef<HTMLDivElement>(null);
+  // Locks the computed allocation targets so internal transfers between accounts
+  // (which don't change total balance or the goal set) can't reshuffle the split.
+  const allocationLockRef = useRef<{ signature: string; totalCents: number; plan: AccountAllocationPlan[] } | null>(null);
   
   const { hasAllFeatures } = useRewards();
   const hasAllThemesUnlocked = hasAllFeatures();
@@ -447,11 +450,39 @@ const Dashboard = () => {
 
   const accountAllocationPlan: AccountAllocationPlan[] = (() => {
     if (goalsForAllocation.length === 0 || accounts.length === 0 || totalTrackedBalance <= 0) {
+      allocationLockRef.current = null;
       return [];
     }
 
     const totalTrackedCents = Math.round(totalTrackedBalance * 100);
     const accountsById = new Map(accounts.map((account) => [account.id, account]));
+
+    // Identify the plan by the accounts/goals involved and the total balance being split,
+    // not by each goal's live progress (which shifts as soon as a transfer is made).
+    const accountIdsSignature = accounts.map((account) => account.id).sort().join(",");
+    const goalsSignature = allActiveAnalyses
+      .map((analysis) => `${analysis.goal.id}:${analysis.targetAmount}:${analysis.goal.account_id || ""}`)
+      .sort()
+      .join(",");
+    const planSignature = `${accountIdsSignature}|${goalsSignature}`;
+
+    const lock = allocationLockRef.current;
+    if (lock && lock.signature === planSignature && lock.totalCents === totalTrackedCents) {
+      // Same accounts, same goals, same total balance: keep the previously computed
+      // targets fixed and only refresh each account's current-balance-derived fields.
+      return lock.plan.map((entry) => {
+        const account = accountsById.get(entry.accountId);
+        const currentBalance = account ? Math.max(0, Number(account.balance) || 0) : entry.currentBalance;
+        return {
+          ...entry,
+          currentBalance,
+          gapToTarget: Math.max(0, entry.targetBalance - currentBalance),
+          excessBalance: Math.max(0, currentBalance - entry.targetBalance),
+          isOnTarget: currentBalance + 0.01 >= entry.targetBalance,
+        };
+      });
+    }
+
     const defaultReceivers = accounts;
 
     const weightedGoals = goalsForAllocation.map((analysis) => ({
@@ -536,7 +567,9 @@ const Dashboard = () => {
         : 0;
     }
 
-    return rawPlan.sort((left, right) => right.targetBalance - left.targetBalance);
+    const finalPlan = rawPlan.sort((left, right) => right.targetBalance - left.targetBalance);
+    allocationLockRef.current = { signature: planSignature, totalCents: totalTrackedCents, plan: finalPlan };
+    return finalPlan;
   })();
 
   const recommendedAllocationTotal = accountAllocationPlan.reduce((sum, entry) => sum + entry.targetBalance, 0);
