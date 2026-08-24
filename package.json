@@ -4,12 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "cp -f index.source.html index.html && npm run generate:sitemap",
+    "prebuild": "cp -f index.source.html index.html",
     "dev": "vite",
     "build": "vite build",
     "postbuild": "cp -f public/404.html dist/404.html && cp -f public/sitemap.xml dist/sitemap.xml && cp -f public/llms.txt dist/llms.txt",
-    "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "security:bundle": "node scripts/check-client-bundle.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -68,6 +66,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {

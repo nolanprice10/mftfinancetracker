@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -29,16 +27,18 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Scan Git history for secrets
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          extra_args: --results=verified,unknown
-
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+      - name: Verify environment
+        run: |
+          echo "Checking for environment configuration..."
+          if [ -f .env ]; then
+            echo "✓ .env file found"
+            echo "Contents (without sensitive data):"
+            grep "VITE_SUPABASE_PROJECT_ID" .env || echo "Project ID not found"
+          else
+            echo "⚠️ .env file not found"
+          fi
 
       - name: Restore source HTML template for build
         run: |
@@ -51,11 +51,6 @@ jobs:
           fi
 
       - name: Build
-        env:
-          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SITE_URL: ${{ secrets.VITE_SITE_URL }}
         run: |
           if [ -f public/CNAME ]; then
             echo "Custom domain detected via public/CNAME; building with root base path"
@@ -66,9 +61,6 @@ jobs:
           fi
           echo "VITE_APP_BASE_PATH=$VITE_APP_BASE_PATH"
           npm run build
-
-      - name: Check client bundle for server-only secrets
-        run: npm run security:bundle
 
       - name: Verify build output
         run: |

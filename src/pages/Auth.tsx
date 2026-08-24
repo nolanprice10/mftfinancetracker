@@ -29,16 +29,6 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("signin");
-
-  const navigateToDashboard = () => {
-    try {
-      navigate("/dashboard", { replace: true });
-    } catch (navigationError) {
-      console.error("Client-side dashboard navigation failed:", navigationError);
-      window.location.replace(buildAppRedirectUrl("dashboard"));
-    }
-  };
 
   const testimonials = [
     {
@@ -96,15 +86,15 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-          navigateToDashboard();
+        if (session) {
+          navigate("/dashboard");
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigateToDashboard();
+        navigate("/dashboard");
       }
     });
 
@@ -189,7 +179,7 @@ const Auth = () => {
           });
         }
         
-        navigateToDashboard();
+        navigate("/dashboard");
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
@@ -210,9 +200,7 @@ const Auth = () => {
       });
 
       if (error) throw error;
-
       toast.success("Welcome back!");
-      navigateToDashboard();
       
       // Track login
       if (typeof window !== 'undefined' && (window as any).gtag) {
@@ -221,6 +209,7 @@ const Auth = () => {
         });
       }
       
+      navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in");
     } finally {
@@ -294,14 +283,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => {
-              setActiveTab(value);
-              setShowForgotPassword(false);
-            }}
-            className="w-full"
-          >
+          <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
