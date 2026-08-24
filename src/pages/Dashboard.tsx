@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateGoalProbability, getProbabilityTextClass, getProbabilityBgClass } from "@/lib/probability";
 import { calculatePercentile } from "@/lib/percentile";
-import { getAllocationTolerance, getBestTransferRecommendation } from "@/lib/transferRecommendation";
+import { getBestTransferRecommendation } from "@/lib/transferRecommendation";
 import { formatDateOnlyForDisplay, formatDateTimeForDisplay, parseDateOnlyString } from "@/lib/date";
 import { computeSpendingLimits } from "@/lib/spendingLimits";
 
@@ -387,6 +387,15 @@ const Dashboard = () => {
   }
 
   const allActiveAnalyses = goalAnalyses.filter((analysis) => !analysis.isExpired);
+  const transferRecommendation = allActiveAnalyses.length > 0
+    ? getBestTransferRecommendation({
+        accounts,
+        goals: allActiveAnalyses.map((analysis) => analysis.goal),
+        monthlyIncome,
+        monthlyExpenses,
+      })
+    : null;
+
   const allGoalsMonthlyRequirement = allActiveAnalyses.reduce((sum, analysis) => {
     return sum + (analysis.remainingAmount / analysis.monthsToGoal);
   }, 0);
@@ -421,10 +430,6 @@ const Dashboard = () => {
     autoAdjustmentBlocked,
     canAutoAdjust,
     availableBalance,
-    softCapWarning,
-    recoveryMonths,
-    monthlyRecoveryRepayment,
-    recoveryTimeline,
     guaranteedFloorActive,
     combinedOverspend,
     combinedFloorApplied,
@@ -502,8 +507,6 @@ const Dashboard = () => {
         const currentBalance = Math.max(0, Number(account.balance) || 0);
         const targetBalance = (targetByAccountCents.get(account.id) || 0) / 100;
 
-        const allocationTolerance = getAllocationTolerance(totalTrackedBalance);
-
         return {
           accountId: account.id,
           accountName: account.name,
@@ -512,7 +515,7 @@ const Dashboard = () => {
           targetBalance,
           gapToTarget: Math.max(0, targetBalance - currentBalance),
           excessBalance: Math.max(0, currentBalance - targetBalance),
-          isOnTarget: Math.abs(currentBalance - targetBalance) <= allocationTolerance,
+          isOnTarget: currentBalance + 0.01 >= targetBalance,
           allocationSharePercent: totalTrackedBalance > 0
             ? (targetBalance / totalTrackedBalance) * 100
             : 0,
@@ -527,7 +530,7 @@ const Dashboard = () => {
       firstEntry.targetBalance = (Math.round(firstEntry.targetBalance * 100) + driftCents) / 100;
       firstEntry.gapToTarget = Math.max(0, firstEntry.targetBalance - firstEntry.currentBalance);
       firstEntry.excessBalance = Math.max(0, firstEntry.currentBalance - firstEntry.targetBalance);
-      firstEntry.isOnTarget = Math.abs(firstEntry.currentBalance - firstEntry.targetBalance) <= getAllocationTolerance(totalTrackedBalance);
+      firstEntry.isOnTarget = firstEntry.currentBalance + 0.01 >= firstEntry.targetBalance;
       firstEntry.allocationSharePercent = totalTrackedBalance > 0
         ? (firstEntry.targetBalance / totalTrackedBalance) * 100
         : 0;
@@ -538,17 +541,6 @@ const Dashboard = () => {
 
   const recommendedAllocationTotal = accountAllocationPlan.reduce((sum, entry) => sum + entry.targetBalance, 0);
   const accountsOnTargetCount = accountAllocationPlan.filter((entry) => entry.isOnTarget).length;
-  const allocationTolerance = getAllocationTolerance(totalTrackedBalance);
-
-  const transferRecommendation = allActiveAnalyses.length > 0
-    ? getBestTransferRecommendation({
-        accounts,
-        goals: allActiveAnalyses.map((analysis) => analysis.goal),
-        monthlyIncome,
-        monthlyExpenses,
-        allocationPlan: accountAllocationPlan,
-      })
-    : null;
 
   const displayProbability = selectedProbability !== null
     ? Number(selectedProbability.toFixed(1))
@@ -714,10 +706,6 @@ const Dashboard = () => {
                           This move is optimized across all your active goals.
                         </p>
                       </>
-                    ) : accountAllocationPlan.length > 0 && accountsOnTargetCount === accountAllocationPlan.length ? (
-                      <p className="text-2xl md:text-3xl font-bold">
-                        Your portfolio is fully optimized for this month
-                      </p>
                     ) : (
                       <>
                         <p className="text-2xl md:text-3xl font-bold">
@@ -823,11 +811,6 @@ const Dashboard = () => {
                         Borrowing from next cycle: ${borrowedFromNextMonthAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     )}
-                    {canAutoAdjust && softCapWarning && recoveryMonths > 1 && (
-                      <p className="text-xs text-amber-700 mt-1">
-                        Soft-cap warning: this auto-borrow will affect your next {recoveryMonths} monthly cycle{recoveryMonths === 1 ? "" : "s"}.
-                      </p>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -854,35 +837,15 @@ const Dashboard = () => {
                   <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                     <p className={`text-xs mt-1 ${combinedOverspend > 0 ? "text-destructive" : "text-success"}`}>
                       {canAutoAdjust
-                        ? recoveryMonths > 1
-                          ? `Limit increased to $${adjustedMonthlySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for this month. To keep your future budgets realistic, your $${borrowedFromNextMonthAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} overage will be gradually repaid over your next ${recoveryMonths} monthly cycles.`
-                          : `Limit increased to $${adjustedMonthlySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for this month. Your next month's budget has been adjusted to $${nextMonthAdjustedLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to stay on track.`
+                        ? `Limit increased to $${adjustedMonthlySpendingLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for this month. Your next month's budget has been adjusted to $${nextMonthAdjustedLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to stay on track.`
                         : autoAdjustmentBlocked
                         ? `Cannot auto-adjust limit: Your current account balance ($${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) cannot support a $${requestedAdjustedMonthlyLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} limit. You are out of available funds.`
                         : "You are within the combined limit for all active goals."}
                     </p>
                     {canAutoAdjust && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Budget Recovery Active: Paying back ${monthlyRecoveryRepayment.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo over the next {recoveryMonths} month{recoveryMonths === 1 ? "" : "s"} to keep your spending limit realistic.
+                        You are over your base monthly limit by ${combinedOverspend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. We borrowed ${borrowedFromNextMonthAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from next month so you still have room to spend now.
                       </p>
-                    )}
-                    {canAutoAdjust && recoveryTimeline.length > 1 && (
-                      <div className="mt-2 rounded-md border border-border/60 bg-background/60 p-2">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Recovery timeline</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          {recoveryTimeline.map((item) => (
-                            <div key={item.monthNumber} className="rounded border border-border/50 bg-background/70 p-2">
-                              <p className="text-xs font-medium">Month {item.monthNumber}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Limit: ${item.projectedLimit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Payback: ${item.repaymentAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     )}
                     {autoAdjustmentBlocked && combinedOverspend > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
@@ -954,7 +917,7 @@ const Dashboard = () => {
 
                         <p className={`text-xs mt-2 ${entry.isOnTarget ? "text-success" : "text-muted-foreground"}`}>
                           {entry.isOnTarget
-                            ? `On target: within $${allocationTolerance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} of its recommended allocation.`
+                            ? `On target: this account is $${entry.excessBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} above its recommended allocation.`
                             : `Needs $${entry.gapToTarget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more to reach its recommended allocation.`}
                         </p>
                       </div>
@@ -981,7 +944,7 @@ const Dashboard = () => {
                 </div>
               )}
 
-              {transferRecommendation ? (
+              {transferRecommendation && (
                 <div className="rounded-xl border border-success/25 bg-gradient-to-br from-success/10 via-success/5 to-transparent p-5 space-y-2 shadow-sm">
                   <p className="text-sm font-medium">Best money move this month</p>
                   <p className="text-lg font-semibold text-success">
@@ -991,15 +954,7 @@ const Dashboard = () => {
                     This move is optimized across all your active goals. {transferRecommendation.reason}
                   </p>
                 </div>
-              ) : accountAllocationPlan.length > 0 && accountsOnTargetCount === accountAllocationPlan.length ? (
-                <div className="rounded-xl border border-success/25 bg-success/5 p-5 space-y-2">
-                  <p className="text-sm font-medium">Portfolio status</p>
-                  <p className="text-lg font-semibold text-success">Your portfolio is fully optimized for this month</p>
-                  <p className="text-sm text-muted-foreground">
-                    All account balances are within the ${allocationTolerance.toFixed(2)} allocation tolerance, so no transfer is needed.
-                  </p>
-                </div>
-              ) : null}
+              )}
             </CardContent>
           </Card>
         </div>
