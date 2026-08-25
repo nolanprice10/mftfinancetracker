@@ -12,9 +12,6 @@ export function computeSpendingLimits({
   availableBalance,
   minSpendingLimit = 1,
 }) {
-  const REALISTIC_BASELINE_RATIO = 0.67;
-  const MAX_RECOVERY_MONTHS = 12;
-
   const progressMultiplierMonthly = clamp(0.8 + overallGoalProgress * 0.35, 0.7, 1.1);
   const pressureMultiplierMonthly = clamp(1.15 - goalPressureRatio * 0.3, 0.65, 1.05);
   const balanceMultiplierMonthly = clamp(0.85 + Math.min(1, balanceCoverageRatio) * 0.3, 0.75, 1.15);
@@ -97,44 +94,9 @@ export function computeSpendingLimits({
     : affordabilityCappedBaseMonthlyLimit;
 
   const borrowedFromNextMonthAmount = canAutoAdjust ? requestedBorrowAmount : 0;
-
-  const realisticBaselineLimit = toCents(
-    Math.max(minSpendingLimit, combinedSpendingLimit * REALISTIC_BASELINE_RATIO)
-  );
-  const maxDeductionPerRecoveryMonth = Math.max(0.01, combinedSpendingLimit - realisticBaselineLimit);
-
-  const projectedRecoveryMonths = requestedBorrowAmount > 0
-    ? Math.min(MAX_RECOVERY_MONTHS, Math.max(1, Math.ceil(requestedBorrowAmount / maxDeductionPerRecoveryMonth)))
-    : 0;
-
-  const softCapWarning = projectedRecoveryMonths >= 3;
-
-  const recoveryMonths = canAutoAdjust ? projectedRecoveryMonths : 0;
-  const monthlyRecoveryRepayment = recoveryMonths > 0
-    ? toCents(borrowedFromNextMonthAmount / recoveryMonths)
-    : 0;
-
-  const nextMonthAdjustedLimit = recoveryMonths > 0
-    ? toCents(Math.max(realisticBaselineLimit, combinedSpendingLimit - monthlyRecoveryRepayment))
+  const nextMonthAdjustedLimit = borrowedFromNextMonthAmount > 0
+    ? toCents(Math.max(minSpendingLimit, combinedSpendingLimit - borrowedFromNextMonthAmount))
     : combinedSpendingLimit;
-
-  const recoveryTimeline = recoveryMonths > 0
-    ? Array.from({ length: recoveryMonths }, (_, index) => {
-        const monthNumber = index + 1;
-        const repaidToDate = toCents(monthlyRecoveryRepayment * monthNumber);
-        const remainingBorrowed = toCents(Math.max(0, borrowedFromNextMonthAmount - repaidToDate));
-        const projectedLimit = toCents(
-          Math.max(realisticBaselineLimit, combinedSpendingLimit - monthlyRecoveryRepayment)
-        );
-
-        return {
-          monthNumber,
-          projectedLimit,
-          repaymentAmount: monthlyRecoveryRepayment,
-          remainingBorrowed,
-        };
-      })
-    : [];
 
   const weeklyRatio = combinedSpendingLimit > 0 ? combinedWeeklySpendingLimit / combinedSpendingLimit : 12 / 52;
   const dailyRatio = combinedSpendingLimit > 0 ? combinedDailySpendingLimit / combinedSpendingLimit : 12 / 365;
@@ -165,11 +127,6 @@ export function computeSpendingLimits({
     autoAdjustmentBlocked,
     canAutoAdjust,
     availableBalance: safeAvailableBalance,
-    realisticBaselineLimit,
-    softCapWarning,
-    recoveryMonths,
-    monthlyRecoveryRepayment,
-    recoveryTimeline,
     guaranteedFloorActive,
     combinedOverspend,
     combinedFloorApplied,
