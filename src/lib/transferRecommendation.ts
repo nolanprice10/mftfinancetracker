@@ -19,6 +19,15 @@ interface TransferRecommendationInput {
   goals: GoalInput[];
   monthlyIncome: number;
   monthlyExpenses: number;
+  allocationPlan?: AllocationPlanEntry[];
+}
+
+export interface AllocationPlanEntry {
+  accountId: string;
+  accountName: string;
+  gapToTarget: number;
+  excessBalance: number;
+  isOnTarget: boolean;
 }
 
 export interface TransferRecommendation {
@@ -32,6 +41,14 @@ export interface TransferRecommendation {
   monthlyNeededForGoal: number;
   reason: string;
 }
+
+export const MINIMUM_TRANSFER_THRESHOLD = 5;
+export const MINIMUM_ALLOCATION_TOLERANCE = 5;
+
+export const getAllocationTolerance = (totalAllocatedBalance: number) => Math.max(
+  MINIMUM_ALLOCATION_TOLERANCE,
+  totalAllocatedBalance * 0.01
+);
 
 const asNumber = (value: number | string | null | undefined) => {
   const parsed = Number(value);
@@ -56,7 +73,7 @@ const typePriority = (type: string) => {
 };
 
 export function getBestTransferRecommendation(input: TransferRecommendationInput): TransferRecommendation | null {
-  const { accounts, goals, monthlyIncome, monthlyExpenses } = input;
+  const { accounts, goals, monthlyIncome, monthlyExpenses, allocationPlan } = input;
   if (!accounts.length || !goals.length) return null;
 
   const today = new Date();
@@ -100,6 +117,15 @@ export function getBestTransferRecommendation(input: TransferRecommendationInput
   const topGoal = activeGoals[0];
   const monthlyNeededForGoal = topGoal.remaining / topGoal.monthsToGoal;
 
+  const allocationDestination = allocationPlan
+    ?.filter((entry) => !entry.isOnTarget && entry.gapToTarget >= MINIMUM_ALLOCATION_TOLERANCE)
+    .sort((a, b) => b.gapToTarget - a.gapToTarget)[0];
+  const allocationSource = allocationPlan
+    ?.filter((entry) => !entry.isOnTarget && entry.excessBalance >= MINIMUM_ALLOCATION_TOLERANCE)
+    .sort((a, b) => b.excessBalance - a.excessBalance)[0];
+
+  if (allocationPlan && (!allocationDestination || !allocationSource)) return null;
+
   const linkedDestination = topGoal.goal.account_id
     ? normalizedAccounts.find((account) => account.id === topGoal.goal.account_id)
     : null;
@@ -108,7 +134,9 @@ export function getBestTransferRecommendation(input: TransferRecommendationInput
     .filter((account) => account.normalizedType === "savings")
     .sort((a, b) => b.normalizedBalance - a.normalizedBalance)[0];
 
-  const destination = linkedDestination || fallbackSavings;
+  const destination = allocationDestination
+    ? normalizedAccounts.find((account) => account.id === allocationDestination.accountId)
+    : linkedDestination || fallbackSavings;
   if (!destination) return null;
 
   const baseCheckingReserve = Math.max(monthlyExpenses * 0.5, 250);
@@ -136,32 +164,39 @@ export function getBestTransferRecommendation(input: TransferRecommendationInput
       return b.availableToMove - a.availableToMove;
     });
 
-  if (!candidateSources.length) return null;
+  if (!candidateSources.length && !allocationSource) return null;
 
-  const source = candidateSources[0];
+  const source = allocationSource
+    ? normalizedAccounts.find((account) => account.id === allocationSource.accountId)
+    : candidateSources[0];
+  if (!source) return null;
 
   const monthlySurplus = Math.max(0, monthlyIncome - monthlyExpenses);
   const monthlyGap = Math.max(0, monthlyNeededForGoal - monthlySurplus);
 
-  const desiredMove = Math.min(
-    monthlyNeededForGoal,
-    topGoal.remaining,
-    source.availableToMove,
-    monthlyGap > 0 ? monthlyGap : monthlyNeededForGoal
-  );
+  const desiredMove = allocationDestination && allocationSource
+    ? Math.min(allocationDestination.gapToTarget, allocationSource.excessBalance)
+    : Math.min(
+        monthlyNeededForGoal,
+        topGoal.remaining,
+        source.availableToMove,
+        monthlyGap > 0 ? monthlyGap : monthlyNeededForGoal
+      );
 
   // Keep exact cents (no rounding to 5/10/25 buckets).
   const amount = Math.max(0, Number(desiredMove.toFixed(2)));
 
-  if (amount < 0.01) return null;
+  if (amount < MINIMUM_TRANSFER_THRESHOLD) return null;
 
-  const reason = monthlyGap > 0
+  const reason = allocationDestination && allocationSource
+    ? `This move brings ${destination.name} toward its shared allocation target without moving more than ${source.name} has above its target.`
+    : monthlyGap > 0
     ? `This goal needs about $${monthlyNeededForGoal.toFixed(0)}/month, and you're currently short by about $${monthlyGap.toFixed(0)}/month.`
     : `Moving this now ring-fences progress toward a monthly target of about $${monthlyNeededForGoal.toFixed(0)}.`;
 
   return {
-    fromAccountId: source.account.id,
-    fromAccountName: source.account.name,
+    fromAccountId: source.account?.id || source.id,
+    fromAccountName: source.account?.name || source.name,
     toAccountId: destination.id,
     toAccountName: destination.name,
     goalId: topGoal.goal.id,
