@@ -52,8 +52,8 @@ jobs:
 
       - name: Build
         run: |
-          if [ -f public/CNAME ]; then
-            echo "Custom domain detected via public/CNAME; building with root base path"
+          if [ -f CNAME ]; then
+            echo "Custom domain detected via CNAME; building with root base path"
             export VITE_APP_BASE_PATH="/"
           else
             echo "No CNAME found; building for GitHub Pages project path"
